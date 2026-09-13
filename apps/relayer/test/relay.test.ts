@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { turnstileEventAbi } from "@turnstile/contracts/abi";
 import { type Abi, encodeFunctionData } from "viem";
-import { relayGas, validateRelayBody } from "../src/relay.ts";
+import { relayGas, validateRelayBody } from "../src/forward-request.ts";
 
 const eventAbi: Abi = turnstileEventAbi;
 
