@@ -1,0 +1,318 @@
+import { Environment, Lightformer, Sparkles, SpotLight } from "@react-three/drei";
+import { useFrame } from "@react-three/fiber";
+import { useEffect, useMemo, useRef } from "react";
+import * as THREE from "three";
+import type { SeatMap } from "../chain/seats";
+import type { VenueLayout } from "../venues/layout";
+import { useDirector } from "./director";
+import { curtainShader, ledWallShader, useShaderMaterial } from "./materials";
+import { Seats } from "./Seats";
+
+interface VenueProps {
+  layout: VenueLayout;
+  seatMap: SeatMap | undefined;
+  interactive: boolean;
+}
+
+export function Venue({ layout, seatMap, interactive }: VenueProps) {
+  const quality = useDirector((s) => s.quality);
+  return (
+    <group>
+      <Room layout={layout} />
+      <Stage layout={layout} />
+      {layout.kind === "theatre" ? <Proscenium layout={layout} /> : <LedWall layout={layout} />}
+      {layout.kind === "club" ? <Mezzanine layout={layout} /> : null}
+      {layout.kind === "theatre" ? <Balconies layout={layout} /> : null}
+      <Rig layout={layout} volumetric={quality === "high"} />
+      <Seats layout={layout} seatMap={seatMap} interactive={interactive} />
+      {quality === "high" ? (
+        <Sparkles
+          count={260}
+          scale={[layout.radius * 1.4, 12, layout.radius * 1.4]}
+          position={[0, 5, -2]}
+          size={1.6}
+          speed={0.25}
+          opacity={0.32}
+          color="#ffd9a3"
+        />
+      ) : null}
+      <Environment resolution={64} frames={1}>
+        <Lightformer
+          form="rect"
+          intensity={1.1}
+          color="#ffd2a1"
+          position={[0, 10, 0]}
+          rotation={[-Math.PI / 2, 0, 0]}
+          scale={[30, 30, 1]}
+        />
+        <Lightformer
+          form="rect"
+          intensity={0.7}
+          color="#9fe8ff"
+          position={[0, 5, layout.stage.z - 3]}
+          scale={[16, 7, 1]}
+        />
+        <Lightformer form="ring" intensity={0.4} color="#ffb457" position={[0, 3, 12]} scale={[6, 6, 1]} />
+      </Environment>
+    </group>
+  );
+}
+
+function Room({ layout }: { layout: VenueLayout }) {
+  const r = layout.radius;
+  const strips = useMemo(() => {
+    const n = layout.kind === "theatre" ? 18 : 28;
+    return Array.from({ length: n }, (_, i) => {
+      const a = (i / n) * Math.PI * 2;
+      return { x: Math.sin(a) * (r - 0.4), z: Math.cos(a) * (r - 0.4), rotY: a };
+    });
+  }, [layout.kind, r]);
+  return (
+    <group>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
+        <circleGeometry args={[r, 96]} />
+        <meshStandardMaterial color="#08090c" roughness={0.5} metalness={0.4} envMapIntensity={0.35} />
+      </mesh>
+      <mesh position={[0, 9, 0]}>
+        <cylinderGeometry args={[r, r, 18, 96, 1, true]} />
+        <meshStandardMaterial color="#0b0c11" roughness={0.9} metalness={0.05} side={THREE.BackSide} />
+      </mesh>
+      {strips.map((s, i) => (
+        <mesh key={i} position={[s.x, 4.2, s.z]} rotation={[0, s.rotY, 0]}>
+          <boxGeometry args={[0.05, 8.4, 0.05]} />
+          <meshBasicMaterial
+            color={i % 2 === 0 ? "#ffb457" : "#7ee7ff"}
+            toneMapped={false}
+            transparent
+            opacity={0.4}
+          />
+        </mesh>
+      ))}
+      <ambientLight intensity={0.12} color="#ffe6c7" />
+      <hemisphereLight intensity={0.22} color="#ffd9b0" groundColor="#05060a" />
+    </group>
+  );
+}
+
+function Stage({ layout }: { layout: VenueLayout }) {
+  const { z, width, depth, height } = layout.stage;
+  return (
+    <group position={[0, 0, z - depth / 2]}>
+      <mesh position={[0, height / 2, 0]}>
+        <boxGeometry args={[width, height, depth]} />
+        <meshStandardMaterial color="#0e0f14" roughness={0.6} metalness={0.3} />
+      </mesh>
+      <mesh position={[0, height + 0.01, depth / 2 - 0.03]}>
+        <boxGeometry args={[width, 0.04, 0.05]} />
+        <meshBasicMaterial color="#ffb457" toneMapped={false} />
+      </mesh>
+      <mesh position={[0, 0.02, depth / 2 + 0.4]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[width + 2, 0.06]} />
+        <meshBasicMaterial color="#ffb457" toneMapped={false} transparent opacity={0.35} />
+      </mesh>
+      <pointLight position={[0, height + 2.5, 0]} intensity={12} distance={22} color="#ffc98a" decay={1.6} />
+    </group>
+  );
+}
+
+function LedWall({ layout }: { layout: VenueLayout }) {
+  const light = useRef<THREE.PointLight>(null);
+  const material = useShaderMaterial({ ...ledWallShader, toneMapped: false });
+  const uniforms = material.uniforms;
+  useFrame(({ clock }) => {
+    const t = clock.getElapsedTime();
+    const time = uniforms["uTime"];
+    if (time) time.value = t;
+    if (light.current) {
+      const c = light.current.color;
+      c.setHSL((0.06 + 0.5 * (0.5 + 0.5 * Math.sin(t * 0.13))) % 1, 0.7, 0.62);
+      light.current.intensity = 6 + 2 * Math.sin(t * 0.9);
+    }
+  });
+  const { z, width, depth, height } = layout.stage;
+  return (
+    <group position={[0, 0, z - depth + 0.2]}>
+      <mesh position={[0, height + 3.6, 0]} material={material}>
+        <planeGeometry args={[width - 0.5, 7]} />
+      </mesh>
+      <mesh position={[0, height + 3.6, -0.06]}>
+        <planeGeometry args={[width + 0.4, 7.8]} />
+        <meshStandardMaterial color="#0a0a0d" roughness={0.9} />
+      </mesh>
+      <pointLight
+        ref={light}
+        position={[0, height + 3, 2.5]}
+        intensity={6}
+        distance={26}
+        decay={1.7}
+        color="#ff8a3d"
+      />
+    </group>
+  );
+}
+
+function Proscenium({ layout }: { layout: VenueLayout }) {
+  const material = useShaderMaterial(curtainShader);
+  useFrame(({ clock }) => {
+    const time = material.uniforms["uTime"];
+    if (time) time.value = clock.getElapsedTime();
+  });
+  const { z, width, depth, height } = layout.stage;
+  const archH = 10.5;
+  const gold = "#8a6a34";
+  return (
+    <group position={[0, 0, z - depth / 2]}>
+      {/* curtain */}
+      <mesh position={[0, height + archH / 2 - 0.4, -depth / 2 + 0.6]} material={material}>
+        <planeGeometry args={[width - 1.2, archH - 0.8, 96, 1]} />
+      </mesh>
+      {/* pillars + header */}
+      <mesh position={[-width / 2 - 0.6, archH / 2, depth / 2 + 0.3]}>
+        <boxGeometry args={[1.2, archH, 1.2]} />
+        <meshStandardMaterial color={gold} roughness={0.35} metalness={0.7} />
+      </mesh>
+      <mesh position={[width / 2 + 0.6, archH / 2, depth / 2 + 0.3]}>
+        <boxGeometry args={[1.2, archH, 1.2]} />
+        <meshStandardMaterial color={gold} roughness={0.35} metalness={0.7} />
+      </mesh>
+      <mesh position={[0, archH + 0.6, depth / 2 + 0.3]}>
+        <boxGeometry args={[width + 2.4, 1.2, 1.2]} />
+        <meshStandardMaterial color={gold} roughness={0.35} metalness={0.7} />
+      </mesh>
+      <mesh position={[0, archH - 0.02, depth / 2 + 0.92]}>
+        <boxGeometry args={[width + 1.6, 0.05, 0.05]} />
+        <meshBasicMaterial color="#ffd9a3" toneMapped={false} />
+      </mesh>
+      {/* footlights */}
+      <pointLight
+        position={[0, height + 1.2, depth / 2 - 1.2]}
+        intensity={10}
+        distance={16}
+        color="#ffc98a"
+        decay={1.8}
+      />
+      <pointLight position={[-4, height + 4, -1]} intensity={5} distance={14} color="#ff9d6b" decay={1.8} />
+      <pointLight position={[4, height + 4, -1]} intensity={5} distance={14} color="#ffd9a3" decay={1.8} />
+    </group>
+  );
+}
+
+/** Club: the raised mezzanine that carries the booths, with an edge-lit lip. */
+function Mezzanine({ layout }: { layout: VenueLayout }) {
+  const inner = 19.6;
+  const outer = layout.radius - 0.3;
+  const theta = (150 * Math.PI) / 180;
+  const start = Math.PI / 2 - theta / 2;
+  return (
+    <group position={[0, 0, layout.stage.z + 1]}>
+      <mesh position={[0, 1.3, 0]}>
+        <cylinderGeometry args={[inner, inner, 2.6, 64, 1, true, start, theta]} />
+        <meshStandardMaterial color="#0d0e13" roughness={0.6} metalness={0.4} side={THREE.DoubleSide} />
+      </mesh>
+      <mesh position={[0, 2.6, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[inner, outer, 64, 1, start, theta]} />
+        <meshStandardMaterial color="#111218" roughness={0.5} metalness={0.4} side={THREE.DoubleSide} />
+      </mesh>
+      <mesh position={[0, 2.62, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[inner - 0.02, inner + 0.08, 96, 1, start, theta]} />
+        <meshBasicMaterial color="#ffb457" toneMapped={false} side={THREE.DoubleSide} />
+      </mesh>
+      <mesh position={[0, 3.5, 0]}>
+        <cylinderGeometry args={[inner + 0.05, inner + 0.05, 0.05, 96, 1, true, start, theta]} />
+        <meshBasicMaterial
+          color="#ff7a9e"
+          toneMapped={false}
+          side={THREE.DoubleSide}
+          transparent
+          opacity={0.8}
+        />
+      </mesh>
+    </group>
+  );
+}
+
+/** Theatre: curved fronts under the circle and the balcony. */
+function Balconies({ layout }: { layout: VenueLayout }) {
+  const center = layout.stage.z + 2;
+  const fronts = [
+    { r: 17.3, y: 4.6, h: 4.4, theta: 84 },
+    { r: 21.9, y: 8.8, h: 4.0, theta: 90 },
+  ];
+  return (
+    <group position={[0, 0, center]}>
+      {fronts.map((f) => {
+        const theta = (f.theta * Math.PI) / 180;
+        const start = Math.PI / 2 - theta / 2;
+        return (
+          <group key={f.r}>
+            <mesh position={[0, f.y - f.h / 2 + 0.2, 0]}>
+              <cylinderGeometry args={[f.r, f.r, f.h, 64, 1, true, start, theta]} />
+              <meshStandardMaterial
+                color="#2a1216"
+                roughness={0.7}
+                metalness={0.15}
+                side={THREE.DoubleSide}
+              />
+            </mesh>
+            <mesh position={[0, f.y + 0.25, 0]}>
+              <cylinderGeometry args={[f.r + 0.02, f.r + 0.02, 0.04, 96, 1, true, start, theta]} />
+              <meshBasicMaterial color="#ffd9a3" toneMapped={false} side={THREE.DoubleSide} />
+            </mesh>
+          </group>
+        );
+      })}
+    </group>
+  );
+}
+
+/** Truss with three moving heads over the stage. */
+function Rig({ layout, volumetric }: { layout: VenueLayout; volumetric: boolean }) {
+  const targets = useMemo(() => [new THREE.Object3D(), new THREE.Object3D(), new THREE.Object3D()], []);
+  const { z, height, width } = layout.stage;
+  const lights = useRef<Array<THREE.SpotLight | null>>([]);
+  useEffect(() => {
+    targets.forEach((t, i) => {
+      t.position.set((i - 1) * 3.2, height, z - 1.5);
+    });
+  }, [targets, height, z]);
+  useFrame(({ clock }) => {
+    const t = clock.getElapsedTime();
+    targets.forEach((o, i) => {
+      o.position.x = (i - 1) * 3.4 + Math.sin(t * 0.35 + i * 2.1) * 2.6;
+      o.position.z = z - 1.5 + Math.cos(t * 0.28 + i * 1.3) * 1.8;
+      const l = lights.current[i];
+      if (l) l.target = o;
+    });
+  });
+  const colors = ["#ffb457", "#7ee7ff", "#ff7a9e"];
+  const y = layout.kind === "theatre" ? 11.5 : 9;
+  return (
+    <group>
+      <mesh position={[0, y, z - 1]}>
+        <boxGeometry args={[width + 2, 0.18, 0.18]} />
+        <meshStandardMaterial color="#1a1b20" roughness={0.5} metalness={0.8} />
+      </mesh>
+      {targets.map((t, i) => (
+        <group key={i}>
+          <primitive object={t} />
+          <SpotLight
+            ref={(el: THREE.SpotLight | null) => {
+              lights.current[i] = el;
+            }}
+            position={[(i - 1) * 4.5, y - 0.2, z - 1]}
+            color={colors[i] ?? "#ffffff"}
+            intensity={volumetric ? 40 : 30}
+            distance={26}
+            angle={0.3}
+            penumbra={0.6}
+            decay={1.4}
+            attenuation={volumetric ? 14 : 0}
+            anglePower={5}
+            opacity={volumetric ? 0.22 : 0}
+            volumetric={volumetric}
+          />
+        </group>
+      ))}
+    </group>
+  );
+}

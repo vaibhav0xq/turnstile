@@ -1,0 +1,28 @@
+{
+  "name": "@turnstile/relayer",
+  "version": "0.1.0",
+  "description": "Turnstile relayer: sponsors fan actions through the ERC-2771 forwarder, submits gate check-ins, serves chain config to apps/web.",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "dev": "node --env-file-if-exists=.env --watch src/index.ts",
+    "start": "node --env-file-if-exists=.env src/index.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --env-file-if-exists=.env --test --test-reporter=spec \"test/**/*.test.ts\"",
+    "smoke": "node scripts/smoke.mjs"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.1.1",
+    "@turnstile/contracts": "workspace:*",
+    "@turnstile/identity": "workspace:*",
+    "hono": "^4.13.7",
+    "viem": "^2.56.5"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0"
+  }
+}

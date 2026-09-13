@@ -1,0 +1,255 @@
+import { SLOT_MS } from "@turnstile/identity";
+import QRCode from "qrcode";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { type AppConfig, type EventInfo, tierForSeat } from "../chain/config";
+import type { SeatState } from "../chain/seats";
+import { type DoorKeySession, toEventRef, useIdentity } from "../identity/store";
+import { formatDate, shortAddress } from "../lib/format";
+import { useDirector } from "../scene/director";
+import { seatLabel, type VenueLayout } from "../venues/layout";
+import { Button, Dot, Kicker, Panel, Spinner } from "./primitives";
+
+interface TicketPanelProps {
+  config: AppConfig;
+  event: EventInfo;
+  layout: VenueLayout;
+  tokenId: number;
+  state: SeatState | undefined;
+  onBind: () => void;
+  binding: boolean;
+}
+
+/** Live entry code: a new EIP-712 signature every 30-second slot, from the per-event door key. */
+export function useEntryCode(event: EventInfo, tokenId: number, door: DoorKeySession | null) {
+  const [code, setCode] = useState<string | null>(null);
+  const [qr, setQr] = useState<string | null>(null);
+  const [slotEndsAt, setSlotEndsAt] = useState<number>(0);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const refresh = useCallback(async () => {
+    if (!door) return;
+    const now = Date.now();
+    const slotStart = Math.floor(now / SLOT_MS) * SLOT_MS;
+    setSlotEndsAt(slotStart + SLOT_MS);
+    const text = await door.code({ eventId: BigInt(event.eventId), tokenId: BigInt(tokenId) });
+    setCode(text);
+    setQr(
+      await QRCode.toDataURL(text, {
+        errorCorrectionLevel: "M",
+        margin: 1,
+        width: 640,
+        color: { dark: "#07080a", light: "#f3efe7" },
+      }),
+    );
+    timer.current = setTimeout(() => void refresh(), slotStart + SLOT_MS - Date.now() + 20);
+  }, [door, event.eventId, tokenId]);
+
+  useEffect(() => {
+    void refresh();
+    return () => {
+      if (timer.current) clearTimeout(timer.current);
+    };
+  }, [refresh]);
+
+  return { code, qr, slotEndsAt };
+}
+
+export function TicketPanel({ config, event, layout, tokenId, state, onBind, binding }: TicketPanelProps) {
+  const fan = useIdentity((s) => s.fan);
+  const ensureDoor = useIdentity((s) => s.ensureDoor);
+  const liveDoor = useIdentity((s) => s.liveDoor);
+  const busy = useIdentity((s) => s.busy);
+  const [door, setDoor] = useState<DoorKeySession | null>(null);
+  const viewMode = useDirector((s) => s.viewMode);
+  const viewFromSeat = useDirector((s) => s.viewFromSeat);
+  const viewOverview = useDirector((s) => s.viewOverview);
+  const [big, setBig] = useState(false);
+  const ref = useMemo(() => toEventRef(config.chainId, event.address), [config.chainId, event.address]);
+
+  useEffect(() => {
+    setDoor(liveDoor(ref));
+  }, [liveDoor, ref]);
+
+  const seat = layout.byId.get(tokenId);
+  const tier = tierForSeat(event, tokenId);
+  const bound = state && state.doorKey !== "0x0000000000000000000000000000000000000000";
+  const doorMatches = door && state && door.address.toLowerCase() === state.doorKey.toLowerCase();
+  const checkedIn = state ? state.checkedInAt > 0 : false;
+  const { code, qr, slotEndsAt } = useEntryCode(event, tokenId, doorMatches ? door : null);
+  const mineLive = fan && state && fan.address.toLowerCase() === state.holder.toLowerCase();
+
+  const openDoorKey = async () => {
+    const d = await ensureDoor(ref);
+    setDoor(d);
+  };
+
+  return (
+    <Panel className="fade-up w-full max-w-md overflow-hidden">
+      <div className="flex items-start justify-between gap-4 p-5 pb-3">
+        <div>
+          <Kicker>{event.name}</Kicker>
+          <div className="display mt-1 text-3xl">{seat ? seatLabel(seat) : `Seat ${tokenId}`}</div>
+          <div className="mono mt-1 text-xs text-muted">
+            {tier?.name} · {formatDate(event.startsAt)}
+          </div>
+        </div>
+        <Dot tone={checkedIn ? "green" : bound ? "cyan" : "amber"} />
+      </div>
+
+      <div className="px-5">
+        {state && checkedIn ? (
+          <div className="rounded-2xl border border-green/30 bg-green/10 p-5 text-center">
+            <div className="display text-3xl text-green">You're in.</div>
+            <div className="mono mt-1 text-xs text-muted">
+              checked in at {new Date(state.checkedInAt * 1000).toLocaleTimeString()}
+            </div>
+          </div>
+        ) : !state ? (
+          <div className="flex items-center gap-3 py-6 text-sm text-muted">
+            <Spinner /> reading the ticket…
+          </div>
+        ) : !mineLive ? (
+          <div className="rounded-2xl border border-line p-4 text-sm text-muted">
+            {fan
+              ? `This ticket belongs to ${shortAddress(state.holder)}. Sign in with the passkey that bought it.`
+              : "Sign in with the passkey that bought this seat to show its entry code."}
+          </div>
+        ) : !bound ? (
+          <div className="rounded-2xl border border-amber/30 bg-amber/10 p-4">
+            <div className="text-sm">Bind your door key</div>
+            <div className="mt-1 text-xs text-muted">
+              One more passkey prompt derives a key that only exists for this event. It never leaves the
+              device.
+            </div>
+            <Button variant="amber" className="mt-3" onClick={onBind} disabled={binding}>
+              {binding ? <Spinner /> : null} Bind door key
+            </Button>
+          </div>
+        ) : !doorMatches ? (
+          <div className="rounded-2xl border border-line p-4">
+            <div className="text-sm">Show your entry code</div>
+            <div className="mt-1 text-xs text-muted">
+              A passkey prompt re-derives the door key for this event. Codes rotate every 30 seconds.
+            </div>
+            <Button
+              variant="primary"
+              className="mt-3"
+              onClick={() => void openDoorKey()}
+              disabled={busy !== null}
+            >
+              {busy === "door" ? <Spinner /> : null} Open entry code
+            </Button>
+            {door && !doorMatches ? (
+              <div className="mono mt-2 text-[11px] text-red">
+                This device derives a different door key than the one bound. Re-bind from the passkey that
+                bought it.
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <CodeView
+            code={code}
+            qr={qr}
+            slotEndsAt={slotEndsAt}
+            big={big}
+            onToggle={() => setBig((b) => !b)}
+          />
+        )}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 p-5 pt-4">
+        {viewMode === "seat" ? (
+          <Button onClick={viewOverview}>Back to the room</Button>
+        ) : (
+          <Button onClick={() => viewFromSeat(tokenId)}>View from your seat</Button>
+        )}
+        {state ? (
+          <span className="mono ml-auto text-[11px] text-muted">
+            holder {shortAddress(state.holder)}
+            {bound ? ` · door ${shortAddress(state.doorKey)}` : ""}
+          </span>
+        ) : null}
+      </div>
+    </Panel>
+  );
+}
+
+function CodeView({
+  code,
+  qr,
+  slotEndsAt,
+  big,
+  onToggle,
+}: {
+  code: string | null;
+  qr: string | null;
+  slotEndsAt: number;
+  big: boolean;
+  onToggle: () => void;
+}) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 250);
+    return () => clearInterval(id);
+  }, []);
+  const remaining = Math.max(0, slotEndsAt - now);
+  const frac = remaining / SLOT_MS;
+  const r = 15;
+  const c = 2 * Math.PI * r;
+  return (
+    <div className={big ? "fixed inset-0 z-50 flex flex-col items-center justify-center bg-paper p-6" : ""}>
+      <button
+        type="button"
+        onClick={onToggle}
+        className={`relative block overflow-hidden rounded-2xl bg-paper ${big ? "w-[min(86vw,86vh)]" : "w-full"}`}
+        aria-label={big ? "Shrink code" : "Show fullscreen"}
+      >
+        {qr ? (
+          <img src={qr} alt="Entry code" className="block h-auto w-full" draggable={false} />
+        ) : (
+          <div className="grid aspect-square place-items-center text-ink">
+            <Spinner className="border-ink/30 border-t-ink" />
+          </div>
+        )}
+        <div className="absolute right-3 top-3 grid place-items-center">
+          <svg width="40" height="40" viewBox="0 0 40 40" aria-hidden>
+            <circle
+              cx="20"
+              cy="20"
+              r={r}
+              fill="rgba(7,8,10,0.06)"
+              stroke="rgba(7,8,10,0.15)"
+              strokeWidth="3"
+            />
+            <circle
+              cx="20"
+              cy="20"
+              r={r}
+              fill="none"
+              stroke="#07080a"
+              strokeWidth="3"
+              strokeDasharray={c}
+              strokeDashoffset={c * (1 - frac)}
+              strokeLinecap="round"
+              transform="rotate(-90 20 20)"
+            />
+          </svg>
+          <span className="mono absolute text-[10px] text-ink">{Math.ceil(remaining / 1000)}</span>
+        </div>
+      </button>
+      <div
+        className={`mono mt-3 break-all text-[10px] leading-relaxed ${big ? "max-w-[86vw] text-ink/70" : "text-muted"}`}
+      >
+        {code ? `${code.slice(0, 48)}…` : ""}
+      </div>
+      <div className={`mt-1 text-xs ${big ? "text-ink/70" : "text-muted"}`}>
+        Rotates every 30 s. A screenshot dies with the slot; a forward can't sign the next one.
+      </div>
+      {big ? (
+        <Button variant="ghost" className="mt-6 !border-ink/20 !text-ink" onClick={onToggle}>
+          Done
+        </Button>
+      ) : null}
+    </div>
+  );
+}

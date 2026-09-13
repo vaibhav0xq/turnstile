@@ -1,0 +1,367 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Instrument Serif", "Iowan Old Style", Georgia, serif;
+  --font-sans: "Geist Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Geist Mono Variable", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  --color-ink: #07080a;
+  --color-ink-2: #0d0f13;
+  --color-paper: #f3efe7;
+  --color-muted: #8b8f98;
+  --color-line: rgba(243, 239, 231, 0.12);
+  --color-amber: #ffb457;
+  --color-amber-deep: #ff8a3d;
+  --color-cyan: #7ee7ff;
+  --color-green: #59f2a1;
+  --color-violet: #b58cff;
+  --color-red: #ff6b6b;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  background: var(--color-ink);
+  color: var(--color-paper);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overscroll-behavior: none;
+}
+
+body {
+  overflow: hidden;
+}
+
+canvas {
+  display: block;
+  touch-action: none;
+}
+
+/* Layers: the world is layer 0, the editorial DOM floats above it. */
+.world {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* Editorial scrims so copy stays legible over a bright scene; they never intercept the pointer, so the
+   children rule below excludes them (both selectors have the same specificity; this one comes last). */
+.overlay > :not(.scrim-bottom, .scrim-left) {
+  pointer-events: auto;
+}
+
+.scrim-bottom,
+.scrim-left {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.scrim-bottom {
+  background: linear-gradient(
+    to top,
+    rgba(7, 8, 10, 0.9) 0%,
+    rgba(7, 8, 10, 0.42) 28%,
+    rgba(7, 8, 10, 0) 52%
+  );
+}
+
+.scrim-left {
+  background: radial-gradient(48% 55% at 16% 80%, rgba(7, 8, 10, 0.6) 0%, rgba(7, 8, 10, 0) 100%);
+}
+
+.display {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 0.95;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-feature-settings:
+    "tnum" 1,
+    "zero" 1;
+  letter-spacing: 0.02em;
+}
+
+.glass {
+  background: rgba(13, 15, 19, 0.72);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  border: 1px solid var(--color-line);
+}
+
+.hairline {
+  border-color: var(--color-line);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0 1.1rem;
+  border-radius: 999px;
+  font-size: 0.925rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  transition:
+    transform 160ms ease,
+    background-color 160ms ease,
+    color 160ms ease,
+    opacity 160ms ease;
+  cursor: pointer;
+  user-select: none;
+}
+
+.btn:active {
+  transform: translateY(1px) scale(0.99);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn:focus-visible,
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--color-amber);
+  outline-offset: 2px;
+}
+
+.btn-primary {
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
+
+.btn-primary:hover {
+  background: #fff;
+}
+
+.btn-ghost {
+  background: rgba(243, 239, 231, 0.06);
+  color: var(--color-paper);
+  border: 1px solid var(--color-line);
+}
+
+.btn-ghost:hover {
+  background: rgba(243, 239, 231, 0.12);
+}
+
+.btn-amber {
+  background: var(--color-amber);
+  color: var(--color-ink);
+}
+
+.btn-amber:hover {
+  background: #ffc172;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  height: 30px;
+  padding: 0 0.7rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  border: 1px solid var(--color-line);
+  background: rgba(13, 15, 19, 0.6);
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--color-amber);
+  box-shadow: 0 0 12px var(--color-amber);
+}
+
+.dot-cyan {
+  background: var(--color-cyan);
+  box-shadow: 0 0 12px var(--color-cyan);
+}
+
+.dot-green {
+  background: var(--color-green);
+  box-shadow: 0 0 12px var(--color-green);
+}
+
+.dot-red {
+  background: var(--color-red);
+  box-shadow: 0 0 12px var(--color-red);
+}
+
+.dot-muted {
+  background: var(--color-muted);
+  box-shadow: none;
+}
+
+.seat-anchor {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 25;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  will-change: transform;
+}
+
+.seat-anchor > * {
+  pointer-events: auto;
+}
+
+.seat-card {
+  min-width: 190px;
+  padding: 0.7rem 0.85rem;
+  border-radius: 14px;
+  /* Tracks the camera every frame: a backdrop blur here would re-blur the canvas on each move. */
+  background: rgba(13, 15, 19, 0.88);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  transform: translate(-50%, calc(-100% - 22px));
+  animation: rise 220ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.seat-card::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -22px;
+  width: 1px;
+  height: 22px;
+  background: linear-gradient(to bottom, var(--color-amber), transparent);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-100% - 12px));
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, calc(-100% - 22px));
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-up {
+  animation: fade-up 600ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+.fade-up-late {
+  animation: fade-up 700ms cubic-bezier(0.22, 0.61, 0.36, 1) 250ms both;
+}
+
+.curtain {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: #000;
+  pointer-events: none;
+  transition: opacity 520ms ease;
+}
+
+.scan-frame {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 22px;
+  overflow: hidden;
+  background: #000;
+}
+
+.scan-frame video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.scan-frame::before {
+  content: "";
+  position: absolute;
+  inset: 12%;
+  border: 1px solid rgba(243, 239, 231, 0.35);
+  border-radius: 16px;
+  pointer-events: none;
+}
+
+.scan-beam {
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--color-cyan), transparent);
+  animation: beam 2.2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes beam {
+  0%,
+  100% {
+    top: 14%;
+  }
+  50% {
+    top: 84%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-up,
+  .fade-up-late,
+  .seat-card,
+  .scan-beam {
+    animation: none;
+  }
+}
+
+input.field {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 0.9rem;
+  border-radius: 12px;
+  background: rgba(243, 239, 231, 0.05);
+  border: 1px solid var(--color-line);
+  color: var(--color-paper);
+  font-size: 0.925rem;
+}
+
+input.field::placeholder {
+  color: var(--color-muted);
+}
+
+.scrollbar-none {
+  scrollbar-width: none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}

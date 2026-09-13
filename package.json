@@ -9,6 +9,9 @@
     "pnpm": ">=10.0.0"
   },
   "scripts": {
+    "dev:chain": "node scripts/dev-chain.mjs",
+    "dev:relayer": "pnpm --filter @turnstile/relayer dev",
+    "dev:web": "pnpm --filter @turnstile/web dev",
     "build": "pnpm -r --if-present build",
     "typecheck": "pnpm -r --if-present typecheck",
     "test": "pnpm -r --if-present test",
@@ -17,10 +20,11 @@
     "vectors": "pnpm --filter @turnstile/identity vectors",
     "vectors:check": "pnpm --filter @turnstile/identity vectors:check",
     "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm vectors:check",
-    "verify": "pnpm install --frozen-lockfile && pnpm check && pnpm build && pnpm --filter @turnstile/contracts check"
+    "verify": "pnpm install --frozen-lockfile && pnpm check && pnpm build && pnpm --filter @turnstile/contracts check",
+    "smoke": "pnpm --filter @turnstile/relayer smoke"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.13",
-    "typescript": "^5.9.3"
+    "typescript": "^7.0.2"
   }
 }

@@ -2,3 +2,9 @@ packages:
   - "apps/*"
   - "packages/*"
 # `spike/` is a throwaway npm project (see spike/README.md); it is deliberately not a workspace member.
+
+# Neither package needs its install script: esbuild resolves @esbuild/linux-x64 at runtime and
+# @parcel/watcher (a @tailwindcss/cli dependency) is only used by `tailwindcss --watch`.
+ignoredBuiltDependencies:
+  - esbuild
+  - "@parcel/watcher"
