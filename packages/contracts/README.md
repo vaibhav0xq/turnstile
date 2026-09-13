@@ -4,7 +4,7 @@ Foundry package. `TurnstileFactory` deploys one `TurnstileEvent` clone per event
 **one token per seat**, a **door key** per ticket, a **one-shot check-in** over the EIP-712 `Entry` code from
 `@turnstile/identity`, and a **capped resale** path with instant payouts. Nothing else can move a ticket.
 
-Status: implemented, 61 tests green (unit, ERC-2771, shared vectors, invariants). Not audited. Not yet deployed.
+Status: implemented, 62 tests green (unit, ERC-2771, shared vectors, invariants). Not audited. Not yet deployed.
 
 ## What is on chain
 
@@ -66,12 +66,13 @@ pnpm --filter @turnstile/contracts deps      # forge soldeer install → depende
                                               # (root `pnpm build` / `pnpm test` install them on first run and skip when forge is absent)
 
 forge build                                   # runs forge lint as well (config in foundry.toml)
-forge test                                    # 61 tests; FOUNDRY_PROFILE=ci forge test for deeper fuzz/invariants
+forge test                                    # 62 tests; FOUNDRY_PROFILE=ci forge test for deeper fuzz/invariants
 forge test --match-contract VectorsTest -vv  # the shared-vector conformance suite
 forge fmt --check && forge lint
 pnpm snapshot:check                           # .gas-snapshot (deterministic tests, whole-test gas) — regression guard
 forge test --gas-report                       # per-function gas — the table below
-forge build --sizes                           # TurnstileEvent ≈ 17.6 KB runtime
+forge build --sizes                           # TurnstileEvent ≈ 18.1 KB runtime
+pnpm abi                                      # regenerate abi/index.ts from out/ (abi:check guards it)
 ```
 
 Dependencies: `forge-std 1.14.0`, `@openzeppelin-contracts 5.6.1`, `@openzeppelin-contracts-upgradeable 5.6.1`
@@ -125,7 +126,12 @@ table plus ~25 %, never a blanket 1 M. `.gas-snapshot` (whole-test figures) guar
   simulate first — OZ's single `execute` reports an inner revert only as `FailedCall()`. Gate wallet holds
   `GATE_ROLE` and calls `checkIn` / `checkInWithBind`.
 - Web: `entryDigest` / `bindDigest` / `isSlotAcceptable` views mirror the identity package; `predictEventAddress`
-  lets the organiser flow show the event address before the transaction lands.
+  lets the organiser flow show the event address before the transaction lands. `seatStates(firstSeat, count)`
+  returns `{holder, doorKey, checkedInAt, listingPrice, listed}` for a range in one call (unsold and
+  out-of-tier ids read as zeroes) — the seat picker paints a 400-seat room from three RPC calls, no indexer needed.
+- Typed ABIs: `abi/index.ts` (`turnstileEventAbi`, `turnstileFactoryAbi`, `erc2771ForwarderAbi`, `as const`) is
+  generated from the forge artifacts by `pnpm --filter @turnstile/contracts abi` and imported as
+  `@turnstile/contracts/abi`; `abi:check` (part of `check` and CI) fails when it is stale.
 
 ## Follow-ups (not blocking the demo)
 

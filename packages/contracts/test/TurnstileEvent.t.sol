@@ -738,3 +738,40 @@ contract RejectsEther {
         ev.list(tokenId, price);
     }
 }
+
+contract SeatStatesTest is TurnstileTestBase {
+    function test_seatStates_snapshotsLifecycle() public {
+        buyFree(alice, 7);
+        bind(alice, 7, door);
+        buyFree(alice, 8);
+        vm.prank(alice);
+        ev.list(8, 0);
+
+        ITurnstileEvent.SeatState[] memory s = ev.seatStates(7, 3);
+        assertEq(s.length, 3);
+        assertEq(s[0].holder, alice);
+        assertEq(s[0].doorKey, door);
+        assertEq(s[0].checkedInAt, 0);
+        assertFalse(s[0].listed);
+        assertEq(s[1].holder, alice);
+        assertEq(s[1].doorKey, address(0));
+        assertTrue(s[1].listed);
+        assertEq(s[1].listingPrice, 0);
+        assertEq(s[2].holder, address(0));
+        assertEq(s[2].doorKey, address(0));
+        assertFalse(s[2].listed);
+
+        vm.warp(START + 5 minutes);
+        uint64 slot = slotNow();
+        bytes memory sig = signEntry(DOOR_PK, 7, slot);
+        vm.prank(gate);
+        ev.checkIn(7, slot, sig);
+        s = ev.seatStates(7, 1);
+        assertEq(s[0].checkedInAt, uint64(block.timestamp));
+
+        // ids outside every tier read as unsold rather than reverting
+        s = ev.seatStates(5000, 2);
+        assertEq(s[0].holder, address(0));
+        assertEq(s[1].holder, address(0));
+    }
+}

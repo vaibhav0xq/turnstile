@@ -408,6 +408,22 @@ contract TurnstileEvent is
     }
 
     /// @inheritdoc ITurnstileEvent
+    function seatStates(uint256 firstSeat, uint256 count) external view returns (SeatState[] memory states) {
+        states = new SeatState[](count);
+        for (uint256 i = 0; i < count; ++i) {
+            uint256 id = firstSeat + i;
+            Listing storage listing = _listings[id];
+            states[i] = SeatState({
+                holder: _ownerOf(id),
+                doorKey: _doorKey[id],
+                checkedInAt: _checkedInAt[id],
+                listingPrice: listing.active ? listing.price : 0,
+                listed: listing.active
+            });
+        }
+    }
+
+    /// @inheritdoc ITurnstileEvent
     function resaleCapOf(uint256 tokenId) public view returns (uint256) {
         return (uint256(_faceValue[tokenId]) * _resaleCapBps) / BPS;
     }

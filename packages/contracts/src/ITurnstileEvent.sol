@@ -44,6 +44,16 @@ interface ITurnstileEvent {
         uint96 price;
     }
 
+    /// @dev One seat as the seat picker and the gate read it — a batch view until the indexer exists.
+    ///      `holder == address(0)` means unsold; `listingPrice` is 0 unless `listed`.
+    struct SeatState {
+        address holder;
+        address doorKey;
+        uint64 checkedInAt;
+        uint96 listingPrice;
+        bool listed;
+    }
+
     // ----------------------------------------------------------------------------------------- events
 
     event TicketMinted(uint256 indexed tokenId, address indexed to, uint8 indexed tier, uint96 faceValue, bool comp);
@@ -146,6 +156,8 @@ interface ITurnstileEvent {
     function bindNonceOf(uint256 tokenId) external view returns (uint256);
     function checkedInAt(uint256 tokenId) external view returns (uint64);
     function listingOf(uint256 tokenId) external view returns (Listing memory);
+    /// @notice Snapshot of `count` seats starting at `firstSeat` (ids outside every tier read as unsold).
+    function seatStates(uint256 firstSeat, uint256 count) external view returns (SeatState[] memory states);
     function resaleCapOf(uint256 tokenId) external view returns (uint256);
     function currentSlot() external view returns (uint64);
     function isSlotAcceptable(uint64 slot) external view returns (bool);

@@ -30,3 +30,4 @@ packages/contracts/deployments/31337.json
 .vscode/*
 !.vscode/extensions.json
 *.log
+packages/contracts/broadcast/**/31337/

@@ -15,6 +15,12 @@
     "snapshot": "forge snapshot --no-match-test \"testFuzz_|invariant_\"",
     "snapshot:check": "forge snapshot --no-match-test \"testFuzz_|invariant_\" --check --tolerance 1",
     "sizes": "forge build --sizes",
-    "check": "forge fmt --check && forge lint && forge build && forge test && forge snapshot --no-match-test \"testFuzz_|invariant_\" --check --tolerance 1"
+    "check": "forge fmt --check && forge lint && forge build && forge test && forge snapshot --no-match-test \"testFuzz_|invariant_\" --check --tolerance 1 && node scripts/export-abi.mjs --check",
+    "abi": "node scripts/export-abi.mjs",
+    "abi:check": "node scripts/export-abi.mjs --check"
+  },
+  "type": "module",
+  "exports": {
+    "./abi": "./abi/index.ts"
   }
 }
