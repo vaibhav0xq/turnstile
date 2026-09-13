@@ -54,16 +54,26 @@ function key(name: string): Hex {
   return value as Hex;
 }
 
+/** Multicall3 at its canonical address on Monad (testnet and mainnet); anvil has none, viem falls back to plain calls. */
+export const MULTICALL3 = "0xcA11bde05977b3631167028862bE2a173976CA11" as const;
 export const chain = defineChain({
   id: chainId,
   name: chainId === 31337 ? "Anvil" : chainId === 10143 ? "Monad Testnet" : "Monad",
   nativeCurrency: { name: "MON", symbol: "MON", decimals: 18 },
   rpcUrls: { default: { http: [rpcUrl] } },
+  ...(chainId === 31337 ? {} : { contracts: { multicall3: { address: MULTICALL3 } } }),
 });
 // Monad seals a block every 400 ms; viem's default 4 s receipt polling would make every
 // sponsored action feel ten times slower than the chain actually is.
 const pollingInterval = 400;
-export const publicClient = createPublicClient({ chain, transport: http(rpcUrl), pollingInterval });
+// Public Monad RPCs allow ~15 requests a second and loading one event is ~20 reads, so reads issued
+// together are folded into one Multicall3 `aggregate3` and remaining requests share an HTTP round trip.
+export const publicClient = createPublicClient({
+  chain,
+  transport: http(rpcUrl, { batch: true }),
+  batch: { multicall: true },
+  pollingInterval,
+});
 export const relayerAccount = privateKeyToAccount(key("RELAYER_PRIVATE_KEY"));
 export const gateAccount = privateKeyToAccount(key("GATE_SIGNER_PRIVATE_KEY"));
 export const relayerWallet = createWalletClient({

@@ -227,3 +227,11 @@ Exact rules text, team-size cap, KYC, video requirement, "Community Team" defini
 - Relayer and gate wallets hold 5 MON each: ≈ 150 relayed calls at the 320k limit, ≈ 250 check-ins at 180k.
 - Indexer `config.yaml` regenerated from `deployments/10143.json` (start block 62 312 572, the simulation
   block, a safe lower bound). The Envio hosted deploy still needs the user's Envio account.
+- Relayer against the public testnet RPC: `/api/config` failed at once with `requests limited to 15/sec` —
+  loading one event is ~20 `eth_call`s issued together. Both viem clients now batch reads into Multicall3
+  (`0xcA11bde05977b3631167028862bE2a173976CA11`, present on Monad; anvil has none and viem falls back to
+  plain calls) and share HTTP round trips; `/api/config` loads in ~330 ms. Smoke on testnet with the real
+  relayer and gate wallets: buy 808 ms, check-in 565 ms relayer-side, whole flow 8.4 s including waits.
+- Passports moved to Postgres for the hosted relayer (`DATABASE_URL`): the JSON file does not survive a
+  redeploy on the host and the store has to be safe with more than one process — the watermark check now
+  runs inside the upsert. Schema applied once with `pnpm --filter @turnstile/relayer db:setup`.
