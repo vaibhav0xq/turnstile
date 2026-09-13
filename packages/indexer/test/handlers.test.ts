@@ -1,11 +1,18 @@
 // The whole life of a seat, replayed through the real handlers with simulated logs: created → bought →
 // bound → listed → passed on → rebound → admitted. No chain, no Postgres.
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { before, describe, it } from "node:test";
 import { createTestIndexer } from "envio";
 import "../src/handlers/turnstile.ts";
 
 const CHAIN = 10143;
+// simulate() applies config.yaml's start_block, so the replay is pinned just above the real deployment.
+const START = Number(
+  /id: 10143[\s\S]*?start_block: (\d+)/.exec(
+    readFileSync(new URL("../config.yaml", import.meta.url), "utf8"),
+  )?.[1] ?? 0,
+);
 const EVENT = "0x2CAB6A5aAF4bCB322C7bc85E81740AF10A1E4f85";
 const ORGANISER = "0x427e4F058b0F92340c458F24f25b17AB770f491C";
 const FAN = "0xa474E24e29eEc4733a741bB4C4800Ce7D3f424A8";
@@ -17,7 +24,7 @@ const VENUE = "0xe0a180026ff7299d64b68b6dc19a629ea8f586e0b928441124cec7942754fed
 const T0 = 1_789_400_000;
 
 const at = (block: number, hash: string) => ({
-  block: { number: block, timestamp: T0 + block * 2 },
+  block: { number: START + block, timestamp: T0 + block * 2 },
   transaction: { hash },
 });
 
@@ -122,7 +129,7 @@ describe("Turnstile handlers", () => {
     assert.equal(night.eventId, 3n);
     assert.equal(night.organiser, ORGANISER);
     assert.equal(night.venue, VENUE);
-    assert.equal(night.createdBlock, 10n);
+    assert.equal(night.createdBlock, BigInt(START + 10));
   });
 
   it("keeps the organiser's counters: sold, inside, listed, resales, volume", async () => {
