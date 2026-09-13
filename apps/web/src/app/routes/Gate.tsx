@@ -6,6 +6,7 @@ import { type SeatMap, seatMapQueryKey } from "../../chain/seats";
 import { useDirector } from "../../scene/director";
 import { GateScanner } from "../../ui/GateScanner";
 import { Kicker, Stat } from "../../ui/primitives";
+import { useTour } from "../tour";
 
 export function Gate({ config, seatMap }: { config: AppConfig | undefined; seatMap: SeatMap | undefined }) {
   const { address } = useParams();
@@ -44,7 +45,10 @@ export function Gate({ config, seatMap }: { config: AppConfig | undefined; seatM
         <GateScanner
           event={event}
           initialCode={handed}
-          onAdmitted={() => void queryClient.invalidateQueries({ queryKey: seatMapQueryKey(event.address) })}
+          onAdmitted={(result) => {
+            useTour.getState().note({ admitHash: result.hash ?? null, admitMs: result.ms ?? null });
+            void queryClient.invalidateQueries({ queryKey: seatMapQueryKey(event.address) });
+          }}
         />
       </div>
     </div>

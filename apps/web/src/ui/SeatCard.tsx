@@ -62,6 +62,7 @@ export function SeatCard({ event, seat, seatMap }: SeatCardProps) {
               type="button"
               className="btn btn-amber !min-h-9 px-3 text-xs"
               onClick={() => start(event.address, seat.id)}
+              data-tour="pick-take"
             >
               Take this seat
             </button>

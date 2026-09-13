@@ -2,7 +2,8 @@
 import { create } from "zustand";
 
 export type Chapter = "city" | "venue" | "gate";
-export type ViewMode = "overview" | "seat";
+/** overview — the house waypoint · seat — sat in a seat · focus — a hero shot of one seat from behind. */
+export type ViewMode = "overview" | "seat" | "focus";
 export type Quality = "high" | "low";
 
 interface DirectorState {
@@ -12,7 +13,7 @@ interface DirectorState {
   selectedSeat: number | null;
   /** Seats the current fan holds (drawn in cyan). */
   mine: ReadonlySet<number>;
-  /** "View from here" — camera sits in this seat. */
+  /** "View from here" (camera sits in the seat) or "focus" (camera looks at it). */
   viewMode: ViewMode;
   viewSeat: number | null;
   /** Full-black curtain used to cut between scenes. */
@@ -29,6 +30,7 @@ interface DirectorState {
   selectSeat(id: number | null): void;
   setMine(ids: Iterable<number>): void;
   viewFromSeat(id: number): void;
+  focusSeat(id: number): void;
   viewOverview(): void;
   hoverBeacon(address: string | null): void;
   setQuality(q: Quality): void;
@@ -91,6 +93,7 @@ export const useDirector = create<DirectorState>()((set, get) => {
     selectSeat: (id) => set({ selectedSeat: id }),
     setMine: (ids) => set({ mine: new Set(ids) }),
     viewFromSeat: (id) => set({ viewMode: "seat", viewSeat: id }),
+    focusSeat: (id) => set({ viewMode: "focus", viewSeat: id }),
     viewOverview: () => set({ viewMode: "overview", viewSeat: null }),
     hoverBeacon: (address) => {
       if (get().hoveredBeacon !== address) set({ hoveredBeacon: address });

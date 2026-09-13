@@ -232,6 +232,8 @@ export function GateScanner({ event, initialCode, onAdmitted }: GateScannerProps
                 variant="amber"
                 className="!min-h-9 px-3 text-xs"
                 onClick={() => void submit(manual.trim())}
+                data-tour="door"
+                data-testid="gate-admit"
               >
                 Admit
               </Button>

@@ -5,17 +5,22 @@ import { tierPrice } from "../../chain/config";
 import { formatDate, formatMon } from "../../lib/format";
 import { useDirector } from "../../scene/director";
 import { Kicker } from "../../ui/primitives";
+import { useTour } from "../tour";
 
 export function Landing({ config }: { config: AppConfig | undefined }) {
   const showCity = useDirector((s) => s.showCity);
   const hoverBeacon = useDirector((s) => s.hoverBeacon);
   const hovered = useDirector((s) => s.hoveredBeacon);
+  const startTour = useTour((s) => s.start);
+  const tourActive = useTour((s) => s.active);
   const navigate = useNavigate();
   useEffect(() => {
     showCity();
   }, [showCity]);
 
   const events = config?.events ?? [];
+  // The tour takes the cheapest door in town: a free tier if any event has one.
+  const tourEvent = events.find((e) => e.tiers.some((t) => tierPrice(t) === 0n)) ?? events[0];
   return (
     <div className="overlay flex flex-col justify-end">
       <div className="scrim-bottom" aria-hidden />
@@ -32,6 +37,21 @@ export function Landing({ config }: { config: AppConfig | undefined }) {
             One passkey buys the seat, opens the door and keeps your history private. No wallet, no app, no
             screenshots — the code on your phone is signed by a key that only exists tonight.
           </p>
+          {!tourActive ? (
+            <div className="fade-up-late mt-5 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                className="chip mono border-amber/50 text-amber hover:bg-ink-2"
+                onClick={() => startTour()}
+                data-testid="tour-start"
+              >
+                ▶ Judge mode · 2-minute tour
+              </button>
+              <span className="text-xs text-muted">
+                City → seat → passkey → door → lit seat. Guided, or on autopilot.
+              </span>
+            </div>
+          ) : null}
         </div>
 
         <div className="fade-up-late flex w-full flex-col gap-2 sm:w-80">
@@ -43,6 +63,7 @@ export function Landing({ config }: { config: AppConfig | undefined }) {
             <EventCard
               key={event.address}
               event={event}
+              tourTarget={event === tourEvent}
               active={hovered === event.address}
               onHover={(on) => hoverBeacon(on ? event.address : null)}
               onEnter={() => navigate(`/e/${event.address}`)}
@@ -62,11 +83,13 @@ export function Landing({ config }: { config: AppConfig | undefined }) {
 
 function EventCard({
   event,
+  tourTarget,
   active,
   onHover,
   onEnter,
 }: {
   event: EventInfo;
+  tourTarget: boolean;
   active: boolean;
   onHover: (on: boolean) => void;
   onEnter: () => void;
@@ -83,6 +106,7 @@ function EventCard({
       onFocus={() => onHover(true)}
       onBlur={() => onHover(false)}
       onClick={onEnter}
+      data-tour={tourTarget ? "city" : undefined}
       className={`glass group flex w-full items-center justify-between gap-3 rounded-2xl px-4 py-3 text-left transition-colors ${active ? "border-amber/60" : "hover:border-paper/30"}`}
     >
       <div>

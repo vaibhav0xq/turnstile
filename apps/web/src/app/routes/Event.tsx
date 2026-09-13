@@ -9,6 +9,7 @@ import { Checkout } from "../../ui/Checkout";
 import { Button, Kicker, StatusLegend } from "../../ui/primitives";
 import { buildLayout } from "../../venues/layout";
 import { useCheckout } from "../checkout";
+import { useTour } from "../tour";
 
 export function Event({ config, seatMap }: { config: AppConfig | undefined; seatMap: SeatMap | undefined }) {
   const { address } = useParams();
@@ -22,6 +23,7 @@ export function Event({ config, seatMap }: { config: AppConfig | undefined; seat
   const fan = useIdentity((s) => s.fan);
   const checkoutSeat = useCheckout((s) => s.seatId);
   const cancelCheckout = useCheckout((s) => s.cancel);
+  const tourActive = useTour((s) => s.active);
   const layout = useMemo(() => (event ? buildLayout(event) : null), [event]);
 
   useEffect(() => {
@@ -62,6 +64,13 @@ export function Event({ config, seatMap }: { config: AppConfig | undefined; seat
     return { tier, free };
   });
 
+  // The tour highlights the cheapest tier that still has seats.
+  const tourTier = counts
+    .filter((c) => c.free > 0)
+    .sort((a, b) =>
+      tierPrice(a.tier) < tierPrice(b.tier) ? -1 : tierPrice(a.tier) > tierPrice(b.tier) ? 1 : 0,
+    )[0]?.tier.index;
+
   const pickNext = (tierIndex: number) => {
     const tier = event.tiers[tierIndex];
     if (!tier) return;
@@ -91,6 +100,7 @@ export function Event({ config, seatMap }: { config: AppConfig | undefined; seat
               className="chip mono hover:bg-ink-2 disabled:opacity-50"
               disabled={free === 0}
               onClick={() => pickNext(tier.index)}
+              data-tour={tier.index === tourTier ? "pick" : undefined}
               title="Pick the next available seat in this tier"
             >
               {tier.name} · {formatMon(tierPrice(tier))} · {free} left
@@ -102,7 +112,7 @@ export function Event({ config, seatMap }: { config: AppConfig | undefined; seat
         </div>
       </div>
 
-      {viewMode === "seat" ? (
+      {viewMode !== "overview" && !tourActive ? (
         <div className="absolute right-4 top-20 sm:right-6 sm:top-24">
           <Button onClick={viewOverview}>← Back to the room</Button>
         </div>

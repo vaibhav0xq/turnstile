@@ -3,7 +3,7 @@ import { useFrame } from "@react-three/fiber";
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import type { VenueLayout } from "../venues/layout";
-import { seatViewpoint } from "../venues/layout";
+import { seatFocus, seatViewpoint } from "../venues/layout";
 import { beaconSlot } from "./City";
 import { useDirector } from "./director";
 
@@ -83,10 +83,10 @@ export function CameraRig({ layout, focusBeacon }: CameraRigProps) {
   useEffect(() => {
     const c = controls.current;
     if (!c || !layout || chapter === "city") return;
-    if (viewMode === "seat" && viewSeat != null) {
+    if ((viewMode === "seat" || viewMode === "focus") && viewSeat != null) {
       const seat = layout.byId.get(viewSeat);
       if (!seat) return;
-      const wp = seatViewpoint(layout, seat);
+      const wp = viewMode === "seat" ? seatViewpoint(layout, seat) : seatFocus(layout, seat);
       void c.setLookAt(
         wp.position.x,
         wp.position.y,

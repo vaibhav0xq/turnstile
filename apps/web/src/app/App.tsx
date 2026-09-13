@@ -9,6 +9,7 @@ import { useDirector } from "../scene/director";
 import { World } from "../scene/World";
 import { SeatCardLayer } from "../ui/SeatCard";
 import { ConnectionNotice, Curtain, ErrorToast, Readout, TopBar } from "../ui/Shell";
+import { Tour } from "../ui/Tour";
 import { buildLayout } from "../venues/layout";
 import { useOrganise } from "./organise";
 import { usePassport } from "./passport";
@@ -18,6 +19,7 @@ import { Landing } from "./routes/Landing";
 import { Me } from "./routes/Me";
 import { Organise } from "./routes/Organise";
 import { Ticket } from "./routes/Ticket";
+import { useTour } from "./tour";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { refetchOnWindowFocus: false, retry: 1 } },
@@ -51,11 +53,13 @@ function Frame() {
         __identity?: unknown;
         __organise?: unknown;
         __passport?: unknown;
+        __tour?: unknown;
         __app?: unknown;
       };
       probe.__identity = useIdentity;
       probe.__organise = useOrganise;
       probe.__passport = usePassport;
+      probe.__tour = useTour;
       probe.__app = { queryClient, config: () => queryClient.getQueryData(configQueryKey) };
     }
   }, []);
@@ -79,6 +83,7 @@ function Frame() {
         <Route path="/organise" element={<Organise config={config.data} />} />
       </Routes>
       <Readout config={config.data} />
+      <Tour config={config.data} seatMap={seats.data} />
       <ErrorToast />
       <ConnectionNotice error={config.error} />
     </>

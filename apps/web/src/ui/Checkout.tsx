@@ -132,7 +132,12 @@ export function Checkout({ config, event, layout, seatMap }: CheckoutProps) {
 
       <div className="mt-5 flex flex-wrap gap-2">
         {step === "idle" || (step === "error" && !buyHash) ? (
-          <Button variant="amber" className="flex-1" onClick={() => void run(config, event, queryClient)}>
+          <Button
+            variant="amber"
+            className="flex-1"
+            onClick={() => void run(config, event, queryClient)}
+            data-tour="checkout"
+          >
             {live ? "Confirm seat" : knownAddress ? "Sign in & take seat" : "Create passkey & take seat"}
           </Button>
         ) : null}
@@ -150,6 +155,7 @@ export function Checkout({ config, event, layout, seatMap }: CheckoutProps) {
             variant="primary"
             className="flex-1"
             onClick={() => navigate(`/t/${event.address}/${tokenId}`)}
+            data-tour="checkout-open"
           >
             Open your ticket
           </Button>

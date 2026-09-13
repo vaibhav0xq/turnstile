@@ -132,7 +132,13 @@ export function TicketPanel({ config, event, layout, tokenId, state, onBind, bin
               One more passkey prompt derives a key that only exists for this event. It never leaves the
               device.
             </div>
-            <Button variant="amber" className="mt-3" onClick={onBind} disabled={binding}>
+            <Button
+              variant="amber"
+              className="mt-3"
+              onClick={onBind}
+              disabled={binding}
+              data-tour="ticket-bind"
+            >
               {binding ? <Spinner /> : null} Bind door key
             </Button>
           </div>
@@ -147,6 +153,7 @@ export function TicketPanel({ config, event, layout, tokenId, state, onBind, bin
               className="mt-3"
               onClick={() => void openDoorKey()}
               disabled={busy !== null}
+              data-tour="ticket-open"
             >
               {busy === "door" ? <Spinner /> : null} Open entry code
             </Button>
@@ -272,6 +279,7 @@ function CodeView({
             to={`/gate/${eventAddress}#code=${encodeURIComponent(code)}`}
             className="btn btn-amber !min-h-9 px-3 text-xs"
             data-testid="walk-to-door"
+            data-tour="ticket-door"
           >
             Walk up to the door →
           </Link>
