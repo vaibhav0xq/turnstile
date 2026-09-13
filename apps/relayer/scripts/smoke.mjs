@@ -6,10 +6,14 @@
 //   node scripts/smoke.mjs                      # relayer http://127.0.0.1:8787, seed fan-1
 //   node scripts/smoke.mjs --seed fan-2 --event 1 --seat 7
 //   node scripts/smoke.mjs --no-gate            # stop after buy + bind (leaves a live ticket for the UI)
+//   node scripts/smoke.mjs --no-resale          # skip the list / delist round trip
+//   node scripts/smoke.mjs --leave-listed       # stop once listed (a resale seat on the map for the UI)
 //   RELAYER_URL=https://turnstile.example node scripts/smoke.mjs --gate-token $GATE_TOKEN
 //
-// Steps: config → pick a free seat → relayed buy → relayed bindDoorKey → entry code →
-// gate lookup → gate check-in → second check-in must fail with ALREADY_CHECKED_IN.
+// Steps: config → pick a free seat → relayed buy → relayed bindDoorKey → resale (over-cap ask refused,
+// listed at 0, self-purchase refused, a second identity takes it gaslessly, door key cleared and rebound,
+// the seller's old entry code is refused) → entry code → gate lookup → gate check-in → second check-in
+// must fail with ALREADY_CHECKED_IN.
 import { erc2771ForwarderAbi, turnstileEventAbi } from "@turnstile/contracts/abi";
 import { accountKeyFromPrf, doorKeyFromPrf, encodeEntryCode, entryTypedData } from "@turnstile/identity";
 import {
@@ -111,16 +115,16 @@ const [, domainName, domainVersion] = await client.readContract({
   abi: erc2771ForwarderAbi,
   functionName: "eip712Domain",
 });
-async function relay(kind, data) {
+async function relay(kind, data, signer = fan) {
   const nonce = await client.readContract({
     address: config.forwarder,
     abi: erc2771ForwarderAbi,
     functionName: "nonces",
-    args: [fan.address],
+    args: [signer.address],
   });
   const deadline = Math.floor(Date.now() / 1000) + 600;
   const message = {
-    from: fan.address,
+    from: signer.address,
     to: event.address,
     value: 0n,
     gas: BigInt(config.gas[kind]),
@@ -128,7 +132,7 @@ async function relay(kind, data) {
     deadline,
     data,
   };
-  const signature = await fan.signTypedData({
+  const signature = await signer.signTypedData({
     domain: {
       name: domainName,
       version: domainVersion,
@@ -194,6 +198,106 @@ const bind = await relay(
 expect(bind.status === 200 && bind.body.status === "success", "relayed bindDoorKey failed", bind.body);
 log("bind", `door key bound · ${bind.body.hash} · ${bind.body.gasUsed} gas`);
 
+// ---------------------------------------------------------------- 5. resale: list → a second passkey takes it
+// Free tier: the cap is 0, so a 1-wei ask must be refused (PriceAboveCap) and a 0 ask must list. A free
+// listing is relayable end to end — the taker never holds MON — and the sale clears the seller's door key.
+let holder = fan; // whoever walks up to the gate at the end
+let holderDoor = door;
+if (!args["no-resale"]) {
+  const seatState = async () =>
+    (
+      await client.readContract({
+        address: event.address,
+        abi: turnstileEventAbi,
+        functionName: "seatStates",
+        args: [BigInt(seatId), 1n],
+      })
+    )[0];
+  const listData = (price) =>
+    encodeFunctionData({ abi: turnstileEventAbi, functionName: "list", args: [BigInt(seatId), price] });
+  const tooHigh = await relay("list", listData(1n));
+  expect(
+    tooHigh.status === 409 && tooHigh.body.error?.code === "PriceAboveCap",
+    "a 1-wei ask on a free seat should be refused with PriceAboveCap",
+    tooHigh.body,
+  );
+  const listed = await relay("list", listData(0n));
+  expect(listed.status === 200 && listed.body.status === "success", "relayed list failed", listed.body);
+  expect((await seatState()).listed === true, "seat should read as listed after list()");
+  if (args["leave-listed"]) {
+    console.log(
+      `\n✓ bought, bound and listed · ${event.name} · ${tier.name} #${seatId} · fan ${fan.address} (left listed for the UI)`,
+    );
+    process.exit(0);
+  }
+
+  // The taker is a second dev identity (`?dev=<seed>-taker` in the UI).
+  const takerPrf = () => hexToBytes(keccak256(stringToBytes(`turnstile-dev-prf:${SEED}-taker`)));
+  const taker = privateKeyToAccount(toHex(accountKeyFromPrf(takerPrf())));
+  const takerDoor = privateKeyToAccount(toHex(doorKeyFromPrf(takerPrf(), eventRef)));
+  const selfBuy = await relay(
+    "buyListing",
+    encodeFunctionData({ abi: turnstileEventAbi, functionName: "buyListing", args: [BigInt(seatId)] }),
+  );
+  expect(
+    selfBuy.status === 409 && selfBuy.body.error?.code === "SelfPurchase",
+    "the seller taking their own listing should be refused with SelfPurchase",
+    selfBuy.body,
+  );
+  const taken = await relay(
+    "buyListing",
+    encodeFunctionData({ abi: turnstileEventAbi, functionName: "buyListing", args: [BigInt(seatId)] }),
+    taker,
+  );
+  expect(taken.status === 200 && taken.body.status === "success", "relayed buyListing failed", taken.body);
+  const after = await seatState();
+  expect(
+    after.holder.toLowerCase() === taker.address.toLowerCase() && !after.listed,
+    "seat should belong to the taker and no longer be listed",
+    after,
+  );
+  expect(
+    after.doorKey === "0x0000000000000000000000000000000000000000",
+    "the sale must clear the seller's door key",
+    after,
+  );
+  const rebound = await relay(
+    "bindDoorKey",
+    encodeFunctionData({
+      abi: turnstileEventAbi,
+      functionName: "bindDoorKey",
+      args: [BigInt(seatId), takerDoor.address],
+    }),
+    taker,
+  );
+  expect(
+    rebound.status === 200 && rebound.body.status === "success",
+    "taker's bindDoorKey failed",
+    rebound.body,
+  );
+
+  // The seller's phone still derives the old door key; its code must be dead at the door.
+  const staleSlot = BigInt(Math.floor(Date.now() / 30_000));
+  const staleEntry = { eventId: BigInt(event.eventId), tokenId: BigInt(seatId), slot: staleSlot };
+  const staleCode = encodeEntryCode({
+    event: eventRef,
+    message: staleEntry,
+    signature: await door.signTypedData(entryTypedData(eventRef, staleEntry)),
+  });
+  const stale = await api(`/api/gate/lookup?code=${encodeURIComponent(staleCode)}`);
+  expect(
+    stale.status === 409 && stale.body.code === "BAD_SIGNATURE",
+    "the seller's old entry code should be refused with BAD_SIGNATURE",
+    stale.body,
+  );
+  log(
+    "resale",
+    `over-cap ask refused · listed (${listed.body.gasUsed} gas) · self-buy refused · taken by ${taker.address} (${taken.body.gasUsed} gas, sponsored) · rebound · seller's code dead`,
+  );
+  holder = taker;
+  holderDoor = takerDoor;
+}
+
 if (args["no-gate"]) {
   console.log(
     `\n✓ bought and bound · ${event.name} · ${tier.name} #${seatId} · fan ${fan.address} (gate skipped)`,
@@ -201,17 +305,17 @@ if (args["no-gate"]) {
   process.exit(0);
 }
 
-// ---------------------------------------------------------------- 5. entry code → gate
+// ---------------------------------------------------------------- 6. entry code → gate
 const slot = BigInt(Math.floor(Date.now() / 30_000));
 const entry = { eventId: BigInt(event.eventId), tokenId: BigInt(seatId), slot };
-const signature = await door.signTypedData(entryTypedData(eventRef, entry));
+const signature = await holderDoor.signTypedData(entryTypedData(eventRef, entry));
 const code = encodeEntryCode({ event: eventRef, message: entry, signature });
 log("code", `${code.length} chars · slot ${slot}`);
 
 const lookup = await api(`/api/gate/lookup?code=${encodeURIComponent(code)}`);
 expect(lookup.status === 200 && lookup.body.ok === true, "gate lookup rejected a fresh code", lookup.body);
 expect(
-  lookup.body.holder?.toLowerCase() === fan.address.toLowerCase(),
+  lookup.body.holder?.toLowerCase() === holder.address.toLowerCase(),
   "gate lookup returned the wrong holder",
   lookup.body,
 );
@@ -251,7 +355,11 @@ const onChain = await client.readContract({
   args: [BigInt(seatId), 1n],
 });
 expect(onChain[0].checkedInAt !== 0n, "seat not marked checked-in on chain", onChain[0]);
-console.log(`\n✓ smoke passed · ${event.name} · ${tier.name} #${seatId} · fan ${fan.address}`);
+console.log(
+  `\n✓ smoke passed · ${event.name} · ${tier.name} #${seatId} · bought by ${fan.address}${
+    holder === fan ? "" : ` · passed on to ${holder.address}`
+  } · checked in`,
+);
 
 function parseArgs(argv) {
   const out = {};

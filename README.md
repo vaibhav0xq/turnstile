@@ -60,7 +60,7 @@ anvil --chain-id 31337 --port 8545      # local Monad stand-in
 pnpm dev:chain                          # deploy forwarder/factory + two seeded events → deployments/31337.json
 pnpm dev:relayer                        # http://127.0.0.1:8787 (anvil keys in apps/relayer/.env)
 pnpm dev:web                            # http://127.0.0.1:5173 — pick a seat, get a ticket, scan it at /gate/<event>
-pnpm smoke                              # optional: buy → bind → entry code → check-in through the live relayer
+pnpm smoke                              # optional: buy → bind → resale round trip → entry code → check-in, live relayer
 ```
 
 On a small machine (≤ 2 GB) build the web app with `pnpm --filter @turnstile/web build:lite` and let the
@@ -91,7 +91,11 @@ shared vectors, invariants; scripts exercised on anvil and on a fork of the live
 
 13 Sep 2026 — `apps/relayer` and `apps/web` running end to end on anvil: seat picker → passkey → relayed
 `buy` → `bindDoorKey` → rotating entry code → gate check-in (`pnpm smoke` ≈ 2 s on anvil, replay refused).
-Next: Monad testnet deployment (`deployments/10143.json`), Envio indexer, resale + organiser views, demo video.
+
+14 Sep 2026 — resale from the ticket: list at or under the cap / delist / pass a free seat on, all relayed;
+taking a free listing is sponsored too. The sale clears the seller's door key and their old codes fail at
+the gate (`pnpm smoke` covers the whole round trip with a second identity).
+Next: Monad testnet deployment (`deployments/10143.json`), organiser view, Envio indexer, demo video.
 
 ## License
 

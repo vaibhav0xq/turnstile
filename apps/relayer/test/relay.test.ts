@@ -37,3 +37,10 @@ test("rejects value and invalid deadlines", () => {
   const result = validateRelayBody({ request: { ...base, deadline: "1" } });
   assert.deepEqual(result.ok ? "" : result.code, "BAD_DEADLINE");
 });
+
+test("accepts buyListing (free listings ride the forwarder with value 0)", () => {
+  const data = encodeFunctionData({ abi: eventAbi, functionName: "buyListing", args: [42n] });
+  const result = validateRelayBody({ request: { ...base, data, gas: String(relayGas.buyListing) } });
+  assert.equal(result.ok, true);
+  if (result.ok) assert.equal(result.action, "buyListing");
+});

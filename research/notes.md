@@ -165,3 +165,18 @@ Exact rules text, team-size cap, KYC, video requirement, "Community Team" defini
   low-memory path; headless Chromium (SwiftShader) renders the scenes correctly but an HTML layer with a
   backdrop filter inside the canvas container blacks out the WebGL layer in screenshots — one more reason the
   seat card lives in the overlay.
+
+## 14 Sep 2026 — resale wired end to end
+
+- Holder side lives on the ticket (`apps/web/src/ui/Resale.tsx`): list at ≤ cap / delist / "pass this seat on"
+  for free tiers (cap is 0 × face, so the only legal ask is 0). Both calls are relayed. The seat card shows a
+  listed seat as *Resale · price* (buyer pays directly, `buyListingDirect`) or *Passed on · Free* with *Take
+  this seat*: the relayer now allows `buyListing(uint256)` too, and because the forwarder always sends value 0
+  a priced listing fails simulation with `WrongPrice`, so sponsorship is limited to free listings by
+  construction rather than by a price check in the relayer.
+- Smoke covers the story judges will ask about: over-cap ask → `PriceAboveCap`; seller taking their own
+  listing → `SelfPurchase`; a second identity (`<seed>-taker`) takes it (105k gas, sponsored); the sale clears
+  the door key (`DoorKeyCleared`), the taker rebinds, and the seller's freshly signed entry code is refused
+  with `BAD_SIGNATURE`. list ≈ 80k gas, delist ≈ 50k. Whole flow ≈ 3 s on anvil.
+- The workspace restart wiped `/tmp` and anvil; `pnpm dev:chain` reproduces the deterministic addresses, and
+  the screenshot fixture server is now in the repo (`apps/web/scripts/fixture-server.py`) instead of `/tmp`.

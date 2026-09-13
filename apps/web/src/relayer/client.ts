@@ -14,7 +14,7 @@ export interface RelayReceipt {
   ms: number;
 }
 
-export type RelayKind = "buy" | "bindDoorKey" | "list" | "delist";
+export type RelayKind = "buy" | "buyListing" | "bindDoorKey" | "list" | "delist";
 
 const FORWARD_REQUEST_TYPES = {
   ForwardRequest: [
@@ -101,6 +101,11 @@ export async function relay(
 
 export function buyData(seatId: number): Hex {
   return encodeFunctionData({ abi: turnstileEventAbi, functionName: "buy", args: [BigInt(seatId)] });
+}
+
+/** Free listings are relayable (value 0); priced ones go through buyListingDirect. */
+export function buyListingData(seatId: number): Hex {
+  return encodeFunctionData({ abi: turnstileEventAbi, functionName: "buyListing", args: [BigInt(seatId)] });
 }
 
 export function bindData(tokenId: number, doorKey: Address): Hex {

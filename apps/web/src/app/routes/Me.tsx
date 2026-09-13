@@ -4,7 +4,7 @@ import { Link } from "react-router";
 import { type AppConfig, tierForSeat } from "../../chain/config";
 import { fetchSeatMap, mySeats, seatMapQueryKey } from "../../chain/seats";
 import { useIdentity } from "../../identity/store";
-import { formatCountdown, shortAddress } from "../../lib/format";
+import { formatCountdown, formatMon, shortAddress } from "../../lib/format";
 import { useDirector } from "../../scene/director";
 import { Button, Dot, Kicker, Panel, Spinner } from "../../ui/primitives";
 import { buildLayout, seatLabel } from "../../venues/layout";
@@ -135,6 +135,9 @@ export function Me({ config }: { config: AppConfig | undefined }) {
                         <div className="text-sm">{event.name}</div>
                         <div className="mono text-[11px] text-muted">
                           {spec ? seatLabel(spec) : `Seat ${s.id}`} · {tier?.name}
+                          {s.listed ? (
+                            <span className="text-cyan"> · listed {formatMon(s.listingPrice)}</span>
+                          ) : null}
                         </div>
                       </div>
                       <Dot

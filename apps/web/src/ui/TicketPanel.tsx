@@ -8,6 +8,7 @@ import { formatDate, shortAddress } from "../lib/format";
 import { useDirector } from "../scene/director";
 import { seatLabel, type VenueLayout } from "../venues/layout";
 import { Button, Dot, Kicker, Panel, Spinner } from "./primitives";
+import { ResaleControls, resaleOpen } from "./Resale";
 
 interface TicketPanelProps {
   config: AppConfig;
@@ -163,6 +164,9 @@ export function TicketPanel({ config, event, layout, tokenId, state, onBind, bin
         ) : (
           <Button onClick={() => viewFromSeat(tokenId)}>View from your seat</Button>
         )}
+        {mineLive && state && resaleOpen(event, state) ? (
+          <ResaleControls config={config} event={event} tokenId={tokenId} state={state} />
+        ) : null}
         {state ? (
           <span className="mono ml-auto text-[11px] text-muted">
             holder {shortAddress(state.holder)}

@@ -12,8 +12,11 @@ import {
   bindData,
   buyData,
   buyDirect,
+  buyListingData,
   buyListingDirect,
+  delistData,
   drip,
+  listData,
   mintedTokenId,
   relay,
 } from "../relayer/client";
@@ -37,6 +40,21 @@ interface CheckoutState {
   run(config: AppConfig, event: EventInfo, queryClient: QueryClient): Promise<void>;
   /** Re-run only the door-key binding (e.g. the fan skipped it or the ceremony was cancelled). */
   bindOnly(config: AppConfig, event: EventInfo, tokenId: number, queryClient: QueryClient): Promise<void>;
+
+  /** Holder-side resale: relayed `list` / `delist`, both gasless. Resolves true when the chain accepted it. */
+  resale: {
+    busy: "list" | "delist" | null;
+    error: { code: string; message: string } | null;
+    hash: Hex | null;
+  };
+  list(
+    config: AppConfig,
+    event: EventInfo,
+    tokenId: number,
+    priceWei: bigint,
+    queryClient: QueryClient,
+  ): Promise<boolean>;
+  delist(config: AppConfig, event: EventInfo, tokenId: number, queryClient: QueryClient): Promise<boolean>;
 }
 
 function explain(error: unknown): { code: string; message: string } {
@@ -72,6 +90,20 @@ function friendly(code: string, fallback: string): string {
       return "This passkey can't derive keys here. Try a phone or another browser.";
     case "INSUFFICIENT_FUNDS":
       return "Your account needs a little MON for a paid seat.";
+    case "PriceAboveCap":
+      return "That's above the resale cap for this seat.";
+    case "ResaleDisabled":
+      return "The organiser turned resale off for this event.";
+    case "ResaleClosed":
+      return "Resale closed when doors opened.";
+    case "AlreadyCheckedIn":
+      return "This ticket has already been used at the door.";
+    case "NotListed":
+      return "This seat isn't listed any more.";
+    case "NotTicketHolder":
+      return "Only the passkey that holds this ticket can do that.";
+    case "SelfPurchase":
+      return "That's already your seat.";
     default:
       return fallback;
   }
@@ -127,9 +159,13 @@ export const useCheckout = create<CheckoutState>()((set, get) => ({
       useTelemetry.getState().ceremony();
 
       let receipt: Awaited<ReturnType<typeof relay>>;
-      if (price === 0n && resale === null) {
+      if (price === 0n) {
+        // Free seat, primary or passed on: sponsored end to end, the fan never holds MON.
         set({ step: "buying" });
-        receipt = await relay(config, fan, event, "buy", buyData(seatId));
+        receipt =
+          resale === null
+            ? await relay(config, fan, event, "buy", buyData(seatId))
+            : await relay(config, fan, event, "buyListing", buyListingData(seatId));
       } else {
         // Paid seat: the fan's own account pays. On testnet the relayer tops up brand-new accounts.
         const needed = price + 200_000n * 120_000_000_000n; // price + generous gas at Monad testnet prices
@@ -167,6 +203,38 @@ export const useCheckout = create<CheckoutState>()((set, get) => ({
     } catch (error) {
       // A bought-but-unbound ticket is still a ticket: surface the error but keep the token.
       set({ step: "error", error: explain(error) });
+    }
+  },
+
+  resale: { busy: null, error: null, hash: null },
+
+  async list(config, event, tokenId, priceWei, queryClient) {
+    set({ resale: { busy: "list", error: null, hash: null } });
+    try {
+      const fan = await useIdentity.getState().ensureFan();
+      const receipt = await relay(config, fan, event, "list", listData(tokenId, priceWei));
+      if (receipt.status !== "success") throw { code: "REVERTED", message: "Listing reverted on-chain." };
+      set({ resale: { busy: null, error: null, hash: receipt.hash } });
+      await queryClient.invalidateQueries({ queryKey: seatMapQueryKey(event.address) });
+      return true;
+    } catch (error) {
+      set({ resale: { busy: null, error: explain(error), hash: null } });
+      return false;
+    }
+  },
+
+  async delist(config, event, tokenId, queryClient) {
+    set({ resale: { busy: "delist", error: null, hash: null } });
+    try {
+      const fan = await useIdentity.getState().ensureFan();
+      const receipt = await relay(config, fan, event, "delist", delistData(tokenId));
+      if (receipt.status !== "success") throw { code: "REVERTED", message: "Delisting reverted on-chain." };
+      set({ resale: { busy: null, error: null, hash: receipt.hash } });
+      await queryClient.invalidateQueries({ queryKey: seatMapQueryKey(event.address) });
+      return true;
+    } catch (error) {
+      set({ resale: { busy: null, error: explain(error), hash: null } });
+      return false;
     }
   },
 

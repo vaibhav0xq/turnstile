@@ -31,11 +31,16 @@ check-in would report ~4 s instead of well under a second.
 
 `pnpm smoke` (root) runs `scripts/smoke.mjs` against a live relayer + chain: it derives a dev identity
 (the same PRF seeds the web app uses with `?dev=<seed>`), picks the first free seat, signs the ERC-2771
-`ForwardRequest`s for `buy` and `bindDoorKey`, posts them to `/api/relay`, mints a rotating entry code,
-looks it up and checks it in through `/api/gate/*`, and asserts a replay is refused with `ALREADY_CHECKED_IN`.
+`ForwardRequest`s for `buy` and `bindDoorKey` and posts them to `/api/relay`, then runs the resale round
+trip — an over-cap ask is refused with `PriceAboveCap`, the seat is listed at 0, the seller's own
+`buyListing` is refused with `SelfPurchase`, a second identity (`<seed>-taker`) takes it through the relayer,
+the door key is cleared and rebound, and the seller's old entry code is refused at the gate with
+`BAD_SIGNATURE` — and finally mints the new holder's rotating entry code, looks it up and checks it in
+through `/api/gate/*`, and asserts a replay is refused with `ALREADY_CHECKED_IN`.
 Flags: `--relayer <url>` (or `RELAYER_URL`), `--rpc <url>`, `--seed fan-2`, `--event <index>`, `--seat <id>`,
-`--gate-token <token>` (or `GATE_TOKEN`), `--no-gate` to stop after the bind. On anvil the whole flow takes
-about two seconds.
+`--gate-token <token>` (or `GATE_TOKEN`), `--no-resale`, `--no-gate` to stop after the bind, `--leave-listed`
+to stop once listed (a passed-on seat stays on the map for the UI). On anvil the whole flow takes about
+three seconds.
 
 ## API
 
@@ -57,6 +62,7 @@ All responses are JSON and all big integers are decimal strings. Gate check-in a
 | Relayed action | Forward request gas | Transaction gas |
 | --- | ---: | ---: |
 | `buy(uint256)` | 200000 | 320000 |
+| `buyListing(uint256)` — free listings only (value is always 0; a priced listing fails simulation with `WrongPrice` and the fan pays for it directly) | 200000 | 320000 |
 | `bindDoorKey(uint256,address)` | 110000 | 250000 |
 | `list(uint256,uint96)` | 90000 | 240000 |
 | `delist(uint256)` | 40000 | 190000 |

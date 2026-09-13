@@ -3,7 +3,6 @@ import { useCheckout } from "../app/checkout";
 import type { EventInfo } from "../chain/config";
 import { tierForSeat, tierPrice } from "../chain/config";
 import { type SeatMap, seatStatus } from "../chain/seats";
-import { useIdentity } from "../identity/store";
 import { formatMon } from "../lib/format";
 import { seatAnchor } from "../scene/anchor";
 import { useDirector } from "../scene/director";
@@ -25,7 +24,6 @@ export function SeatCard({ event, seat, seatMap }: SeatCardProps) {
   const mine = useDirector((s) => s.mine.has(seat.id));
   const viewFromSeat = useDirector((s) => s.viewFromSeat);
   const start = useCheckout((s) => s.start);
-  const fan = useIdentity((s) => s.fan);
   const navigate = useNavigate();
   const tier = tierForSeat(event, seat.id);
   const state = seatMap?.get(seat.id);
@@ -37,11 +35,15 @@ export function SeatCard({ event, seat, seatMap }: SeatCardProps) {
   const line = mine
     ? status === "checkedIn"
       ? "Yours · inside"
-      : "Yours"
+      : status === "listed"
+        ? `Yours · listed ${formatMon(listed ?? 0n)}`
+        : "Yours"
     : status === "available"
       ? formatMon(price)
       : status === "listed"
-        ? `Resale · ${formatMon(listed ?? 0n)}`
+        ? listed === 0n
+          ? "Passed on · Free"
+          : `Resale · ${formatMon(listed ?? 0n)}`
         : status === "checkedIn"
           ? "Inside"
           : "Taken";
@@ -73,13 +75,13 @@ export function SeatCard({ event, seat, seatMap }: SeatCardProps) {
               Open ticket
             </button>
           ) : null}
-          {status === "listed" && !mine && fan ? (
+          {status === "listed" && !mine ? (
             <button
               type="button"
-              className="btn btn-ghost !min-h-9 px-3 text-xs"
+              className={`btn ${listed === 0n ? "btn-amber" : "btn-ghost"} !min-h-9 px-3 text-xs`}
               onClick={() => start(event.address, seat.id)}
             >
-              Buy resale
+              {listed === 0n ? "Take this seat" : "Buy resale"}
             </button>
           ) : null}
           <button

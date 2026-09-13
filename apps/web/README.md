@@ -6,7 +6,7 @@ Fiber, with the passkey ceremonies from `@turnstile/identity` and the sponsored 
 ```
 /                 the city — one beacon per event
 /e/:address       the room — pick a seat, one passkey prompt, seat minted + door key bound
-/t/:address/:id   the ticket — rotating 30 s entry code (QR + text), "view from your seat"
+/t/:address/:id   the ticket — rotating 30 s entry code (QR + text), "view from your seat", sell / pass on
 /gate/:address    the door — camera scanner (or paste a code) → relayer verifies → checkIn on-chain
 /me               the passport — session, tickets across events, "forget this device" (stateless test)
 ```
@@ -14,6 +14,13 @@ Fiber, with the passkey ceremonies from `@turnstile/identity` and the sponsored 
 No wallet, no app: the account, the per-event door key and the vault key are all derived from the passkey's
 PRF output (`packages/identity/SPEC.md`). Free tiers are relayed through the ERC-2771 forwarder; paid seats
 are paid from the passkey account itself (the relayer's testnet drip tops up brand-new accounts).
+
+Resale is capped by the organiser (`resaleCapBps` of face) and closes at doors. From the ticket a holder
+lists at or under the cap or delists (both relayed); a listed seat shows on the map as *Resale · price* with
+*Buy resale* (paid from the buyer's account, seller and organiser paid in the same transaction), or as
+*Passed on · Free* with *Take this seat* when the ask is 0 — that path is sponsored end to end, so a friend
+with no MON can take a free ticket. Either way the sale clears the seller's door key; the new holder binds
+their own and the seller's codes stop verifying.
 
 ## Run (local chain)
 
@@ -42,8 +49,13 @@ node --max-old-space-size=96 apps/relayer/src/index.ts   # STATIC_DIR=../web/dis
 node scripts/shoot.mjs /e/<event>?dev=fan-1 --width 1280 --height 800     # screenshots via headless Chromium
 ```
 
+When even the relayer and Chromium together are too much, `scripts/fixture-server.py` serves `dist-lite/`
+plus recorded `/api/config` and `/api/events` (`curl` them into `fixtures/` while the relayer is up) on
+`:4174` in ~10 MB; seat state still comes live from the chain, only writes are unavailable (503).
+
 `scripts/shoot.mjs` takes any number of routes and writes `shots/<route>.png` (gitignored). Options:
-`--base` (default `http://127.0.0.1:4174`), `--wait` ms, `--name`, `--eval "<js>"` runs in the page after
+`--base` (default `http://127.0.0.1:4174`, the fixture server; pass the relayer's origin otherwise),
+`--wait` ms, `--name`, `--eval "<js>"` runs in the page after
 `--eval-delay` ms (default 2500), `--print "<js expression>"` logs a JSON result. With `BUILD_DEV=1` the page
 exposes `window.__world` (the R3F root state), `window.__director` (scene store) and `window.__identity`
 (identity store), so a shot can drive the app: `--eval "window.__director.getState().selectSeat(48)"` or

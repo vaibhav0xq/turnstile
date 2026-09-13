@@ -1,10 +1,25 @@
 // Pure validation of a relayed ERC-2771 request: no environment, no chain — unit-testable on its own.
 import { type Address, getAddress, type Hex, isAddress, isHex, toFunctionSelector } from "viem";
 
-export const relayGas = { buy: 200_000, bindDoorKey: 110_000, list: 90_000, delist: 40_000 } as const;
-export const txGas = { buy: 320_000n, bindDoorKey: 250_000n, list: 240_000n, delist: 190_000n } as const;
+// buyListing is relayable only for free listings: the forwarder sends value 0, so a priced listing reverts
+// with WrongPrice in simulation and the fan pays for it directly instead (apps/web buyListingDirect).
+export const relayGas = {
+  buy: 200_000,
+  buyListing: 200_000,
+  bindDoorKey: 110_000,
+  list: 90_000,
+  delist: 40_000,
+} as const;
+export const txGas = {
+  buy: 320_000n,
+  buyListing: 320_000n,
+  bindDoorKey: 250_000n,
+  list: 240_000n,
+  delist: 190_000n,
+} as const;
 const selectorNames = new Map<Hex, keyof typeof relayGas>([
   [toFunctionSelector("buy(uint256)"), "buy"],
+  [toFunctionSelector("buyListing(uint256)"), "buyListing"],
   [toFunctionSelector("bindDoorKey(uint256,address)"), "bindDoorKey"],
   [toFunctionSelector("list(uint256,uint96)"), "list"],
   [toFunctionSelector("delist(uint256)"), "delist"],

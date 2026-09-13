@@ -36,7 +36,7 @@ export interface AppConfig {
   implementation: Address;
   relayer: Address;
   gate: Address;
-  gas: { buy: number; bindDoorKey: number; list: number; delist: number };
+  gas: { buy: number; buyListing: number; bindDoorKey: number; list: number; delist: number };
   drip: { enabled: boolean; amountWei: string };
   events: EventInfo[];
 }
