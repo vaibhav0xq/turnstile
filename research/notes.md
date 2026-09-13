@@ -144,3 +144,24 @@ Exact rules text, team-size cap, KYC, video requirement, "Community Team" defini
 - Doc covers the 12 requested items (wallets, deployer/relayer/gate requirements, funding, env/RPC, verification, exact deploy + seed commands with expected output, output files, commit list, failure table). Also added: `--slow` on both scripts, `--retries 10 --delay 10`, `START_IN=3888000` (45 d; the 2 h default closes club sales at `startsAt`), `cast compute-address` for addresses ahead of time, `--resume` semantics, `deployments/10143.json` is written during simulation (delete on a failed broadcast), rehearsal recipe on the fork.
 - Files: `docs/deploy-monad-testnet.md` (new), `packages/contracts/README.md` (deploy section + empty Deployments table), `script/Deploy.s.sol` + `script/CreateDemoEvent.s.sol` (comments only), `.env.example` (contracts-deploy block, `RELAYER_ADDRESS`), root `README.md` status. No contract or test changes; snapshot unaffected.
 - Next: user creates wallets + claims faucets, deploys per the doc, commits `deployments/10143.json` + broadcast JSONs; then `apps/web` against the real addresses (or anvil fork meanwhile).
+
+### 13 Sep — repo live at github.com/vaibhav0xq/turnstile; Replit pushes directly
+- Workflow change: no more zip round-trips. The sandbox tree is a git clone; commits are authored and committed as `Vaibhav <108121691+vaibhav0xq@users.noreply.github.com>` (GitHub links both to vaibhav0xq); pushes use a fine-grained token scoped to this repo (Contents + Workflows read/write, Actions read) held in Replit Secrets and handed to git through an askpass helper — never in URLs, `.git/config` or the tree.
+- Gate before every commit: root `pnpm verify` = `pnpm install --frozen-lockfile && pnpm check && pnpm build && pnpm --filter @turnstile/contracts check` (≈ 40 s here). CI runs the same steps.
+- `f157182` "Initial import: identity package, contracts, deployment runbook" (102 files, supersedes the local-only commit "Add identity and contracts foundation"); `d7b46ae` bumps checkout/setup-node to v7 and pnpm/action-setup to v6 after GitHub's Node 20 deprecation annotation. Both CI runs green (node + contracts jobs).
+- Never committed: `.env*` except `.env.example`, keystores, `deployments/31337.json`, `broadcast/**/dry-run/`.
+
+## 13 Sep 2026 — web + relayer on anvil
+
+- `apps/web` is a single Vite SPA: city (point-cloud downtown, one beacon per event) → venue (club or theatre
+  layout derived from the on-chain venue id) → seat → ticket (rotating code) → door. Seats are instanced per
+  section; the seat card is a DOM element anchored to the projected seat each frame (`scene/anchor.ts`).
+- Relayer + web clients poll receipts at 400 ms (Monad block time); viem's 4 s default made every relayed
+  action look four times slower than the chain.
+- `apps/relayer/scripts/smoke.mjs` reproduces the fan flow without a browser (same PRF-seeded dev identities
+  as `?dev=<seed>`): buy 131–148k gas, bind ≈ 98k, check-in 79–96k, full flow ≈ 1.7 s on anvil; a second buy
+  of a taken seat comes back as `SeatTaken` (409) from the relayer's simulation.
+- Sandbox lessons: Vite's production build needs ~600 MB, so `build:lite` (esbuild + Tailwind CLI) is the
+  low-memory path; headless Chromium (SwiftShader) renders the scenes correctly but an HTML layer with a
+  backdrop filter inside the canvas container blacks out the WebGL layer in screenshots — one more reason the
+  seat card lives in the overlay.

@@ -23,12 +23,12 @@ passkey ──PRF──┬── account namespace ──▶ secp256k1 account (
 ## Repository
 
 ```
-apps/web                 ticket + passport app (React/R3F)            — not started
-apps/gate                door-scanner PWA                              — not started
+apps/web                 city → venue → seat → ticket → door (React 19 / R3F / Vite) — ✅ running on anvil
+apps/relayer             sponsored ERC-2771 calls, gate verifier + checkIn, testnet drip (Hono) — ✅ + live smoke
+apps/gate                door scanner — lives in apps/web at /gate/:address
 packages/identity        passkey ceremonies, KDFs, EIP-712 Entry + BindDoorKey, vault — ✅ 0.2.0, 45 tests
-packages/contracts       TurnstileFactory / TurnstileEvent (Foundry)   — ✅ implemented, 61 tests, not deployed
+packages/contracts       TurnstileFactory / TurnstileEvent (Foundry)   — ✅ implemented, 62 tests, not deployed
 packages/indexer         Envio HyperIndex                              — not started
-packages/relayer         sponsored calls + gate signer                 — not started
 spike/                   Mera 0.2.0 spike (17 vectors, device pages)   — frozen evidence
 docs/                    spike report, device matrix, device reports
 research/                hackathon report, build plan, notes, sources
@@ -50,8 +50,31 @@ pnpm vectors       # regenerate identity vectors (spec revision only) — `vecto
 
 cd packages/contracts
 forge soldeer install   # once: forge-std + OpenZeppelin 5.6.1 into dependencies/ (gitignored)
-forge test              # 61 tests incl. the shared-vector suite; `forge build` also lints
+forge test              # 62 tests incl. the shared-vector suite; `forge build` also lints
 ```
+
+The whole product on a local chain (three terminals):
+
+```
+anvil --chain-id 31337 --port 8545      # local Monad stand-in
+pnpm dev:chain                          # deploy forwarder/factory + two seeded events → deployments/31337.json
+pnpm dev:relayer                        # http://127.0.0.1:8787 (anvil keys in apps/relayer/.env)
+pnpm dev:web                            # http://127.0.0.1:5173 — pick a seat, get a ticket, scan it at /gate/<event>
+pnpm smoke                              # optional: buy → bind → entry code → check-in through the live relayer
+```
+
+On a small machine (≤ 2 GB) build the web app with `pnpm --filter @turnstile/web build:lite` and let the
+relayer serve it (`STATIC_DIR=../web/dist-lite`); `apps/web/README.md` has the details and the headless
+screenshot tooling.
+
+## Deployments
+
+| Chain | Forwarder | Factory | Implementation | Events |
+| --- | --- | --- | --- | --- |
+| Monad testnet (10143) | _pending_ | _pending_ | _pending_ | _pending_ |
+
+`packages/contracts/deployments/<chainId>.json` is the source of truth for the relayer and the web app;
+the testnet file lands here with its broadcast once the deployer wallets are funded (`docs/deploy-monad-testnet.md`).
 
 The spike is standalone: `cd spike && npm ci && npm run build && npm run verify` (headless Chromium, 17 checks).
 
@@ -64,8 +87,11 @@ tests, gas-snapshot check). Every commit on `main` is made from a tree that pass
 12 Sep 2026 — identity package done and vector-pinned; spike gate met on Android Chrome + Google Password
 Manager and Windows via hybrid QR (`docs/device-matrix.md`). Contracts written and tested (unit, ERC-2771,
 shared vectors, invariants; scripts exercised on anvil and on a fork of the live testnet); SPEC v1.1 adds
-`BindDoorKey`. Deployment runbook: `docs/deploy-monad-testnet.md`. Next: deploy to Monad testnet
-(`deployments/10143.json`), then `apps/web`.
+`BindDoorKey`. Deployment runbook: `docs/deploy-monad-testnet.md`.
+
+13 Sep 2026 — `apps/relayer` and `apps/web` running end to end on anvil: seat picker → passkey → relayed
+`buy` → `bindDoorKey` → rotating entry code → gate check-in (`pnpm smoke` ≈ 2 s on anvil, replay refused).
+Next: Monad testnet deployment (`deployments/10143.json`), Envio indexer, resale + organiser views, demo video.
 
 ## License
 

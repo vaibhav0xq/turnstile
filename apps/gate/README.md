@@ -1,5 +1,5 @@
 # apps/gate
 
-Door-scanner PWA for staff: camera → `decodeEntryCode` → `verifyEntry` against the indexed door key → `checkIn` via the relayer, with an offline queue.
-
-Not started. See `research/turnstile-build-plan.md` (§6 gate flow) and `packages/identity/SPEC.md` for the contracts it must honour.
+The door lives inside `apps/web` at `/gate/:address` (camera scanner via `barcode-detector`, manual code
+entry, relayer-verified `checkIn`) so the demo ships one deployable. This directory stays as the home for
+the standalone staff PWA (offline queue, multiple lanes) if it is split out later.
