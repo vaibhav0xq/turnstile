@@ -24,6 +24,11 @@ stalls, circle, balcony — numbers seats 1…, 1001…, 2001… per tier, grant
 (`/api/events/<eventId>/tickets/`). The call is simulated first, so a bad configuration comes back by name
 (`InvalidConfig`, `InvalidTiers`) instead of as a failed transaction.
 
+One device is enough to walk the whole loop: the ticket's *Walk up to the door →* opens
+`/gate/<event>#code=<current code>` — the door view reads the code once, drops it from the URL, looks it up
+straight away and leaves the camera off until asked. The operator (or the judge) taps *Admit*; the relayer
+verifies and checks in exactly as it would for a scanned QR. *Copy code* is there for a second tab.
+
 Resale is capped by the organiser (`resaleCapBps` of face) and closes at doors. From the ticket a holder
 lists at or under the cap or delists (both relayed); a listed seat shows on the map as *Resale · price* with
 *Buy resale* (paid from the buyer's account, seller and organiser paid in the same transaction), or as

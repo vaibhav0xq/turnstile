@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router";
+import { useLocation, useNavigate } from "react-router";
 import { useCheckout } from "../app/checkout";
 import type { EventInfo } from "../chain/config";
 import { tierForSeat, tierPrice } from "../chain/config";
@@ -108,9 +108,11 @@ export function SeatCardLayer({ event, layout, seatMap }: SeatCardLayerProps) {
   const chapter = useDirector((s) => s.chapter);
   const hovered = useDirector((s) => s.hoveredSeat);
   const selected = useDirector((s) => s.selectedSeat);
+  const { pathname } = useLocation();
   const id = selected ?? hovered;
   const seat = id != null ? layout?.byId.get(id) : undefined;
-  if (chapter !== "venue" || !event || !seat) return null;
+  // The ticket view already is the card for its seat; the spatial one would only cover the panel.
+  if (chapter !== "venue" || !event || !seat || pathname.startsWith("/t/")) return null;
   return (
     <div
       key={seat.id}

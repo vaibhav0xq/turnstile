@@ -7,6 +7,8 @@ import { Button, Dot, Kicker, Panel, Spinner } from "./primitives";
 
 interface GateScannerProps {
   event: EventInfo;
+  /** A code carried over from the ticket view (one-device demo): looked up on arrival, camera stays off. */
+  initialCode?: string | undefined;
   onAdmitted?: (result: GateResult) => void;
 }
 
@@ -23,12 +25,15 @@ interface Recent {
 }
 
 /** Camera → QR → relayer. Works with a pasted code too, which is also what the e2e test drives. */
-export function GateScanner({ event, onAdmitted }: GateScannerProps) {
+export function GateScanner({ event, initialCode, onAdmitted }: GateScannerProps) {
   const video = useRef<HTMLVideoElement>(null);
-  const [camera, setCamera] = useState<"idle" | "on" | "denied" | "unsupported">("idle");
+  const [wantCamera, setWantCamera] = useState(!initialCode);
+  const [camera, setCamera] = useState<"idle" | "on" | "denied" | "unsupported" | "off">(
+    initialCode ? "off" : "idle",
+  );
   const [phase, setPhase] = useState<Phase>({ kind: "scanning" });
   const [recent, setRecent] = useState<Recent[]>([]);
-  const [manual, setManual] = useState("");
+  const [manual, setManual] = useState(initialCode ?? "");
   const [preview, setPreview] = useState<GateResult | null>(null);
   const lastCode = useRef<string | null>(null);
   const autoAdmit = useRef(true);
@@ -76,6 +81,7 @@ export function GateScanner({ event, onAdmitted }: GateScannerProps) {
 
   // Camera + detector loop.
   useEffect(() => {
+    if (!wantCamera) return;
     let stream: MediaStream | null = null;
     let stop = false;
     let timer: ReturnType<typeof setTimeout> | null = null;
@@ -123,10 +129,10 @@ export function GateScanner({ event, onAdmitted }: GateScannerProps) {
       if (timer) clearTimeout(timer);
       for (const t of stream?.getTracks() ?? []) t.stop();
     };
-  }, [submit]);
+  }, [submit, wantCamera]);
 
-  const lookup = async () => {
-    const code = manual.trim();
+  const lookup = useCallback(async (raw: string) => {
+    const code = raw.trim();
     if (!code) return;
     try {
       setPreview(await gateLookup(code));
@@ -137,7 +143,12 @@ export function GateScanner({ event, onAdmitted }: GateScannerProps) {
           : { ok: false, code: "NETWORK", message: String(error) },
       );
     }
-  };
+  }, []);
+
+  // A code handed over from the ticket view is looked up straight away; the door operator taps Admit.
+  useEffect(() => {
+    if (initialCode) void lookup(initialCode);
+  }, [initialCode, lookup]);
 
   return (
     <div className="flex w-full max-w-md flex-col gap-3">
@@ -147,11 +158,24 @@ export function GateScanner({ event, onAdmitted }: GateScannerProps) {
           {camera === "on" && phase.kind === "scanning" ? <div className="scan-beam" /> : null}
           {camera !== "on" ? (
             <div className="absolute inset-0 grid place-items-center p-6 text-center text-sm text-muted">
-              {camera === "idle"
-                ? "Starting camera…"
-                : camera === "denied"
-                  ? "Camera unavailable — paste a code below."
-                  : "No camera on this device — paste a code below."}
+              {camera === "idle" ? (
+                "Starting camera…"
+              ) : camera === "denied" ? (
+                "Camera unavailable — paste a code below."
+              ) : camera === "off" ? (
+                <button
+                  type="button"
+                  className="chip mono hover:bg-ink-2"
+                  onClick={() => {
+                    setCamera("idle");
+                    setWantCamera(true);
+                  }}
+                >
+                  Start camera
+                </button>
+              ) : (
+                "No camera on this device — paste a code below."
+              )}
             </div>
           ) : null}
           {phase.kind !== "scanning" ? <Verdict phase={phase} /> : null}
@@ -160,7 +184,11 @@ export function GateScanner({ event, onAdmitted }: GateScannerProps) {
           <div>
             <Kicker>Door · {event.name}</Kicker>
             <div className="mono mt-0.5 text-xs text-muted">
-              {camera === "on" ? "Point at the fan's code" : "Manual entry"}
+              {camera === "on"
+                ? "Point at the fan's code"
+                : initialCode
+                  ? "Code from your ticket"
+                  : "Manual entry"}
             </div>
           </div>
           <Dot tone={camera === "on" ? "green" : "muted"} />
@@ -178,11 +206,11 @@ export function GateScanner({ event, onAdmitted }: GateScannerProps) {
               setPreview(null);
             }}
             onKeyDown={(e) => {
-              if (e.key === "Enter") void lookup();
+              if (e.key === "Enter") void lookup(manual);
             }}
             aria-label="Entry code"
           />
-          <Button onClick={() => void lookup()} disabled={!manual.trim()}>
+          <Button className="whitespace-nowrap" onClick={() => void lookup(manual)} disabled={!manual.trim()}>
             Look up
           </Button>
         </div>

@@ -1,6 +1,7 @@
 import { SLOT_MS } from "@turnstile/identity";
 import QRCode from "qrcode";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router";
 import { type AppConfig, type EventInfo, tierForSeat } from "../chain/config";
 import type { SeatState } from "../chain/seats";
 import { type DoorKeySession, toEventRef, useIdentity } from "../identity/store";
@@ -85,7 +86,7 @@ export function TicketPanel({ config, event, layout, tokenId, state, onBind, bin
   };
 
   return (
-    <Panel className="fade-up w-full max-w-md overflow-hidden">
+    <Panel className="fade-up max-h-[calc(100dvh-5.5rem)] w-full max-w-md overflow-y-auto">
       <div className="flex items-start justify-between gap-4 p-5 pb-3">
         <div>
           <Kicker>{event.name}</Kicker>
@@ -153,6 +154,7 @@ export function TicketPanel({ config, event, layout, tokenId, state, onBind, bin
             qr={qr}
             slotEndsAt={slotEndsAt}
             big={big}
+            eventAddress={event.address}
             onToggle={() => setBig((b) => !b)}
           />
         )}
@@ -183,15 +185,21 @@ function CodeView({
   qr,
   slotEndsAt,
   big,
+  eventAddress,
   onToggle,
 }: {
   code: string | null;
   qr: string | null;
   slotEndsAt: number;
   big: boolean;
+  eventAddress: string;
   onToggle: () => void;
 }) {
   const [now, setNow] = useState(Date.now());
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    setCopied(false);
+  }, []);
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 250);
     return () => clearInterval(id);
@@ -249,6 +257,29 @@ function CodeView({
       <div className={`mt-1 text-xs ${big ? "text-ink/70" : "text-muted"}`}>
         Rotates every 30 s. A screenshot dies with the slot; a forward can't sign the next one.
       </div>
+      {!big && code ? (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <Link
+            to={`/gate/${eventAddress}#code=${encodeURIComponent(code)}`}
+            className="btn btn-amber !min-h-9 px-3 text-xs"
+            data-testid="walk-to-door"
+          >
+            Walk up to the door →
+          </Link>
+          <Button
+            className="!min-h-9 px-3 text-xs"
+            onClick={() => {
+              void navigator.clipboard?.writeText(code).then(
+                () => setCopied(true),
+                () => setCopied(false),
+              );
+            }}
+          >
+            {copied ? "Copied" : "Copy code"}
+          </Button>
+          <span className="text-[11px] text-muted">One device? The door view opens with this code.</span>
+        </div>
+      ) : null}
       {big ? (
         <Button variant="ghost" className="mt-6 !border-ink/20 !text-ink" onClick={onToggle}>
           Done

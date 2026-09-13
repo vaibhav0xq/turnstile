@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "react-router";
 import { type AppConfig, findEvent } from "../../chain/config";
 import { type SeatMap, seatMapQueryKey } from "../../chain/seats";
@@ -12,6 +12,13 @@ export function Gate({ config, seatMap }: { config: AppConfig | undefined; seatM
   const event = findEvent(config, address);
   const showGate = useDirector((s) => s.showGate);
   const queryClient = useQueryClient();
+  // `/gate/<event>#code=…` is the ticket's "walk up to the door" link: read once, then drop it from the URL so a
+  // refresh or a share does not carry a (short-lived) entry code around.
+  const [handed] = useState(() => {
+    const code = new URLSearchParams(window.location.hash.slice(1)).get("code");
+    if (code) window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    return code ?? undefined;
+  });
   useEffect(() => {
     if (address) showGate(address);
   }, [address, showGate]);
@@ -36,6 +43,7 @@ export function Gate({ config, seatMap }: { config: AppConfig | undefined; seatM
       <div className="absolute inset-x-4 bottom-4 flex justify-end sm:inset-x-6 sm:bottom-6">
         <GateScanner
           event={event}
+          initialCode={handed}
           onAdmitted={() => void queryClient.invalidateQueries({ queryKey: seatMapQueryKey(event.address) })}
         />
       </div>
