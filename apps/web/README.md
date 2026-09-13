@@ -57,6 +57,8 @@ pnpm dev:web                                # terminal 3 — http://127.0.0.1:51
 
 Set `VITE_API_URL` when the relayer is not proxied by the dev server and `VITE_RP_ID` when the origin's
 hostname is not the relying party you want passkeys bound to (defaults to `window.location.hostname`).
+Behind a proxied preview (a tunnel, a cloud IDE) the dev server is reached under another host name: set
+`VITE_ALLOWED_HOSTS=all` (or a comma-separated list of host names) to let those requests through.
 
 In development a **dev identity** (`/me` → dev identity, or `?dev=<seed>`) replaces the WebAuthn prompt with
 a deterministic PRF so the whole flow can run in a headless browser; production builds do not include it.
