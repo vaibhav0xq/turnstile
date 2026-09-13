@@ -27,7 +27,7 @@ passkey ──PRF──┬── account namespace ──▶ secp256k1 account (
 apps/web                 city → venue → seat → ticket → door, resale, organiser (React 19 / R3F / Vite) — ✅ on anvil
 apps/relayer             sponsored ERC-2771 calls, gate verifier + checkIn, testnet drip, passport store (Hono) — ✅ + live smoke
 apps/gate                door scanner — lives in apps/web at /gate/:address
-packages/identity        passkey ceremonies, KDFs, EIP-712 Entry + BindDoorKey, vault + passport sync — ✅ 0.2.0, 48 tests
+packages/identity        passkey ceremonies, KDFs, EIP-712 Entry + BindDoorKey, vault + passport sync — ✅ 0.2.0, 51 tests
 packages/contracts       TurnstileFactory / TurnstileEvent (Foundry)   — ✅ implemented, 62 tests, not deployed
 packages/indexer         Envio HyperIndex: events, seats, fans, door feed — ✅ handlers + 5 tests, awaits testnet
 spike/                   Mera 0.2.0 spike (17 vectors, device pages)   — frozen evidence
@@ -63,6 +63,11 @@ pnpm dev:relayer                        # http://127.0.0.1:8787 (anvil keys in a
 pnpm dev:web                            # http://127.0.0.1:5173 — pick a seat, get a ticket, scan it at /gate/<event>
 pnpm smoke                              # optional: buy → bind → resale round trip → entry code → check-in, live relayer
 ```
+
+**Judge mode** — the button on the landing page (or `/?tour=auto`) walks the whole thing in about two
+minutes: city → seat → checkout → ticket → door → your seat lit green, with the mint / bind / admit
+transaction hashes on the last card. The tour only advances when the chain says the seat is checked in;
+it presses the buttons for you except the one that opens the passkey prompt, which is yours.
 
 On a small machine (≤ 2 GB) build the web app with `pnpm --filter @turnstile/web build:lite` and let the
 relayer serve it (`STATIC_DIR=../web/dist-lite`); `apps/web/README.md` has the details and the headless
@@ -100,6 +105,8 @@ event from a passkey (tiers, venue, resale rules; the deployment's gate key is g
 watch sold / inside; the new room lights up in the city at once.
 Envio indexer written and tested in-process (events, seats, fans, live feed; the factory address is synced
 from `deployments/`); it goes live on Envio's hosted service once the testnet factory exists.
+Judge mode (guided two-minute run, finale on chain truth) and SPEC v1.3's compact `TS2:` entry code (the
+ticket QR drops from 57 to 49 modules; `TS1|` still decodes). Venue tiers are now derived from the seat rows.
 Next: Monad testnet deployment (`deployments/10143.json`), indexer → hosted service, demo video.
 
 ## License
