@@ -107,7 +107,7 @@ function devDoor(seed: string, event: EventRef, now: number): DoorKeySession {
       const message = { eventId, tokenId, slot };
       const typed = entryTypedData(event, message);
       const signature = await account.signTypedData(typed);
-      return encodeEntryCode({ event, message, signature });
+      return encodeEntryCode({ event, message, signature }, "compact");
     },
     end() {},
   };

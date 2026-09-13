@@ -31,6 +31,7 @@ export type EntryVector = {
   s: `0x${string}`;
   v: number;
   entryCode: string;
+  entryCodeCompact: string;
 };
 
 export type BindVector = {

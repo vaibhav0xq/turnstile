@@ -114,9 +114,11 @@ describe("door sessions", () => {
     assert.ok(isSlotAcceptable(signed.message.slot, c.now()));
 
     const text = await door.code({ eventId: 1n, tokenId: 42n });
+    assert.ok(text.startsWith("TS2:"), "tickets render the compact form by default");
     const decoded = decodeEntryCode(text);
     assert.equal(decoded.signature, signed.signature.toLowerCase());
     assert.equal(decoded.event.chainId, event.chainId);
+    assert.ok((await door.code({ eventId: 1n, tokenId: 42n, form: "long" })).startsWith("TS1|"));
 
     c.advance(SLOT_MS);
     const next = await door.signEntry({ eventId: 1n, tokenId: 42n });

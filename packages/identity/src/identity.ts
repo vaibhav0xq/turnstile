@@ -22,7 +22,14 @@ import {
   VAULT_SALT,
 } from "./constants.ts";
 import { zeroize } from "./encoding.ts";
-import { currentSlot, type EntryMessage, encodeEntryCode, entryDigest, entryTypedData } from "./entry.ts";
+import {
+  currentSlot,
+  type EntryCodeForm,
+  type EntryMessage,
+  encodeEntryCode,
+  entryDigest,
+  entryTypedData,
+} from "./entry.ts";
 import { fromCeremonyError, IdentityError } from "./errors.ts";
 import {
   accountKeyFromPrf,
@@ -91,8 +98,8 @@ export type DoorSession = {
   readonly expiresAt: number;
   readonly ended: boolean;
   signEntry(input: { eventId: bigint; tokenId: bigint; slot?: bigint }): Promise<SignedEntry>;
-  /** `signEntry` rendered as the scannable `TS1|…` string. */
-  code(input: { eventId: bigint; tokenId: bigint; slot?: bigint }): Promise<string>;
+  /** `signEntry` rendered as the scannable string — compact `TS2:…` unless `form: "long"` (SPEC §4.3). */
+  code(input: { eventId: bigint; tokenId: bigint; slot?: bigint; form?: EntryCodeForm }): Promise<string>;
   end(): void;
   [Symbol.dispose](): void;
 };
@@ -379,9 +386,9 @@ function doorSession(
       return lifecycle.ended();
     },
     signEntry,
-    code: async (input) => {
+    code: async ({ form = "compact", ...input }) => {
       const signed = await signEntry(input);
-      return encodeEntryCode({ event, message: signed.message, signature: signed.signature });
+      return encodeEntryCode({ event, message: signed.message, signature: signed.signature }, form);
     },
     end: lifecycle.end,
     [Symbol.dispose]: lifecycle.end,

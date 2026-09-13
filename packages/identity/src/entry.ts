@@ -12,7 +12,13 @@ import {
   keccak256,
   recoverTypedDataAddress,
 } from "viem";
-import { EIP712_NAME, EIP712_VERSION, ENTRY_CODE_PREFIX, SLOT_MS } from "./constants.ts";
+import {
+  EIP712_NAME,
+  EIP712_VERSION,
+  ENTRY_CODE_COMPACT_PREFIX,
+  ENTRY_CODE_PREFIX,
+  SLOT_MS,
+} from "./constants.ts";
 import { utf8 } from "./encoding.ts";
 import { IdentityError } from "./errors.ts";
 import { assertEventRef, type EventRef } from "./kdf.ts";
@@ -148,35 +154,66 @@ export type EntryCode = {
   readonly signature: Hex;
 };
 
+/** Both scannable spellings of an entry code. */
+export type EntryCodeForm = "long" | "compact";
+
+const SIGNATURE_HEX = /^0x[0-9a-f]{130}$/i;
+const DIGITS = /^[0-9]+$/;
+
 /**
- * `TS1|<chainId>|<event address lowercase>|<eventId>|<tokenId>|<slot>|<signature hex>` — 7 fields, ASCII,
- * ≈ 215 chars: fits a version-9 QR at error-correction M. Nothing in it is secret (the signature is public
- * proof of presence for that slot); `checkIn` is what consumes it, once.
+ * Long form: `TS1|<chainId>|<event address lowercase>|<eventId>|<tokenId>|<slot>|<signature hex>` — 7 fields,
+ * ASCII, ≈ 200 chars, QR byte mode (version 10 at ECC M).
+ *
+ * Compact form (`form: "compact"`): `TS2:<chainId>:<EVENT ADDRESS HEX UPPER, no 0x>:<eventId>:<tokenId>:<slot>:
+ * <SIGNATURE HEX UPPER, no 0x>` — the same fields, but every character is in the QR alphanumeric set
+ * (digits, A–Z, `:`), so the code packs 5.5 bits per character instead of 8 and drops two QR versions
+ * (≈ 195 chars, version 8 at ECC M): bigger modules on the same phone screen, faster lock at the door.
+ *
+ * Nothing in either is secret (the signature is public proof of presence for that slot); `checkIn` is what
+ * consumes it, once. `decodeEntryCode` accepts both.
  */
-export function encodeEntryCode(code: EntryCode): string {
+export function encodeEntryCode(code: EntryCode, form: EntryCodeForm = "long"): string {
   assertEventRef(code.event);
   assertEntryMessage(code.message);
-  if (!/^0x[0-9a-f]{130}$/i.test(code.signature)) {
+  if (!SIGNATURE_HEX.test(code.signature)) {
     throw new IdentityError("INPUT_INVALID", "signature must be 65 bytes of hex");
   }
   const { eventId, tokenId, slot } = code.message;
+  const numbers = [String(code.event.chainId), eventId.toString(), tokenId.toString(), slot.toString()];
+  if (form === "compact") {
+    return [
+      ENTRY_CODE_COMPACT_PREFIX,
+      numbers[0],
+      code.event.eventAddress.slice(2).toUpperCase(),
+      ...numbers.slice(1),
+      code.signature.slice(2).toUpperCase(),
+    ].join(":");
+  }
   return [
     ENTRY_CODE_PREFIX,
-    String(code.event.chainId),
+    numbers[0],
     code.event.eventAddress.toLowerCase(),
-    eventId.toString(),
-    tokenId.toString(),
-    slot.toString(),
+    ...numbers.slice(1),
     code.signature.toLowerCase(),
   ].join("|");
 }
 
+/** Which spelling a scanned string claims to be, or null when it is not an entry code at all. */
+export function entryCodeForm(text: string): EntryCodeForm | null {
+  const head = text.trimStart();
+  if (head.startsWith(`${ENTRY_CODE_PREFIX}|`)) return "long";
+  if (head.startsWith(`${ENTRY_CODE_COMPACT_PREFIX}:`)) return "compact";
+  return null;
+}
+
 export function decodeEntryCode(text: string): EntryCode {
-  const parts = text.trim().split("|");
-  if (parts.length !== 7 || parts[0] !== ENTRY_CODE_PREFIX) {
+  const form = entryCodeForm(text);
+  if (!form) throw new IdentityError("CODE_FORMAT_INVALID", "not a Turnstile entry code");
+  const parts = text.trim().split(form === "compact" ? ":" : "|");
+  if (parts.length !== 7) {
     throw new IdentityError("CODE_FORMAT_INVALID", "not a Turnstile entry code");
   }
-  const [, chainIdText, eventAddress, eventIdText, tokenIdText, slotText, signature] = parts as [
+  const [, chainIdText, addressText, eventIdText, tokenIdText, slotText, signatureText] = parts as [
     string,
     string,
     string,
@@ -185,17 +222,30 @@ export function decodeEntryCode(text: string): EntryCode {
     string,
     string,
   ];
-  const digits = /^[0-9]+$/;
   if (
-    !digits.test(chainIdText) ||
-    !digits.test(eventIdText) ||
-    !digits.test(tokenIdText) ||
-    !digits.test(slotText)
+    !DIGITS.test(chainIdText) ||
+    !DIGITS.test(eventIdText) ||
+    !DIGITS.test(tokenIdText) ||
+    !DIGITS.test(slotText)
   ) {
     throw new IdentityError("CODE_FORMAT_INVALID", "entry code has a non-numeric field");
   }
-  if (!isAddress(eventAddress, { strict: false }) || !/^0x[0-9a-f]{130}$/.test(signature)) {
-    throw new IdentityError("CODE_FORMAT_INVALID", "entry code has a malformed address or signature");
+  // Compact is bare uppercase hex, strictly. Long form keeps its v1 leniency: any-case 0x address (kept
+  // as written) and a lowercase 0x signature — existing TS1 codes must decode exactly as before.
+  let eventAddress: string;
+  let signature: Hex;
+  if (form === "compact") {
+    if (!/^[0-9A-F]{40}$/.test(addressText) || !/^[0-9A-F]{130}$/.test(signatureText)) {
+      throw new IdentityError("CODE_FORMAT_INVALID", "entry code has a malformed address or signature");
+    }
+    eventAddress = `0x${addressText.toLowerCase()}`;
+    signature = `0x${signatureText.toLowerCase()}`;
+  } else {
+    if (!isAddress(addressText, { strict: false }) || !/^0x[0-9a-f]{130}$/.test(signatureText)) {
+      throw new IdentityError("CODE_FORMAT_INVALID", "entry code has a malformed address or signature");
+    }
+    eventAddress = addressText;
+    signature = signatureText as Hex;
   }
   const chainId = Number(chainIdText);
   if (!Number.isSafeInteger(chainId) || chainId <= 0) {
@@ -211,5 +261,5 @@ export function decodeEntryCode(text: string): EntryCode {
   } catch (cause) {
     throw new IdentityError("CODE_FORMAT_INVALID", "entry code field out of range", { cause });
   }
-  return { event: { chainId, eventAddress: eventAddress as Address }, message, signature: signature as Hex };
+  return { event: { chainId, eventAddress: eventAddress as Address }, message, signature };
 }

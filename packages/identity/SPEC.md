@@ -1,6 +1,6 @@
-# @turnstile/identity — specification v1.2
+# @turnstile/identity — specification v1.3
 
-Status: **frozen** (v1 12 Sep 2026; v1.1 additive, same day — §4.2 wording, §4.5 `BindDoorKey`; v1.2 additive, 13 Sep — §4.6 passport sync). Everything below
+Status: **frozen** (v1 12 Sep 2026; v1.1 additive, same day — §4.2 wording, §4.5 `BindDoorKey`; v1.2 additive, 13 Sep — §4.6 passport sync; v1.3 additive, 14 Sep — §4.3 compact entry code). Everything below
 is pinned by `vectors/kdf.json`, `vectors/entry.json` and `vectors/bind.json`; `pnpm vectors:check` fails in CI
 when the code drifts, and `packages/contracts` re-verifies the same vectors on-chain (`forge test`). A change to any constant, KDF step, blob layout or
 typed-data field is a **spec revision**: bump the `v1` in the affected label, regenerate the vectors, and
@@ -110,12 +110,27 @@ derivation nor the wire format changes.
 
 ### 4.3 Entry code (what the QR carries)
 
+Long form (v1):
+
 ```
 TS1|<chainId>|<eventAddress lowercase>|<eventId>|<tokenId>|<slot>|<signature 0x-hex lowercase>
 ```
 
-Seven ASCII fields, decimal integers, ≈ 215 characters (QR version 9, ECC M). Nothing in it is secret.
-Parsing errors → `CODE_FORMAT_INVALID`; out-of-range fields are also `CODE_FORMAT_INVALID`.
+Seven ASCII fields, decimal integers, ≈ 200 characters (QR byte mode, version 10 at ECC M). Nothing in it is
+secret. Parsing errors → `CODE_FORMAT_INVALID`; out-of-range fields are also `CODE_FORMAT_INVALID`.
+
+Compact form (v1.3, additive — same seven fields, same order, same values):
+
+```
+TS2:<chainId>:<eventAddress hex UPPERCASE, no 0x>:<eventId>:<tokenId>:<slot>:<signature hex UPPERCASE, no 0x>
+```
+
+Every character is in the QR *alphanumeric* set (digits, `A–Z`, `:`), so the symbol packs 5.5 bits per
+character instead of 8: ≈ 195 characters, version 8 at ECC M — two versions smaller than the long form, i.e.
+larger modules on the same phone screen. Separators and case are part of the form: `TS1` is `|`-separated
+lowercase `0x`-hex, `TS2` is `:`-separated bare uppercase hex; a decoder rejects a mix. Decoders MUST accept
+both forms; tickets SHOULD render the compact one. `vectors/entry.json` pins both spellings of the same
+signature (`entryCode`, `entryCodeCompact`).
 
 ### 4.4 Passport blob
 
@@ -208,7 +223,8 @@ it and throws `SESSION_EXPIRED`. `withAccountSession` applies both rules and map
 Revision log: **v1** (12 Sep 2026) initial freeze. **v1.1** (12 Sep 2026) additive: §4.2 on-chain tolerance
 note, §4.5 `BindDoorKey`, `vectors/bind.json`; no derived key, label or existing vector changed. **v1.2** (13 Sep 2026)
 additive: §4.6 passport sync — an EIP-191 message and store rules around the unchanged §4.4 blob; no key
-material, label or vector touched.
+material, label or vector touched. **v1.3** (14 Sep 2026) additive: §4.3 compact `TS2:` spelling of the entry
+code; `vectors/entry.json` gains `entryCodeCompact`, every existing field is unchanged.
 
 Labels carry the version (`…/v1`). A revision that must change a derived key introduces `v2` labels beside
 `v1`, keeps `v1` derivation available for migration, and documents the migration here. The EIP-712 domain

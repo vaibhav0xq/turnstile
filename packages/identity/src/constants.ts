@@ -45,8 +45,10 @@ export const SLOT_MS = 30_000;
 export const ACCOUNT_SESSION_TTL_MS = 15 * 60_000;
 export const DOOR_SESSION_TTL_MS = 60 * 60_000;
 
-/** Prefix of the scannable entry-code string (SPEC §4.3). */
+/** Prefix of the scannable entry-code string, long form (SPEC §4.3). */
 export const ENTRY_CODE_PREFIX = "TS1";
+/** Prefix of the compact, QR-alphanumeric entry-code string (SPEC §4.3, v1.3). */
+export const ENTRY_CODE_COMPACT_PREFIX = "TS2";
 
 /** Monad chain ids. */
 export const MONAD_MAINNET = 143;

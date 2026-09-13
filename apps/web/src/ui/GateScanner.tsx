@@ -1,3 +1,4 @@
+import { entryCodeForm } from "@turnstile/identity/entry";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { EventInfo } from "../chain/config";
 import { ApiError } from "../lib/api";
@@ -108,7 +109,7 @@ export function GateScanner({ event, initialCode, onAdmitted }: GateScannerProps
           try {
             if (v.readyState >= 2) {
               const codes = await detector.detect(v);
-              const hit = codes.find((c) => c.rawValue.startsWith("TS1|"));
+              const hit = codes.find((c) => entryCodeForm(c.rawValue) !== null);
               if (hit && hit.rawValue !== lastCode.current && autoAdmit.current) {
                 lastCode.current = hit.rawValue;
                 void submit(hit.rawValue);
@@ -199,7 +200,7 @@ export function GateScanner({ event, initialCode, onAdmitted }: GateScannerProps
         <div className="flex gap-2">
           <input
             className="field mono text-xs"
-            placeholder="TS1|…"
+            placeholder="TS2:… (or TS1|…)"
             value={manual}
             onChange={(e) => {
               setManual(e.target.value);

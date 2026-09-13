@@ -11,6 +11,7 @@ import {
   ENTRY_TYPES,
   type EntryMessage,
   encodeEntryCode,
+  entryCodeForm,
   entryDigest,
   entryHashes,
   entryTypedData,
@@ -151,6 +152,54 @@ describe("entry code string", () => {
     });
   });
 
+  it("compact form is QR-alphanumeric, shorter, pinned, and decodes to the same code", () => {
+    const long = encodeEntryCode({ event, message, signature: V.signature });
+    const compact = encodeEntryCode({ event, message, signature: V.signature }, "compact");
+    assert.equal(compact, V.entryCodeCompact);
+    assert.match(compact, /^TS2:[0-9A-Z:]+$/, "only digits, A–Z and ':' — the QR alphanumeric set");
+    assert.ok(compact.length < long.length, `${compact.length} vs ${long.length} chars`);
+    assert.equal(entryCodeForm(compact), "compact");
+    assert.equal(entryCodeForm(long), "long");
+    assert.equal(entryCodeForm("TS2|nope"), null);
+    assert.deepEqual(decodeEntryCode(compact), decodeEntryCode(long));
+    assert.deepEqual(
+      decodeEntryCode(`  ${compact}\n`),
+      decodeEntryCode(long),
+      "tolerates surrounding whitespace",
+    );
+  });
+
+  it("long form still takes a checksummed address and keeps it as written (v1 behaviour)", () => {
+    const checksummed = V.entryCode.replace(event.eventAddress.toLowerCase(), event.eventAddress);
+    assert.notEqual(checksummed, V.entryCode, "vector address has uppercase letters when checksummed");
+    const decoded = decodeEntryCode(checksummed);
+    assert.equal(decoded.event.eventAddress, event.eventAddress);
+    assert.deepEqual(decoded.message, message);
+    assert.equal(decoded.signature, V.signature.toLowerCase());
+    assert.throws(
+      () => decodeEntryCode(V.entryCode.replace(V.signature.toLowerCase(), V.signature.toUpperCase())),
+      (e: unknown) => isIdentityError(e) && e.code === "CODE_FORMAT_INVALID",
+      "long-form signature is lowercase only, as in v1",
+    );
+  });
+
+  it("does not let one spelling borrow the other's separators or case", () => {
+    const compact = V.entryCodeCompact;
+    const bad = [
+      compact.replaceAll(":", "|"), // TS2 with long-form separators
+      V.entryCode.replaceAll("|", ":"), // TS1 with compact separators
+      compact.toLowerCase(), // compact is uppercase by definition
+      compact.replace("TS2:", "TS2:0x"), // 0x prefix belongs to the long form only
+    ];
+    for (const text of bad) {
+      assert.throws(
+        () => decodeEntryCode(text),
+        (e: unknown) => isIdentityError(e) && e.code === "CODE_FORMAT_INVALID",
+        `should reject ${JSON.stringify(text.slice(0, 40))}`,
+      );
+    }
+  });
+
   it("rejects anything that is not a Turnstile code", () => {
     const bad = [
       "",
@@ -158,8 +207,10 @@ describe("entry code string", () => {
       "TS0|10143|0x000000000000000000000000000000000000e0e1|1|42|1|0x00",
       V.entryCode.replace("TS1|", "TS1|x"),
       `${V.entryCode}|extra`,
+      `${V.entryCodeCompact}:extra`,
       V.entryCode.replace(V.signature.toLowerCase(), "0xdead"),
       V.entryCode.replace("|59640000|", "|18446744073709551616|"), // slot > uint64
+      V.entryCodeCompact.replace(":59640000:", ":18446744073709551616:"),
     ];
     for (const text of bad) {
       assert.throws(
