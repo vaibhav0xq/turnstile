@@ -1,0 +1,26 @@
+{
+  "name": "turnstile",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Turnstile \u2014 identity-bound tickets & access on Monad. One passkey, many keys.",
+  "packageManager": "pnpm@10.26.1",
+  "engines": {
+    "node": ">=24.0.0",
+    "pnpm": ">=10.0.0"
+  },
+  "scripts": {
+    "build": "pnpm -r --if-present build",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "test": "pnpm -r --if-present test",
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "vectors": "pnpm --filter @turnstile/identity vectors",
+    "vectors:check": "pnpm --filter @turnstile/identity vectors:check",
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm vectors:check",
+    "verify": "pnpm install --frozen-lockfile && pnpm check && pnpm build && pnpm --filter @turnstile/contracts check"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.13",
+    "typescript": "^5.9.3"
+  }
+}

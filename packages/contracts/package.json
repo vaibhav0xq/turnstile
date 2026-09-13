@@ -1,0 +1,20 @@
+{
+  "name": "@turnstile/contracts",
+  "version": "0.1.0",
+  "description": "TurnstileFactory + TurnstileEvent clones on Monad: one ERC-721 per seat, door-key binding, one-shot check-in over EIP-712 Entry, capped resale with instant splits.",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "deps": "forge soldeer install",
+    "build": "node ../../scripts/forge.mjs build",
+    "test": "node ../../scripts/forge.mjs test",
+    "test:ci": "FOUNDRY_PROFILE=ci forge test",
+    "fmt": "forge fmt",
+    "fmt:check": "forge fmt --check",
+    "lint": "forge lint",
+    "snapshot": "forge snapshot --no-match-test \"testFuzz_|invariant_\"",
+    "snapshot:check": "forge snapshot --no-match-test \"testFuzz_|invariant_\" --check --tolerance 1",
+    "sizes": "forge build --sizes",
+    "check": "forge fmt --check && forge lint && forge build && forge test && forge snapshot --no-match-test \"testFuzz_|invariant_\" --check --tolerance 1"
+  }
+}

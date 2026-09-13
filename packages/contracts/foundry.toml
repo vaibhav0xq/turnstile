@@ -1,0 +1,73 @@
+# Turnstile contracts — Foundry ≥ 1.8 (Monad execution support), Solidity 0.8.28, OpenZeppelin 5.6.
+# Dependencies are managed by Soldeer (built into forge): `forge soldeer install` populates ./dependencies
+# from soldeer.lock. No git submodules.
+
+[profile.default]
+src = "src"
+test = "test"
+script = "script"
+out = "out"
+libs = ["dependencies"]
+solc_version = "0.8.28"
+evm_version = "prague"
+network = "monad"
+optimizer = true
+optimizer_runs = 200
+via_ir = false
+bytecode_hash = "none"
+cbor_metadata = false
+fs_permissions = [
+  { access = "read", path = "../identity/vectors" },
+  { access = "read-write", path = "./deployments" },
+]
+gas_reports = ["TurnstileEvent", "TurnstileFactory", "ERC2771Forwarder"]
+
+# forge lint: the remaining rules run on every build. Excluded ones are either stylistic (naming follows the
+# OpenZeppelin/ERC-721 surface we override), inherent to the design (deadlines and sale windows compare
+# block.timestamp; validation loops revert), or false positives from `_msgSender()` being treated as an
+# external call (reentrancy-events) and from events emitted under a different name (missing-events-access-control).
+[lint]
+ignore = ["test/**/*.sol"] # style notes in tests are noise; src/ and script/ stay linted
+exclude_lints = [
+  "reentrancy-events",
+  "missing-events-access-control",
+  "block-timestamp",
+  "require-revert-in-loop",
+  "screaming-snake-case-immutable",
+  "mixed-case-variable",
+  "mixed-case-function",
+  "pragma-inconsistent",
+]
+
+[profile.default.fuzz]
+runs = 256
+
+[profile.default.invariant]
+runs = 64
+depth = 128
+fail_on_revert = false
+
+[profile.ci]
+fuzz = { runs = 1024 }
+invariant = { runs = 256, depth = 128 }
+
+[fmt]
+line_length = 120
+tab_width = 4
+bracket_spacing = false
+int_types = "long"
+quote_style = "double"
+number_underscore = "thousands"
+
+[rpc_endpoints]
+monad_testnet = "https://testnet-rpc.monad.xyz"
+monad = "https://rpc.monad.xyz"
+
+[soldeer]
+remappings_generate = false
+remappings_regenerate = false
+
+[dependencies]
+forge-std = "1.14.0"
+"@openzeppelin-contracts" = "5.6.1"
+"@openzeppelin-contracts-upgradeable" = "5.6.1"

@@ -1,0 +1,32 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# builds
+dist/
+out/
+coverage/
+.turbo/
+.next/
+
+# spike keeps its own npm install
+spike/node_modules/
+spike/dist/
+
+# foundry (packages/contracts) — Soldeer installs into dependencies/, the lock file is committed
+cache/
+packages/contracts/dependencies/
+broadcast/**/dry-run/
+packages/contracts/deployments/31337.json
+
+# env & secrets — never commit keys; see .env.example
+.env
+.env.*
+!.env.example
+
+# editors / OS
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.log

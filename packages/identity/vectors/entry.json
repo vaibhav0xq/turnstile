@@ -1,0 +1,50 @@
+{
+  "$comment": "Shared EIP-712 vector for packages/contracts (Foundry) and apps. Frozen by packages/identity/SPEC.md §4.",
+  "domain": {
+    "name": "Turnstile",
+    "version": "1",
+    "chainId": 10143,
+    "verifyingContract": "0x000000000000000000000000000000000000E0E1"
+  },
+  "types": {
+    "Entry": [
+      {
+        "name": "eventId",
+        "type": "uint256"
+      },
+      {
+        "name": "tokenId",
+        "type": "uint256"
+      },
+      {
+        "name": "slot",
+        "type": "uint64"
+      }
+    ]
+  },
+  "primaryType": "Entry",
+  "typeString": "Entry(uint256 eventId,uint256 tokenId,uint64 slot)",
+  "message": {
+    "eventId": "1",
+    "tokenId": "42",
+    "slot": "59640000"
+  },
+  "typeHash": "0x618c00eee859eabe457a85352232b00110aa50169f60cc14a0d31c8d514fcf06",
+  "domainSeparator": "0xcaf0fc43d728af02c5f0befc3eb2e09bee20e41ba6f230fd2907cfefa4c5773d",
+  "structHash": "0xb8bb3de50bb18bb3740e92393041c20cdea0ba42f976ae5c8b9d3ddb44df71a2",
+  "digest": "0x8b2b1320fe533607b4b59013fabded8f6931962fddc522bacd356f3695291ca3",
+  "signer": "0x29bdDe8C915C04005fa81A0A73C821D0c59e7108",
+  "doorKeyPrivateKey": "0x3c25cecc27d1db5b4d1209f81df37c7ec17022ed17bc8d480567bd5c9edbb199",
+  "doorKeyDerivation": "vectors/kdf.json → door[0] (prfOutput 0x0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20, turnstile/door/v1|10143|0x000000000000000000000000000000000000e0e1|0)",
+  "signature": "0x92a923e307860044d93ea3a981f290db973ba0e2841dc3302e0f517f3b5707a60e3484802de522d8580dbc6f8b076360436f0eedc130a8e2473b50775889c4e31c",
+  "r": "0x92a923e307860044d93ea3a981f290db973ba0e2841dc3302e0f517f3b5707a6",
+  "s": "0x0e3484802de522d8580dbc6f8b076360436f0eedc130a8e2473b50775889c4e3",
+  "v": 28,
+  "entryCode": "TS1|10143|0x000000000000000000000000000000000000e0e1|1|42|59640000|0x92a923e307860044d93ea3a981f290db973ba0e2841dc3302e0f517f3b5707a60e3484802de522d8580dbc6f8b076360436f0eedc130a8e2473b50775889c4e31c",
+  "foundry": [
+    "bytes32 digest = keccak256(abi.encodePacked(hex'1901', domainSeparator, structHash)); assertEq(digest, vector.digest);",
+    "(uint8 v, bytes32 r, bytes32 s) = vm.sign(uint256(doorKeyPrivateKey), digest); // RFC 6979 → identical r, s, v",
+    "assertEq(ECDSA.recover(digest, signature), signer);",
+    "domainSeparator assumes the TurnstileEvent clone lives at verifyingContract on chainId — use vm.chainId + deployCodeTo, or compare structHash/typeHash only."
+  ]
+}

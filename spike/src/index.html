@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="dark" />
+<title>Turnstile · Mera passkey spike</title>
+<style>
+  :root { --bg:#0b0b0f; --card:#14141b; --line:#26262f; --fg:#ececf1; --mute:#8b8b99; --ok:#3ddc97; --err:#ff6b6b; --info:#8ab4ff; --accent:#ffd166; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,sans-serif; padding:16px 16px 64px; max-width:760px; margin-inline:auto; }
+  h1 { font-size:20px; margin:8px 0 4px; letter-spacing:.2px; }
+  h2 { font-size:15px; margin:0 0 8px; color:var(--accent); text-transform:uppercase; letter-spacing:.08em; }
+  p { margin:6px 0; color:var(--mute); font-size:14px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px; margin:12px 0; }
+  button { appearance:none; border:1px solid var(--line); background:#1d1d27; color:var(--fg); border-radius:10px; padding:12px 14px; font-size:15px; font-weight:600; margin:6px 6px 6px 0; cursor:pointer; min-height:44px; }
+  button.primary { background:var(--accent); color:#111; border-color:transparent; }
+  button.danger { border-color:#5a2a2a; color:#ffb4b4; }
+  .status { font-size:14px; margin-top:6px; min-height:20px; white-space:pre-wrap; word-break:break-word; }
+  .status[data-kind=ok] { color:var(--ok); } .status[data-kind=err] { color:var(--err); } .status[data-kind=info] { color:var(--info); }
+  .mono, textarea, pre { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:12.5px; }
+  .val { word-break:break-all; background:#0e0e14; border:1px dashed var(--line); border-radius:8px; padding:8px 10px; margin:6px 0; }
+  textarea { width:100%; min-height:72px; background:#0e0e14; color:var(--fg); border:1px solid var(--line); border-radius:8px; padding:8px; resize:vertical; }
+  select { width:100%; max-width:100%; background:#0e0e14; color:var(--fg); border:1px solid var(--line); border-radius:8px; padding:10px; font-size:13px; margin-top:4px; }
+  pre { background:#0e0e14; border:1px solid var(--line); border-radius:8px; padding:8px; overflow:auto; white-space:pre-wrap; word-break:break-all; }
+  #qr { max-width:260px; margin:8px 0; } #qr svg { width:100%; height:auto; background:#fff; border-radius:8px; }
+  .pill { display:inline-block; font-size:12px; padding:2px 8px; border-radius:999px; background:#1d1d27; color:var(--mute); margin-right:6px; }
+  #mode { border-color:var(--accent); }
+</style>
+</head>
+<body>
+  <h1>Turnstile · Mera passkey spike</h1>
+  <p id="origin" class="status mono"></p>
+  <p id="caps" class="mono"></p>
+  <p id="known" class="mono"></p>
+
+  <section class="card" id="mode" hidden>
+    <h2>Device B · verification mode</h2>
+    <p>This link came from device A. Run steps 2, 3 and 5 here with the <em>same passkey</em>. Nothing is stored on this device — every value must come back from the passkey alone.</p>
+    <div class="val mono">expected account <span id="expA"></span></div>
+    <div class="val mono">expected door key <span id="expD"></span></div>
+    <div class="val mono">passport blob from A: <span id="expV"></span></div>
+    <div class="val mono">credential id from A: <span id="expC"></span></div>
+  </section>
+
+  <section class="card">
+    <h2>1 · Create passkey → account</h2>
+    <p>Account namespace = Mera's default PRF salt → BIP-44 <span class="mono">m/44'/60'/0'/0/0</span>. Count the prompts you see.</p>
+    <button class="primary" data-act="create">Create passkey</button>
+    <div id="s1" class="status"></div>
+  </section>
+
+  <section class="card">
+    <h2>2 · Sign in → same account</h2>
+    <p>Returning visit (uses the stored credential id) or the <strong>fresh-device path</strong> (discoverable — nothing stored, pick the passkey in the sheet).</p>
+    <button data-act="signin">Sign in (stored id)</button>
+    <button data-act="discover">Sign in — fresh device path</button>
+    <div id="s2" class="status"></div>
+    <div class="val mono">account <span id="account">—</span></div>
+  </section>
+
+  <section class="card">
+    <h2>3 · Presence namespace → door key</h2>
+    <p>Salt <span class="mono">sha256("turnstile/presence/v1")</span> → HKDF(info = chainId | event) → secp256k1 door key. Not an account: never funded, never sends a transaction.</p>
+    <p class="mono">ceremony mode (steps 3 and 5):
+      <select id="prfmode">
+        <option value="discoverable" selected>discoverable — authenticator picks, app checks same credential id</option>
+        <option value="id">allowCredentials: [{ id }] — what the app has after a discoverable sign-in</option>
+        <option value="id+transports">allowCredentials: [{ id, transports }] — transports from creation / link / ["internal","hybrid"]</option>
+      </select>
+    </p>
+    <button class="primary" data-act="door">Derive door key (Face ID / Touch ID)</button>
+    <div id="s3" class="status"></div>
+    <div class="val mono">door key <span id="door">—</span></div>
+  </section>
+
+  <section class="card">
+    <h2>4 · Entry typed data → sign / verify</h2>
+    <p>EIP-712 <span class="mono">Entry(eventId, tokenId, slot)</span>, 30-second slot. Signed in memory (no prompt); verified with <span class="mono">ecrecover</span> semantics.</p>
+    <button data-act="entry">Sign + verify Entry</button>
+    <div id="s4" class="status"></div>
+    <pre id="entry" class="mono">—</pre>
+  </section>
+
+  <section class="card">
+    <h2>5 · Vault namespace → encrypt / decrypt</h2>
+    <p>Salt <span class="mono">sha256("turnstile/vault/v1")</span> → HKDF → AES-256-GCM. The ciphertext stands in for untrusted server storage.</p>
+    <button class="primary" data-act="vaultkey">Derive vault key</button>
+    <div id="s5" class="status"></div>
+    <p>Diagnostic: run this namespace in all three ceremony modes back-to-back (three prompts — approve each). The JSON then shows, per mode, pass/fail, the WebAuthn error name and how long it took.</p>
+    <button data-act="probe">Probe all 3 modes (3 prompts)</button>
+    <div id="s5p" class="status"></div>
+    <button data-act="encrypt">Encrypt sample passport</button>
+    <div id="s5b" class="status"></div>
+    <textarea id="blob" class="mono" placeholder="ciphertext blob (auto-filled; paste device A's blob here on device B)"></textarea>
+    <button data-act="decrypt">Decrypt</button>
+    <div id="s5c" class="status"></div>
+    <pre id="plain" class="mono">—</pre>
+  </section>
+
+  <section class="card">
+    <h2>6 · Second device / stateless test</h2>
+    <p><strong>Second device:</strong> make a link, open it on your other device (same origin), run 2 → 3 → 5 there. <strong>Stateless test:</strong> wipe this device's storage and prove everything comes back from the passkey.</p>
+    <button class="primary" data-act="link">Make verification link + QR</button>
+    <button class="danger" data-act="stateless">Stateless test: wipe storage & reload</button>
+    <div id="s6" class="status"></div>
+    <div id="qr"></div>
+    <textarea id="link" class="mono" placeholder="verification link"></textarea>
+    <button data-act="copylink">Copy link</button>
+  </section>
+
+  <section class="card">
+    <h2>7 · Sessions</h2>
+    <p>Ending a session zeroises the key copy; later signing throws <span class="mono">SESSION_ENDED</span>.</p>
+    <button data-act="endsessions">End all sessions</button>
+    <div id="s7" class="status"></div>
+  </section>
+
+  <section class="card">
+    <h2>Report</h2>
+    <p>Paste the row into <span class="mono">docs/device-matrix.md</span>, fill the device / provider / prompt-count columns by hand. The JSON is the evidence.</p>
+    <textarea id="row" class="mono"></textarea>
+    <button data-act="copyrow">Copy matrix row</button>
+    <textarea id="report" class="mono" style="min-height:160px"></textarea>
+    <button data-act="copyreport">Copy JSON</button>
+  </section>
+
+  <script type="module"><!--APP--></script>
+</body>
+</html>

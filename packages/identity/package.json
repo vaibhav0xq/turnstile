@@ -1,0 +1,65 @@
+{
+  "name": "@turnstile/identity",
+  "version": "0.2.0",
+  "description": "One passkey, many keys: account / presence / vault namespaces for Turnstile, on top of @category-labs/mera.",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./entry": {
+      "types": "./dist/entry.d.ts",
+      "default": "./dist/entry.js"
+    },
+    "./bind": {
+      "types": "./dist/bind.d.ts",
+      "default": "./dist/bind.js"
+    },
+    "./kdf": {
+      "types": "./dist/kdf.d.ts",
+      "default": "./dist/kdf.js"
+    },
+    "./vault": {
+      "types": "./dist/vault.d.ts",
+      "default": "./dist/vault.js"
+    },
+    "./errors": {
+      "types": "./dist/errors.d.ts",
+      "default": "./dist/errors.js"
+    },
+    "./vectors/entry.json": "./vectors/entry.json",
+    "./vectors/kdf.json": "./vectors/kdf.json",
+    "./vectors/bind.json": "./vectors/bind.json"
+  },
+  "files": [
+    "dist",
+    "vectors",
+    "SPEC.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --test --test-reporter=spec \"test/**/*.test.ts\"",
+    "vectors": "node scripts/gen-vectors.ts",
+    "vectors:check": "node scripts/gen-vectors.ts --check"
+  },
+  "dependencies": {
+    "@category-labs/mera": "0.2.0",
+    "@noble/curves": "^2.2.0",
+    "@noble/hashes": "^2.2.0",
+    "@scure/base": "^2.0.0",
+    "@scure/bip32": "^2.0.0",
+    "@scure/bip39": "^2.0.0",
+    "viem": "^2.28.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0"
+  }
+}

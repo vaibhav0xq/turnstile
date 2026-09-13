@@ -1,0 +1,52 @@
+{
+  "$comment": "Shared EIP-712 vector for the gate fallback (checkInWithBind) and bindDoorKeyWithSig. Signed by the ACCOUNT key from vectors/kdf.json; binds the door key from vectors/entry.json. Frozen by packages/identity/SPEC.md §4.5.",
+  "domain": {
+    "name": "Turnstile",
+    "version": "1",
+    "chainId": 10143,
+    "verifyingContract": "0x000000000000000000000000000000000000E0E1"
+  },
+  "types": {
+    "BindDoorKey": [
+      {
+        "name": "tokenId",
+        "type": "uint256"
+      },
+      {
+        "name": "doorKey",
+        "type": "address"
+      },
+      {
+        "name": "nonce",
+        "type": "uint256"
+      },
+      {
+        "name": "deadline",
+        "type": "uint256"
+      }
+    ]
+  },
+  "primaryType": "BindDoorKey",
+  "typeString": "BindDoorKey(uint256 tokenId,address doorKey,uint256 nonce,uint256 deadline)",
+  "message": {
+    "tokenId": "42",
+    "doorKey": "0x29bdDe8C915C04005fa81A0A73C821D0c59e7108",
+    "nonce": "0",
+    "deadline": "1789200600"
+  },
+  "typeHash": "0xd6a0a17acd5ddc08a28de306e4e27753fddd43b527873ee04d2900eb40531422",
+  "domainSeparator": "0xcaf0fc43d728af02c5f0befc3eb2e09bee20e41ba6f230fd2907cfefa4c5773d",
+  "structHash": "0xa04d480e1775fe2f0ad0e9e1944125c286961323bf823dacf1a753a82120171d",
+  "digest": "0x20fe1537074fcc0701dd3e55ddbad6b81931058871797a618dfbe4aec31c5680",
+  "signer": "0x50B240678777451BEfd67B7e8c3b4366482ba8F9",
+  "signerPrivateKey": "0x7c56100e187f2845a35ce856646662dfc2024be2b4a150b45ad1f62564617128",
+  "signerDerivation": "vectors/kdf.json → account (the ticket holder's Mera account key = ownerOf(tokenId))",
+  "signature": "0x76d74de9a315e90afdeed284cf617e024e67880ae1dee62a2791c7d52e4d329f3f1f1a0eac1cbe8e62739626aa5238f991d5e414333b1f50ce6527494e234e061b",
+  "r": "0x76d74de9a315e90afdeed284cf617e024e67880ae1dee62a2791c7d52e4d329f",
+  "s": "0x3f1f1a0eac1cbe8e62739626aa5238f991d5e414333b1f50ce6527494e234e06",
+  "v": 27,
+  "foundry": [
+    "mint tokenId to signer, warp to <= deadline, then checkInWithBind(tokenId, doorKey, deadline, signature, entry.slot, entry.signature) from a GATE_ROLE account",
+    "bindNonceOf(tokenId) must be 0 when the signature is checked (fresh ticket)."
+  ]
+}

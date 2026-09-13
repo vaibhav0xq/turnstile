@@ -1,0 +1,27 @@
+{
+  "name": "turnstile-mera-spike",
+  "version": "1.0.0",
+  "description": "Throwaway Mera/passkey spike for Turnstile",
+  "scripts": {
+    "build": "node build.mjs",
+    "verify": "node verify.mjs",
+    "serve": "npx serve dist -l 3000"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@category-labs/mera": "0.2.0",
+    "@noble/hashes": "^2.4.0",
+    "@scure/bip32": "^2.4.0",
+    "@scure/bip39": "^2.4.0",
+    "qrcode-generator": "^2.0.4",
+    "viem": "^2.56.3"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "puppeteer-core": "^25.10.0"
+  },
+  "private": true
+}

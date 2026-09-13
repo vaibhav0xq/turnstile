@@ -1,0 +1,98 @@
+{
+  "when": "2026-09-12T15:16:55.222Z",
+  "ua": "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Mobile Safari/537.36",
+  "platform": "Android",
+  "mode": "device-B (verification)",
+  "capabilities": {
+    "secureContext": true,
+    "rpId": "bejewelled-gumdrop-74aa24.netlify.app",
+    "webauthn": true,
+    "platformAuthenticator": true,
+    "clientCapabilities": {
+      "conditionalCreate": true,
+      "conditionalGet": true,
+      "extension:appid": true,
+      "extension:appidExclude": true,
+      "extension:cmtgKey": false,
+      "extension:credBlob": true,
+      "extension:credProps": true,
+      "extension:credentialProtectionPolicy": true,
+      "extension:crossDeviceFallbackUrl": false,
+      "extension:enforceCredentialProtectionPolicy": true,
+      "extension:getCredBlob": true,
+      "extension:hmacCreateSecret": true,
+      "extension:largeBlob": true,
+      "extension:minPinLength": true,
+      "extension:payment": true,
+      "extension:prf": true,
+      "hybridTransport": true,
+      "immediateGet": true,
+      "passkeyPlatformAuthenticator": true,
+      "relatedOrigins": true,
+      "signalAllAcceptedCredentials": true,
+      "signalCurrentUserDetails": true,
+      "signalUnknownCredential": true,
+      "userVerifyingPlatformAuthenticator": true
+    },
+    "conditionalMediation": true
+  },
+  "account": "0x5e9e28D798839988D296dd004f3E275af342c9FD",
+  "door": "0x5532734BB497cc214D57868e8dE24A43e6ff1AFB",
+  "entry": null,
+  "credential": {
+    "known": "lQXzUbRKQd4M5hNLgDFZiw",
+    "transports": ["hybrid", "internal"],
+    "fromLink": "lQXzUbRKQd4M5hNLgDFZiw",
+    "mode": "discoverable"
+  },
+  "expected": {
+    "account": "0x5e9e28D798839988D296dd004f3E275af342c9FD",
+    "door": "0x5532734BB497cc214D57868e8dE24A43e6ff1AFB",
+    "blobChars": 368,
+    "credential": {
+      "credentialId": "lQXzUbRKQd4M5hNLgDFZiw",
+      "transports": ["hybrid", "internal"]
+    }
+  },
+  "steps": {
+    "signin": {
+      "ok": true,
+      "ms": 6664,
+      "discoverable": true,
+      "credentialId": "lQXzUbRKQd4M5hNLgDFZiw"
+    },
+    "door": {
+      "ok": true,
+      "ms": 5151,
+      "mode": "discoverable",
+      "sameCredential": true
+    },
+    "vaultKey": {
+      "ok": true,
+      "ms": 4210,
+      "mode": "discoverable",
+      "sameCredential": true
+    }
+  },
+  "namespaces": {
+    "presence": {
+      "discoverable": {
+        "ok": true,
+        "ms": 5151,
+        "sameCredential": true
+      }
+    },
+    "vault": {
+      "discoverable": {
+        "ok": true,
+        "ms": 4210,
+        "sameCredential": true
+      }
+    }
+  },
+  "matches": {
+    "account": true,
+    "credentialId": true,
+    "door": true
+  }
+}

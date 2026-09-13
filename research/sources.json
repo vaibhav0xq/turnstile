@@ -1,0 +1,348 @@
+{
+  "generated": "2026-09-12T12:00:00+05:30",
+  "note": "Key sources cited in monad-metropolis-report.md as [S#]. Tier: A = official/primary, B = sponsor docs or reputable press, C = community/unofficial. Local copies live under research/sources/ (subagent captures use prefixes rules-, stack-, bounty-, eco-, designA-, designB-).",
+  "sources": [
+    {
+      "key": "S1",
+      "url": "https://www.monad.xyz/developers/hackathons/metropolis",
+      "title": "Monad Metropolis hackathon — official page (tracks, prizes, timeline, judges, sponsors, FAQ)",
+      "accessed": "2026-09-12",
+      "tier": "A",
+      "local": "research/sources/official-01-monad-metropolis-page.md"
+    },
+    {
+      "key": "S2",
+      "url": "https://hackathon.monad.xyz/",
+      "title": "Metropolis hackathon platform — public strings (countdown 2026-10-14T03:59Z, intake, submission pipeline)",
+      "accessed": "2026-09-12",
+      "tier": "A",
+      "local": "research/sources/official-02-platform-strings.md"
+    },
+    {
+      "key": "S3",
+      "url": "https://hackathon.monad.xyz/prizes",
+      "title": "Metropolis platform prizes/bounties listing",
+      "accessed": "2026-09-12",
+      "tier": "A",
+      "local": "research/sources/official-03-platform-prizes.md"
+    },
+    {
+      "key": "S4",
+      "url": "https://www.monad.xyz/developers/hackathons/metropolis",
+      "title": "Bounty-to-sponsor mapping verified from official page HTML (logo alt text)",
+      "accessed": "2026-09-12",
+      "tier": "A",
+      "local": "research/sources/official-04-bounty-sponsor-mapping.md"
+    },
+    {
+      "key": "S5",
+      "url": "https://www.risein.com/hackathons/monad-metropolis",
+      "title": "Rise In listing for Monad Metropolis (unofficial mirror; Aug 31–Oct 12 dates are timezone artefacts)",
+      "accessed": "2026-09-12",
+      "tier": "C",
+      "local": "research/sources/rules-*"
+    },
+    {
+      "key": "S6",
+      "url": "https://x.com/monad/status/2094826883049205806",
+      "title": "Monad on X: Introducing the Metropolis global hackathon (search snippet only)",
+      "date": "2026-09-01",
+      "tier": "A",
+      "local": "research/sources/eco-snippets.md"
+    },
+    {
+      "key": "S7",
+      "url": "https://luma.com/monad-metropolis",
+      "title": "Metropolis IRL hacker houses on Luma (approval-gated, no application deadline published)",
+      "accessed": "2026-09-12",
+      "tier": "A",
+      "local": "research/sources/rules-*"
+    },
+    {
+      "key": "S8",
+      "url": "https://www.encode.club/",
+      "title": "Encode Club — Raingentic hackathon recap: judging criteria idea / technical execution / presentation & documentation / wow factor",
+      "date": "2026-09-07",
+      "tier": "B",
+      "local": "research/sources/rules-*"
+    },
+    {
+      "key": "S9",
+      "url": "https://www.monad.xyz/blog",
+      "title": "Monad blog — Home for Builders (Blitz format precedent) and ecosystem posts",
+      "date": "2026-03-11",
+      "tier": "A",
+      "local": "research/sources/eco-*"
+    },
+    {
+      "key": "S10",
+      "url": "https://moltiverse.dev/",
+      "title": "Moltiverse agent hackathon — 400 submissions, 16 winners, 'ship proof not promises'",
+      "accessed": "2026-09-12",
+      "tier": "B",
+      "local": "research/sources/eco-*"
+    },
+    {
+      "key": "S11",
+      "url": "https://docs.monad.xyz/",
+      "title": "Monad developer docs — network information, differences from Ethereum, precompiles, EIP-7702, smart accounts, embedded wallets, oracles, cross-chain",
+      "accessed": "2026-09-12",
+      "tier": "A",
+      "local": "research/sources/stack-01..stack-40"
+    },
+    {
+      "key": "S12",
+      "url": "https://docs.monad.xyz/developer-essentials/network-information",
+      "title": "Monad network information (mainnet chain 143, testnet 10143, RPCs, explorers, faucet)",
+      "accessed": "2026-09-12",
+      "tier": "A",
+      "local": "research/sources/stack-01-network-information.md"
+    },
+    {
+      "key": "S13",
+      "url": "https://docs.monad.xyz/developer-essentials/differences",
+      "title": "Differences from Ethereum (gas charged on gas limit, reserve balance, eth_getLogs limits, block gas limit)",
+      "accessed": "2026-09-12",
+      "tier": "A",
+      "local": "research/sources/stack-02-ethereum-differences.md"
+    },
+    {
+      "key": "S14",
+      "url": "https://docs.monad.xyz/developer-essentials/eip-7702",
+      "title": "EIP-7702 on Monad (delegated EOAs cannot drop below the 10 MON reserve)",
+      "accessed": "2026-09-12",
+      "tier": "A",
+      "local": "research/sources/stack-05-eip7702.md"
+    },
+    {
+      "key": "S15",
+      "url": "https://docs.monad.xyz/reference/precompiles",
+      "title": "Monad precompiles incl. P256 (secp256r1) at 0x0100 (EIP-7951)",
+      "accessed": "2026-09-12",
+      "tier": "A",
+      "local": "research/sources/stack-*"
+    },
+    {
+      "key": "S16",
+      "url": "https://www.monad.xyz/blog/introducing-mera",
+      "title": "Introducing Mera — passkeys to portable EVM keys (Category Labs)",
+      "date": "2026-07-30",
+      "tier": "A",
+      "local": "research/sources/bounty-*"
+    },
+    {
+      "key": "S17",
+      "url": "https://github.com/category-labs/mera",
+      "title": "Mera GitHub — @category-labs/mera, PRF-derived BIP-44 keys, signing sessions, preview/pre-1.0",
+      "accessed": "2026-09-12",
+      "tier": "A",
+      "local": "research/sources/bounty-*"
+    },
+    {
+      "key": "S18",
+      "url": "https://docs.envio.dev/docs/HyperIndex/overview",
+      "title": "Envio HyperIndex overview (HyperSync endpoint 143.hypersync.xyz for Monad)",
+      "accessed": "2026-09-12",
+      "tier": "B",
+      "local": "research/sources/bounty-*"
+    },
+    {
+      "key": "S19",
+      "url": "https://docs.perpl.xyz/",
+      "title": "Perpl developer docs (REST https://app.perpl.xyz/api, WSS, Ed25519 API keys, AUSD collateral)",
+      "accessed": "2026-09-12",
+      "tier": "B",
+      "local": "research/sources/bounty-*"
+    },
+    {
+      "key": "S20",
+      "url": "https://docs.kuru.io/sdk/quickstart-sdk",
+      "title": "Kuru SDK quickstart (@kuru-labs/kuru-sdk)",
+      "accessed": "2026-09-12",
+      "tier": "B",
+      "local": "research/sources/bounty-*"
+    },
+    {
+      "key": "S21",
+      "url": "https://docs.nansen.ai/",
+      "title": "Nansen API docs (chain value 'monad' supported)",
+      "accessed": "2026-09-12",
+      "tier": "B",
+      "local": "research/sources/bounty-*"
+    },
+    {
+      "key": "S22",
+      "url": "https://www.agora.finance/",
+      "title": "Agora / AUSD stablecoin API (sponsor of both $10k bounties)",
+      "accessed": "2026-09-12",
+      "tier": "B",
+      "local": "research/sources/bounty-*"
+    },
+    {
+      "key": "S23",
+      "url": "https://docs.near-intents.org/resources/chain-support",
+      "title": "NEAR Intents chain support (Monad listed) and 1Click API",
+      "accessed": "2026-09-12",
+      "tier": "B",
+      "local": "research/sources/bounty-*"
+    },
+    {
+      "key": "S24",
+      "url": "https://docs.metamask.io/agent-wallet/plugins/",
+      "title": "MetaMask Agent Wallet plugins (npm plugins, capability declarations)",
+      "accessed": "2026-09-12",
+      "tier": "B",
+      "local": "research/sources/bounty-*"
+    },
+    {
+      "key": "S25",
+      "url": "https://www.alchemy.com/monad",
+      "title": "Alchemy Monad support (mainnet status conflicting across pages)",
+      "accessed": "2026-09-12",
+      "tier": "B",
+      "local": "research/sources/bounty-*"
+    },
+    {
+      "key": "S26",
+      "url": "https://phantom.com/",
+      "title": "Phantom ending Monad support (26 Aug 2026)",
+      "date": "2026-08-26",
+      "tier": "B",
+      "local": "research/sources/stack-*"
+    },
+    {
+      "key": "S27",
+      "url": "https://www.monad.xyz/blog",
+      "title": "Monad Economy: eight months in (TVL, apps) and August 2026 ecosystem highlights",
+      "date": "2026-07-27",
+      "tier": "A",
+      "local": "research/sources/eco-*"
+    },
+    {
+      "key": "S28",
+      "url": "https://github.com/search",
+      "title": "GitHub Search API scan of Metropolis-labelled and Monad repos (this run)",
+      "accessed": "2026-09-12",
+      "tier": "C",
+      "local": "research/sources/github-01-repo-scan.md"
+    },
+    {
+      "key": "S29",
+      "url": "https://github.com/furqaannabi/elapse",
+      "title": "Competitor READMEs (Elapse, Settle, Iris, DeltaMon, TradeAgent, Mandate, XORR, MonadSentry, Pongit, Assay)",
+      "accessed": "2026-09-12",
+      "tier": "C",
+      "local": "research/sources/github-02-competitor-readmes.md"
+    },
+    {
+      "key": "S30",
+      "url": "https://elapse.finance",
+      "title": "Elapse — live per-second subscriptions product (HTTP 200 on 2026-09-12)",
+      "accessed": "2026-09-12",
+      "tier": "C",
+      "local": "research/sources/github-01-repo-scan.md"
+    },
+    {
+      "key": "S31",
+      "url": "https://dicefm.zendesk.com/hc/en-gb/articles/19958073128849-The-wait-list-explained",
+      "title": "DICE — the wait list explained (identity-bound mobile ticketing comparable)",
+      "accessed": "2026-09-12",
+      "tier": "B",
+      "local": "research/sources/web-01-comparables-snippets.md"
+    },
+    {
+      "key": "S32",
+      "url": "https://commonslibrary.parliament.uk/research-briefings/sn04715",
+      "title": "House of Commons Library — Ticket resales briefing (price cap proposals)",
+      "date": "2026-07-08",
+      "tier": "B",
+      "local": "research/sources/web-01-comparables-snippets.md"
+    },
+    {
+      "key": "S33",
+      "url": "https://threeui.com/browse",
+      "title": "ThreeUI browse/installation/pricing (465 routes; MIT community npm; Pro $99/yr)",
+      "accessed": "2026-09-12",
+      "tier": "B",
+      "local": "research/design/threeui.com.md"
+    },
+    {
+      "key": "S34",
+      "url": "https://skiper-ui.com/components",
+      "title": "Skiper UI components/quick-start/pricing (100 components; shadcn-compatible)",
+      "accessed": "2026-09-12",
+      "tier": "B",
+      "local": "research/design/skiper-ui.com.md"
+    },
+    {
+      "key": "S35",
+      "url": "https://pryzm.design/studio",
+      "title": "Pryzm studio/docs/flow/gallery (WebGL2 background studio)",
+      "accessed": "2026-09-12",
+      "tier": "B",
+      "local": "research/design/pryzm.design.md"
+    },
+    {
+      "key": "S36",
+      "url": "https://feralui.dev/gradients",
+      "title": "FeralUI gradients/blob/fur/hologram/terms",
+      "accessed": "2026-09-12",
+      "tier": "B",
+      "local": "research/design/feralui.dev.md"
+    },
+    {
+      "key": "S37",
+      "url": "https://jiro.build",
+      "title": "Jiro Build templates/pricing/MCP",
+      "accessed": "2026-09-12",
+      "tier": "B",
+      "local": "research/design/jiro.build.md"
+    },
+    {
+      "key": "S38",
+      "url": "attached_assets/UX_(1)_1789210548488.md",
+      "title": "User-supplied UX reference doc",
+      "tier": "C",
+      "local": "research/subagent-uxui-docs.md"
+    },
+    {
+      "key": "S39",
+      "url": "attached_assets/UI_(1)_1789210548488.md",
+      "title": "User-supplied UI reference doc",
+      "tier": "C",
+      "local": "research/subagent-uxui-docs.md"
+    },
+    {
+      "key": "S40",
+      "url": "attached_assets/image_1789210555781.png",
+      "title": "User-supplied X thread screenshot (sponsor bounty announcements)",
+      "tier": "C",
+      "local": "attached_assets/image_1789210555781.png"
+    },
+    {
+      "key": "S41",
+      "url": "https://docs.monad.xyz/guides/agent-identity",
+      "title": "Monad guides — ERC-8004 registries on mainnet, agentic payments (x402), Monad MCP",
+      "accessed": "2026-09-12",
+      "tier": "A",
+      "local": "research/sources/stack-*"
+    },
+    {
+      "key": "S42",
+      "url": "https://www.monad.xyz/brand-and-media-kit",
+      "title": "Monad brand & media kit (official)",
+      "accessed": "2026-09-12",
+      "tier": "A",
+      "local": "research/sources/web-01-comparables-snippets.md"
+    },
+    {
+      "id": "S43",
+      "title": "Metropolis Hackathon Resources page (logged-in capture)",
+      "url": "https://hackathon.monad.xyz/resources",
+      "tier": "official",
+      "path": "research/sources/official-resources.md",
+      "captured": "2026-09-12",
+      "notes": "Sponsor perks (QuickNode, Tenderly, Zerion), Monad docs index, starter templates, SDKs, MCP/agent skills, per-idea resources, ecosystem docs. No rules/deadlines."
+    }
+  ]
+}

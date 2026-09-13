@@ -1,0 +1,4 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+# `spike/` is a throwaway npm project (see spike/README.md); it is deliberately not a workspace member.
