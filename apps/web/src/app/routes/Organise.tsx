@@ -73,8 +73,8 @@ export function Organise({ config }: { config: AppConfig | undefined }) {
   };
 
   return (
-    <div className="overlay flex items-end justify-start p-4 sm:items-center sm:justify-center sm:p-6">
-      <Panel className="glass-solid fade-up flex max-h-[calc(100dvh-2rem)] w-full max-w-lg flex-col overflow-hidden">
+    <div className="overlay flex items-end justify-start p-4 pt-20 sm:items-start sm:justify-center sm:p-6 sm:pt-24">
+      <Panel className="glass-solid fade-up flex max-h-[calc(100dvh-6rem)] w-full max-w-lg flex-col overflow-hidden sm:max-h-[calc(100dvh-7.5rem)]">
         <div className="scrollbar-none overflow-y-auto p-5">
           <Kicker>Organiser</Kicker>
           <div className="display mt-1 text-3xl">Host a night</div>

@@ -16,4 +16,5 @@ export * from "./entry.ts";
 export * from "./errors.ts";
 export * from "./identity.ts";
 export * from "./kdf.ts";
+export * from "./passport.ts";
 export * from "./vault.ts";

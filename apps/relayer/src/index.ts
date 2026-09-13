@@ -17,6 +17,7 @@ import {
 import { drip } from "./drip.ts";
 import { findEvent, getEvents, tierFor } from "./events.ts";
 import { checkIn, lookupEntry } from "./gate.ts";
+import { PassportStore } from "./passport.ts";
 import { RateLimiter } from "./ratelimit.ts";
 import { relay, relayGas } from "./relay.ts";
 
@@ -38,6 +39,8 @@ await verifyChain();
 const app = new Hono();
 const relayLimit = new RateLimiter(30, 60_000);
 const dripIpLimit = new RateLimiter(10, 60_000);
+const passportLimit = new RateLimiter(20, 60_000);
+const passports = new PassportStore(settings.passportFile);
 
 app.use(
   "*",
@@ -137,6 +140,26 @@ app.post("/api/gate/check-in", async (context) => {
   const body = (await context.req.json().catch(() => undefined)) as { code?: unknown } | undefined;
   const result = await checkIn(body?.code);
   return json(result, result.ok ? 200 : result.status);
+});
+
+// The private passport: ciphertext in, ciphertext out. Writes carry the account key's signature (SPEC §4.6).
+app.get("/api/passport/:address", (context) => {
+  const address = context.req.param("address");
+  if (!isAddress(address)) return json({ error: { code: "BAD_ADDRESS", message: "Not an address" } }, 400);
+  const record = passports.get(address);
+  if (!record)
+    return json({ error: { code: "NOT_FOUND", message: "No passport stored for this account" } }, 404);
+  return json({ blob: record.blob, issuedAt: record.issuedAt, updatedAt: record.updatedAt });
+});
+app.put("/api/passport/:address", async (context) => {
+  if (!passportLimit.allow(ip(context.req.raw.headers))) {
+    return json({ error: { code: "RATE_LIMITED", message: "Too many requests" } }, 429);
+  }
+  const result = await passports.put(
+    context.req.param("address"),
+    await context.req.json().catch(() => undefined),
+  );
+  return json(result.body, result.status);
 });
 
 app.post("/api/drip", async (context) => {

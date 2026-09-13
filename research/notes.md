@@ -195,3 +195,16 @@ Exact rules text, team-size cap, KYC, video requirement, "Community Team" defini
   is a 5-test suite in the normal gate. Codegen (`envio codegen`) needs no network. `scripts/sync-config.mjs`
   writes the chains block from `deployments/<chainId>.json`; anvil is skipped (HyperSync cannot see it).
   Hosted-service deploy waits on the testnet factory and an Envio account (user's).
+- One-device door path: the ticket's *Walk up to the door →* opens `/gate/<event>#code=<code>`; the gate
+  view reads the fragment once, `replaceState`s it away (an entry code must not survive in history or a
+  share), looks it up immediately and leaves the camera off until asked. Judges with one phone can now close
+  the loop ticket → door → seat lit. Fragments never reach the server or the relayer logs.
+- Private vault in product (`/me`): SPEC v1.2 adds §4.6 *passport sync* — an EIP-191 message
+  `turnstile/passport-sync/v1 · address · keccak256(blob) · issuedAt` signed by the account key; the relayer
+  (`PUT/GET /api/passport/:address`, `.data/passports-<chainId>.json`) verifies signer + 5-minute skew +
+  monotonic `issuedAt` (409 `REPLAYED`; an empty blob clears but keeps the watermark as a tombstone). The
+  blob format of §4.4 is untouched, so no vector changed. Dev identities derive the vault key from the same
+  fake PRF as their account/door keys, which made the round trip testable headless: open → name + note →
+  save → lock → *Forget this device* → sign in → open → same name and note back from ciphertext. The
+  fixture server stores passports unverified for screenshots; the relayer's verification is unit-tested.
+  `.glass-solid` is now opaque — at 0.97 alpha, beacon chips still read through the panel on software GL.

@@ -2,6 +2,7 @@
 //
 //   fan   → 15-minute account session (viem LocalAccount) that signs forward requests and direct buys
 //   doors → per-event door sessions (≤ 60 min) that sign the rotating entry codes
+//   vault → the passport key (AES-256-GCM) that encrypts the private passport, open until closed
 //
 // Nothing here is persisted except the credential id (so the next visit knows to sign in rather than
 // create) and the address it produced (to greet the fan before the ceremony). Keys live in memory only.
@@ -10,15 +11,20 @@ import {
   accountKeyFromPrf,
   createIdentity,
   DOOR_SESSION_TTL_MS,
+  decryptBlobJson,
   deriveDoorKey,
   doorKeyFromPrf,
   type EventRef,
   encodeEntryCode,
+  encryptBlob,
   entryTypedData,
   IdentityError,
+  importVaultKey,
+  openVault,
   signIn,
   toHex,
   USER_MESSAGES,
+  vaultKeyBytesFromPrf,
 } from "@turnstile/identity";
 import { type Address, type Hex, hexToBytes, keccak256, type LocalAccount, stringToBytes } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
@@ -41,7 +47,14 @@ export interface DoorKeySession {
   end(): void;
 }
 
-export type Busy = "create" | "signin" | "door" | null;
+export interface VaultSession {
+  readonly credentialId: string;
+  encrypt(plaintext: object): Promise<string>;
+  decryptJson<T>(blob: string): Promise<T>;
+  end(): void;
+}
+
+export type Busy = "create" | "signin" | "door" | "vault" | null;
 
 const RP_ID: string = (import.meta.env["VITE_RP_ID"] as string | undefined) ?? window.location.hostname;
 const LS_CRED = "turnstile.credentialId";
@@ -100,10 +113,21 @@ function devDoor(seed: string, event: EventRef, now: number): DoorKeySession {
   };
 }
 
+async function devVault(seed: string): Promise<VaultSession> {
+  const key = await importVaultKey(vaultKeyBytesFromPrf(devPrf(seed)));
+  return {
+    credentialId: `dev:${seed}`,
+    encrypt: (plaintext) => encryptBlob(key, plaintext),
+    decryptJson: <T>(blob: string) => decryptBlobJson<T>(key, blob),
+    end() {},
+  };
+}
+
 export interface IdentityState {
   rpId: string;
   fan: FanSession | null;
   doors: Record<string, DoorKeySession>;
+  vault: VaultSession | null;
   knownCredentialId: string | null;
   knownAddress: Address | null;
   busy: Busy;
@@ -119,6 +143,9 @@ export interface IdentityState {
   /** Sign in if a passkey is known on this device, otherwise create one. */
   ensureFan(): Promise<FanSession>;
   ensureDoor(event: EventRef): Promise<DoorKeySession>;
+  /** Vault ceremony (one more passkey prompt): the passport key stays open until `closeVault` or sign-out. */
+  ensureVault(): Promise<VaultSession>;
+  closeVault(): void;
   endSessions(): void;
   /** "Stateless test": forget everything this device knows. The passkey itself stays in the platform. */
   forgetDevice(): void;
@@ -139,6 +166,7 @@ export const useIdentity = create<IdentityState>()((set, get) => ({
   rpId: RP_ID,
   fan: null,
   doors: {},
+  vault: null,
   knownCredentialId: localStorage.getItem(LS_CRED),
   knownAddress: localStorage.getItem(LS_ADDR) as Address | null,
   busy: null,
@@ -274,11 +302,49 @@ export const useIdentity = create<IdentityState>()((set, get) => ({
     }
   },
 
+  async ensureVault() {
+    const open = get().vault;
+    if (open) return open;
+    const { devSeed, rpId } = get();
+    const fan = get().liveFan();
+    set({ busy: "vault", error: null });
+    try {
+      let vault: VaultSession;
+      if (devSeed) {
+        vault = await devVault(devSeed);
+      } else {
+        const session = await openVault({
+          rpId,
+          ...(fan ? { expectCredentialId: fan.credentialId } : {}),
+        });
+        vault = {
+          credentialId: session.credentialId,
+          encrypt: (plaintext) => session.encrypt(plaintext),
+          decryptJson: <T>(blob: string) => session.decryptJson<T>(blob),
+          end: () => session.close(),
+        };
+      }
+      set({ vault });
+      return vault;
+    } catch (error) {
+      set({ error: describe(error) });
+      throw error;
+    } finally {
+      set({ busy: null });
+    }
+  },
+
+  closeVault() {
+    get().vault?.end();
+    set({ vault: null });
+  },
+
   endSessions() {
-    const { fan, doors } = get();
+    const { fan, doors, vault } = get();
     fan?.end();
     for (const d of Object.values(doors)) d.end();
-    set({ fan: null, doors: {} });
+    vault?.end();
+    set({ fan: null, doors: {}, vault: null });
   },
 
   forgetDevice() {

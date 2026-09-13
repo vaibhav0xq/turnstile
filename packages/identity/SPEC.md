@@ -1,6 +1,6 @@
-# @turnstile/identity — specification v1.1
+# @turnstile/identity — specification v1.2
 
-Status: **frozen** (v1 12 Sep 2026; v1.1 additive, same day — §4.2 wording, §4.5 `BindDoorKey`). Everything below
+Status: **frozen** (v1 12 Sep 2026; v1.1 additive, same day — §4.2 wording, §4.5 `BindDoorKey`; v1.2 additive, 13 Sep — §4.6 passport sync). Everything below
 is pinned by `vectors/kdf.json`, `vectors/entry.json` and `vectors/bind.json`; `pnpm vectors:check` fails in CI
 when the code drifts, and `packages/contracts` re-verifies the same vectors on-chain (`forge test`). A change to any constant, KDF step, blob layout or
 typed-data field is a **spec revision**: bump the `v1` in the affected label, regenerate the vectors, and
@@ -151,6 +151,22 @@ key from `vectors/kdf.json`; Foundry verifies it through `checkInWithBind` toget
 How the fallback code carries `(doorKey, deadline, bindSignature)` next to the `TS1` entry code is defined with
 the gate app (`TS1B…`, not yet frozen).
 
+### 4.6 Passport sync (v1.2)
+
+A blob is useless if it only lives on the device that wrote it, so a fan may park it with a store — the
+relayer exposes `PUT/GET /api/passport/:address`. The store holds ciphertext and a watermark, nothing else.
+
+```
+message  = "turnstile/passport-sync/v1" ‖ "\n" ‖ lowercase(address) ‖ "\n" ‖ keccak256(utf8(blob)) ‖ "\n" ‖ issuedAt
+sig      = EIP-191 personal_sign(message) by the account key of `address`
+write    = { blob, issuedAt, signature }   // blob "" clears the passport
+```
+
+The store accepts a write iff the recovered signer is `address`, `|issuedAt − now| ≤ 5 min`, `issuedAt` is
+greater than the stored watermark (replaying an older capture cannot roll a passport back — a cleared
+passport keeps its watermark as a tombstone), and the blob is at most 16 KiB and shaped as §4.4. Reads are
+public: a blob reveals nothing without the passkey, and the address already links tickets on-chain.
+
 ## 5. Prompt budget and sessions
 
 Every exported ceremony is **one** platform prompt (two at `createIdentity` on authenticators without
@@ -190,7 +206,9 @@ it and throws `SESSION_EXPIRED`. `withAccountSession` applies both rules and map
 ## 7. Versioning
 
 Revision log: **v1** (12 Sep 2026) initial freeze. **v1.1** (12 Sep 2026) additive: §4.2 on-chain tolerance
-note, §4.5 `BindDoorKey`, `vectors/bind.json`; no derived key, label or existing vector changed.
+note, §4.5 `BindDoorKey`, `vectors/bind.json`; no derived key, label or existing vector changed. **v1.2** (13 Sep 2026)
+additive: §4.6 passport sync — an EIP-191 message and store rules around the unchanged §4.4 blob; no key
+material, label or vector touched.
 
 Labels carry the version (`…/v1`). A revision that must change a derived key introduces `v2` labels beside
 `v1`, keeps `v1` derivation available for migration, and documents the migration here. The EIP-712 domain

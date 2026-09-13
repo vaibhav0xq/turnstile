@@ -19,7 +19,9 @@ const qr = await door.code({ eventId, tokenId }); // "TS1|10143|0x…|1|42|59640
 
 // Passport: one prompt → AES-GCM key; blobs are safe to store anywhere.
 const vault = await openVault({ rpId, expectCredentialId: credential.credentialId });
-const blob = await vault.encrypt({ stubs: [...] });
+const blob = await vault.encrypt({ name: "Vee", notes: { "10143:0xevent:42": { text: "…", at } } });
+// Park it with a store the fan cannot be locked out of: the account key signs for the write (SPEC §4.6).
+const signature = await account.signMessage({ message: passportSyncMessage(account.address, blob, Date.now()) });
 ```
 
 Pure sub-modules for the gate, relayer and contracts (no WebAuthn): `@turnstile/identity/entry`,
@@ -42,6 +44,7 @@ src/constants.ts   frozen labels, salts, TTLs, chain ids
 src/kdf.ts         PRF output → account / door / vault keys
 src/entry.ts       EIP-712 Entry, slots, TS1 entry-code string
 src/vault.ts       passport blob format (AES-256-GCM)
+src/passport.ts    passport sync message + blob shape check (SPEC §4.6)
 src/identity.ts    ceremonies + sessions (Mera wrapper)
 src/errors.ts      IdentityError, codes, product copy
 test/              fake authenticator + flows; vector pins

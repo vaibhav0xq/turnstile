@@ -4,7 +4,7 @@ import { type Address, createWalletClient, encodeFunctionData, type Hex, http, p
 import { chainFor, publicClientFor } from "../chain/client";
 import type { AppConfig, EventInfo } from "../chain/config";
 import type { FanSession } from "../identity/store";
-import { api } from "../lib/api";
+import { ApiError, api } from "../lib/api";
 
 export interface RelayReceipt {
   hash: Hex;
@@ -235,4 +235,27 @@ export function gateCheckIn(code: string, token?: string): Promise<GateResult> {
     body: JSON.stringify({ code }),
     ...(token ? { headers: { authorization: `Bearer ${token}` } } : {}),
   });
+}
+
+// The private passport (identity SPEC §4.6): ciphertext parked with the relayer, written with the account key.
+export interface PassportRecord {
+  blob: string;
+  issuedAt: number;
+  updatedAt: number;
+}
+
+export async function getPassport(address: Address): Promise<PassportRecord | null> {
+  try {
+    return await api<PassportRecord>(`/api/passport/${address}`);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return null;
+    throw error;
+  }
+}
+
+export function putPassport(
+  address: Address,
+  body: { blob: string; issuedAt: number; signature: Hex },
+): Promise<{ ok: true; updatedAt: number; cleared: boolean }> {
+  return api(`/api/passport/${address}`, { method: "PUT", body: JSON.stringify(body) });
 }

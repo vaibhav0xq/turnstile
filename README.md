@@ -17,16 +17,17 @@ passkey ──PRF──┬── account namespace ──▶ secp256k1 account (
 - **Buy** — one passkey prompt opens a 15-minute session; the relayer sponsors the calls.
 - **Enter** — a fresh biometric at the door derives a key that can only produce entry codes for that event.
   The code rotates every 30 s; `checkIn` consumes it once, on-chain.
-- **Passport** — stubs and memories are encrypted client-side; the key exists only in memory and is
-  re-derived on any device from the passkey alone (stateless recovery, proven on real devices).
+- **Passport** — a name and a line about each night, encrypted client-side with the vault key and parked with
+  the relayer as ciphertext it cannot read (writes are signed by the account key). The key exists only in
+  memory and is re-derived on any device from the passkey alone: wipe the phone, sign in, it is all back.
 
 ## Repository
 
 ```
 apps/web                 city → venue → seat → ticket → door, resale, organiser (React 19 / R3F / Vite) — ✅ on anvil
-apps/relayer             sponsored ERC-2771 calls, gate verifier + checkIn, testnet drip (Hono) — ✅ + live smoke
+apps/relayer             sponsored ERC-2771 calls, gate verifier + checkIn, testnet drip, passport store (Hono) — ✅ + live smoke
 apps/gate                door scanner — lives in apps/web at /gate/:address
-packages/identity        passkey ceremonies, KDFs, EIP-712 Entry + BindDoorKey, vault — ✅ 0.2.0, 45 tests
+packages/identity        passkey ceremonies, KDFs, EIP-712 Entry + BindDoorKey, vault + passport sync — ✅ 0.2.0, 48 tests
 packages/contracts       TurnstileFactory / TurnstileEvent (Foundry)   — ✅ implemented, 62 tests, not deployed
 packages/indexer         Envio HyperIndex: events, seats, fans, door feed — ✅ handlers + 5 tests, awaits testnet
 spike/                   Mera 0.2.0 spike (17 vectors, device pages)   — frozen evidence

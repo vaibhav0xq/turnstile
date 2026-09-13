@@ -8,6 +8,16 @@ import { formatCountdown, formatMon, shortAddress } from "../../lib/format";
 import { useDirector } from "../../scene/director";
 import { Button, Dot, Kicker, Panel, Spinner } from "../../ui/primitives";
 import { buildLayout, seatLabel } from "../../venues/layout";
+import { usePassport } from "../passport";
+import {
+  NAME_MAX,
+  NOTE_MAX,
+  noteKey,
+  type Passport,
+  samePassport,
+  withName,
+  withNote,
+} from "../passport-model";
 
 export function Me({ config }: { config: AppConfig | undefined }) {
   const showCity = useDirector((s) => s.showCity);
@@ -21,6 +31,8 @@ export function Me({ config }: { config: AppConfig | undefined }) {
   const endSessions = useIdentity((s) => s.endSessions);
   const forgetDevice = useIdentity((s) => s.forgetDevice);
   const setDevSeed = useIdentity((s) => s.setDevSeed);
+  const passport = usePassport();
+  const [draft, setDraft] = useState<Passport | null>(null);
   const [, tick] = useState(0);
   useEffect(() => {
     showCity();
@@ -31,6 +43,12 @@ export function Me({ config }: { config: AppConfig | undefined }) {
   }, []);
   const live = fan && fan.expiresAt > Date.now() ? fan : null;
   const address = live?.address ?? knownAddress;
+  const vaultOpen = passport.status === "open" || passport.status === "saving";
+  // The draft follows the decrypted passport: (re)opened → reset; closed → dropped.
+  useEffect(() => {
+    setDraft(passport.data);
+  }, [passport.data]);
+  const dirty = Boolean(draft && passport.data && !samePassport(draft, passport.data));
 
   const tickets = useQueries({
     queries: (config?.events ?? []).map((event) => ({
@@ -42,10 +60,16 @@ export function Me({ config }: { config: AppConfig | undefined }) {
   });
 
   return (
-    <div className="overlay flex items-end justify-start p-4 sm:items-center sm:justify-center sm:p-6">
-      <Panel className="glass-solid fade-up w-full max-w-md p-5">
+    <div className="overlay flex items-end justify-start p-4 pt-20 sm:items-start sm:justify-center sm:p-6 sm:pt-24">
+      <Panel className="glass-solid fade-up scrollbar-none max-h-[calc(100dvh-6rem)] w-full max-w-md overflow-y-auto p-5 sm:max-h-[calc(100dvh-7.5rem)]">
         <Kicker>Passport</Kicker>
-        <div className="display mt-1 text-3xl">{address ? shortAddress(address, 6) : "No passkey yet"}</div>
+        <div className="display mt-1 text-3xl" data-testid="passport-title">
+          {vaultOpen && passport.data?.name
+            ? passport.data.name
+            : address
+              ? shortAddress(address, 6)
+              : "No passkey yet"}
+        </div>
         <div className="mono mt-1 text-xs text-muted">
           {live
             ? `session live · ${formatCountdown(live.expiresAt - Date.now())} left`
@@ -103,6 +127,73 @@ export function Me({ config }: { config: AppConfig | undefined }) {
           </div>
         ) : null}
 
+        <div className="mt-6 rounded-xl border border-line p-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <Kicker>Private vault</Kicker>
+              <div className="mono mt-0.5 text-[11px] text-muted">
+                {vaultOpen
+                  ? `open · ${passport.syncedAt ? `synced ${new Date(passport.syncedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "nothing stored yet"}`
+                  : "locked · AES-256-GCM under your passkey's vault key"}
+              </div>
+            </div>
+            {vaultOpen ? (
+              <Button className="!min-h-9 px-3 text-xs" onClick={passport.close} data-testid="passport-lock">
+                Lock
+              </Button>
+            ) : (
+              <Button
+                variant="primary"
+                className="!min-h-9 whitespace-nowrap px-3 text-xs"
+                onClick={() => void passport.open().catch(() => undefined)}
+                disabled={passport.status === "opening" || busy !== null}
+                data-testid="passport-open"
+              >
+                {passport.status === "opening" ? <Spinner /> : null} Open vault
+              </Button>
+            )}
+          </div>
+          {vaultOpen && draft ? (
+            <div className="mt-3">
+              <input
+                className="field"
+                value={draft.name}
+                maxLength={NAME_MAX}
+                placeholder="What should this passport call you?"
+                onChange={(e) => setDraft(withName(draft, e.target.value))}
+                aria-label="Passport name"
+                data-testid="passport-name"
+              />
+              <div className="mt-2 flex items-center gap-2">
+                <Button
+                  variant="primary"
+                  className="!min-h-9 px-3 text-xs"
+                  disabled={!dirty || passport.status === "saving"}
+                  onClick={() => void passport.save(draft).catch(() => undefined)}
+                  data-testid="passport-save"
+                >
+                  {passport.status === "saving" ? <Spinner /> : null} Save passport
+                </Button>
+                <span className="text-[11px] text-muted">
+                  {dirty
+                    ? "Encrypted here, signed by your account key, stored as ciphertext."
+                    : "Up to date."}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <p className="mt-2 text-xs text-muted">
+              A name and a line about each night, readable only after a passkey prompt — on any device, after
+              a wipe. The relayer keeps the ciphertext and cannot open it.
+            </p>
+          )}
+          {passport.error ? (
+            <div className="mt-2 text-xs text-red" data-testid="passport-error">
+              {passport.error}
+            </div>
+          ) : null}
+        </div>
+
         <div className="mt-6">
           <Kicker>Your tickets</Kicker>
           {!address ? (
@@ -125,11 +216,12 @@ export function Me({ config }: { config: AppConfig | undefined }) {
               return mine.map((s) => {
                 const spec = layout.byId.get(s.id);
                 const tier = tierForSeat(event, s.id);
+                const key = config ? noteKey(config.chainId, event.address, s.id) : "";
                 return (
-                  <li key={`${event.address}-${s.id}`}>
+                  <li key={`${event.address}-${s.id}`} className="rounded-xl border border-line">
                     <Link
                       to={`/t/${event.address}/${s.id}`}
-                      className="flex items-center justify-between gap-3 rounded-xl border border-line px-3 py-2 hover:bg-ink-2"
+                      className="flex items-center justify-between gap-3 rounded-xl px-3 py-2 hover:bg-ink-2"
                     >
                       <div>
                         <div className="text-sm">{event.name}</div>
@@ -150,6 +242,21 @@ export function Me({ config }: { config: AppConfig | undefined }) {
                         }
                       />
                     </Link>
+                    {vaultOpen && draft ? (
+                      <div className="border-line border-t px-3 py-2">
+                        <input
+                          className="field !min-h-8 text-xs"
+                          value={draft.notes[key]?.text ?? ""}
+                          maxLength={NOTE_MAX}
+                          placeholder={
+                            s.checkedInAt > 0 ? "How was it? (private)" : "A note to yourself (private)"
+                          }
+                          onChange={(e) => setDraft(withNote(draft, key, e.target.value, Date.now()))}
+                          aria-label={`Note for ${event.name} seat ${s.id}`}
+                          data-testid={`passport-note-${s.id}`}
+                        />
+                      </div>
+                    ) : null}
                   </li>
                 );
               });

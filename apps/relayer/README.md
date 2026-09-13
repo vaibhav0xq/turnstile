@@ -54,11 +54,22 @@ curl 'localhost:8787/api/gate/lookup?code=TS1%7C...'
 curl -X POST localhost:8787/api/gate/check-in -H 'content-type: application/json' -d '{"code":"TS1|..."}'
 curl -X POST localhost:8787/api/drip -H 'content-type: application/json' \
   -d '{"to":"0x90F79bf6EB2c4f870365E785982E1f101E93b906"}'
+curl localhost:8787/api/passport/0x90F79bf6EB2c4f870365E785982E1f101E93b906          # → { blob, issuedAt, updatedAt } | 404
+curl -X PUT localhost:8787/api/passport/0x90F7… -H 'content-type: application/json' \
+  -d '{"blob":"v1.<iv>.<ct>","issuedAt":1789300000000,"signature":"0x…"}'
 ```
 
 All responses are JSON and all big integers are decimal strings. Gate check-in accepts
 `Authorization: Bearer <GATE_TOKEN>` when configured. Events are discovered from the factory
 (`eventCount` / `eventAt`), so one published from the organiser page shows up without a restart.
+
+The passport store (identity SPEC §4.6) holds each fan's private passport as the ciphertext blob their
+vault key produced — the relayer cannot read it. A write must carry an EIP-191 signature from the account
+key over `turnstile/passport-sync/v1 \n address \n keccak256(blob) \n issuedAt`, `issuedAt` within five
+minutes and newer than the stored watermark (`409 REPLAYED` otherwise), and a blob of at most 16 KiB; an
+empty blob clears the passport but keeps the watermark. Records live in `PASSPORT_FILE` (default
+`.data/passports-<chainId>.json`, git-ignored); reads are public, since a blob says nothing without the
+passkey.
 
 | Relayed action | Forward request gas | Transaction gas |
 | --- | ---: | ---: |

@@ -8,7 +8,7 @@ Fiber, with the passkey ceremonies from `@turnstile/identity` and the sponsored 
 /e/:address       the room — pick a seat, one passkey prompt, seat minted + door key bound
 /t/:address/:id   the ticket — rotating 30 s entry code (QR + text), "view from your seat", sell / pass on
 /gate/:address    the door — camera scanner (or paste a code) → relayer verifies → checkIn on-chain
-/me               the passport — session, tickets across events, "forget this device" (stateless test)
+/me               the passport — session, tickets across events, the private vault, "forget this device"
 /organise         the organiser — publish an event from your passkey, see sold / inside, copy the door link
 ```
 
@@ -23,6 +23,16 @@ stalls, circle, balcony — numbers seats 1…, 1001…, 2001… per tier, grant
 `GATE_ROLE` so `/gate/<event>` works from the first minute, and points `baseURI` at the relayer's metadata
 (`/api/events/<eventId>/tickets/`). The call is simulated first, so a bad configuration comes back by name
 (`InvalidConfig`, `InvalidTiers`) instead of as a failed transaction.
+
+The private vault on `/me` is the third key in use. *Open vault* is one more passkey prompt; it re-derives
+the AES-256-GCM passport key (`packages/identity/SPEC.md` §2.3), fetches the blob the relayer holds for
+this account (`GET /api/passport/:address`) and decrypts it in memory: a name the passport calls you and a
+private line under each ticket. *Save passport* encrypts the new plaintext, signs
+`turnstile/passport-sync/v1 · address · keccak256(blob) · issuedAt` with the account key and `PUT`s it back
+(SPEC §4.6) — the relayer checks the signature and the watermark and stores ciphertext it cannot open. The
+stateless test is the point: *Forget this device*, sign in on anything, open the vault, and the same name
+and notes come back. `/me` also shows every seat bound to the passkey across events, with a dot per state
+(green inside, cyan bound, amber not yet bound).
 
 One device is enough to walk the whole loop: the ticket's *Walk up to the door →* opens
 `/gate/<event>#code=<current code>` — the door view reads the code once, drops it from the URL, looks it up

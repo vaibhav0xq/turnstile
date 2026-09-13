@@ -89,6 +89,13 @@ export const settings = {
   port: Number(process.env["PORT"] || "8787"),
   /** Optional: serve the built web app (apps/web/dist) from this process, so one deployment is enough. */
   staticDir: process.env["STATIC_DIR"] ? resolve(process.cwd(), process.env["STATIC_DIR"]) : null,
+  /** Where encrypted passports live (identity SPEC §4.6). `PASSPORT_FILE=` (empty) keeps them in memory. */
+  passportFile:
+    process.env["PASSPORT_FILE"] === undefined
+      ? resolve(appDir, `.data/passports-${chainId}.json`)
+      : process.env["PASSPORT_FILE"]
+        ? resolve(process.cwd(), process.env["PASSPORT_FILE"])
+        : null,
 };
 
 export async function verifyChain(): Promise<void> {
