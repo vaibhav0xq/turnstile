@@ -11,6 +11,7 @@ import { SeatCardLayer } from "../ui/SeatCard";
 import { ConnectionNotice, Curtain, ErrorToast, Readout, TopBar } from "../ui/Shell";
 import { buildLayout } from "../venues/layout";
 import { useOrganise } from "./organise";
+import { usePassport } from "./passport";
 import { Event } from "./routes/Event";
 import { Gate } from "./routes/Gate";
 import { Landing } from "./routes/Landing";
@@ -46,9 +47,15 @@ function Frame() {
     installTapCounter();
     if (import.meta.env.DEV) {
       // Dev probe for scripts/shoot.mjs: drive sign-in / purchase from --eval.
-      const probe = window as unknown as { __identity?: unknown; __organise?: unknown; __app?: unknown };
+      const probe = window as unknown as {
+        __identity?: unknown;
+        __organise?: unknown;
+        __passport?: unknown;
+        __app?: unknown;
+      };
       probe.__identity = useIdentity;
       probe.__organise = useOrganise;
+      probe.__passport = usePassport;
       probe.__app = { queryClient, config: () => queryClient.getQueryData(configQueryKey) };
     }
   }, []);

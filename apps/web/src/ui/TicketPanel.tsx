@@ -2,6 +2,8 @@ import { SLOT_MS } from "@turnstile/identity";
 import QRCode from "qrcode";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router";
+import { usePassport } from "../app/passport";
+import { noteKey } from "../app/passport-model";
 import { type AppConfig, type EventInfo, tierForSeat } from "../chain/config";
 import type { SeatState } from "../chain/seats";
 import { type DoorKeySession, toEventRef, useIdentity } from "../identity/store";
@@ -67,6 +69,8 @@ export function TicketPanel({ config, event, layout, tokenId, state, onBind, bin
   const viewOverview = useDirector((s) => s.viewOverview);
   const [big, setBig] = useState(false);
   const ref = useMemo(() => toEventRef(config.chainId, event.address), [config.chainId, event.address]);
+  // The private line from the passport, only while the vault is open on this device (never fetched here).
+  const note = usePassport((s) => s.data?.notes[noteKey(config.chainId, event.address, tokenId)]?.text);
 
   useEffect(() => {
     setDoor(liveDoor(ref));
@@ -94,6 +98,11 @@ export function TicketPanel({ config, event, layout, tokenId, state, onBind, bin
           <div className="mono mt-1 text-xs text-muted">
             {tier?.name} · {formatDate(event.startsAt)}
           </div>
+          {note ? (
+            <div className="mt-2 text-sm italic text-paper/80" data-testid="ticket-note">
+              “{note}”<span className="mono ml-2 text-[10px] not-italic text-muted">private</span>
+            </div>
+          ) : null}
         </div>
         <Dot tone={checkedIn ? "green" : bound ? "cyan" : "amber"} />
       </div>

@@ -73,6 +73,7 @@ function EventCard({
 }) {
   const prices = event.tiers.map(tierPrice);
   const min = prices.reduce((a, b) => (a < b ? a : b), prices[0] ?? 0n);
+  const mixed = min === 0n && prices.some((p) => p > 0n);
   const left = event.capacity - event.sold;
   return (
     <button
@@ -91,7 +92,9 @@ function EventCard({
         </div>
       </div>
       <div className="flex flex-col items-end">
-        <span className="mono text-xs">{min === 0n ? "Free" : `from ${formatMon(min)}`}</span>
+        <span className="mono text-xs">
+          {min === 0n ? (mixed ? "from Free" : "Free") : `from ${formatMon(min)}`}
+        </span>
         <span className="mono text-[11px] text-amber opacity-0 transition-opacity group-hover:opacity-100">
           enter →
         </span>
