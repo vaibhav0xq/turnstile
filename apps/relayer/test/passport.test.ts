@@ -20,11 +20,11 @@ async function write(store: PassportStore, signer = owner, blob = BLOB, issuedAt
 describe("passport store", () => {
   it("stores a blob signed by the account and serves it back", async () => {
     const store = new PassportStore(null);
-    assert.equal(store.get(owner.address), undefined);
+    assert.equal(await store.get(owner.address), undefined);
     const result = await write(store);
     assert.equal(result.status, 200, JSON.stringify(result.body));
-    assert.deepEqual(store.get(owner.address), { blob: BLOB, issuedAt: NOW, updatedAt: NOW });
-    assert.equal(store.get(owner.address.toLowerCase()), store.get(owner.address));
+    assert.deepEqual(await store.get(owner.address), { blob: BLOB, issuedAt: NOW, updatedAt: NOW });
+    assert.deepEqual(await store.get(owner.address.toLowerCase()), await store.get(owner.address));
   });
 
   it("rejects another key, a tampered blob, a stale clock and a replay", async () => {
@@ -67,12 +67,12 @@ describe("passport store", () => {
       const store = new PassportStore(file);
       assert.equal((await write(store)).status, 200);
       assert.equal((await write(store, owner, "", NOW + 1)).status, 200);
-      assert.equal(store.get(owner.address), undefined, "cleared passports read as absent");
+      assert.equal(await store.get(owner.address), undefined, "cleared passports read as absent");
       const again = new PassportStore(file);
-      assert.equal(again.size, 1, "the tombstone persisted");
+      assert.equal(await again.count(), 1, "the tombstone persisted");
       assert.equal((await write(again, owner, BLOB, NOW)).status, 409, "an old capture cannot resurrect it");
       assert.equal((await write(again, owner, BLOB, NOW + 2)).status, 200);
-      assert.equal(new PassportStore(file).get(owner.address)?.blob, BLOB);
+      assert.equal((await new PassportStore(file).get(owner.address))?.blob, BLOB);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }

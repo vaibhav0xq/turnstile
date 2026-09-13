@@ -29,6 +29,9 @@ importers:
       hono:
         specifier: ^4.13.7
         version: 4.13.7
+      postgres:
+        specifier: ^3.4.9
+        version: 3.4.9
       viem:
         specifier: ^2.56.5
         version: 2.56.5(typescript@7.0.2)(zod@3.25.76)
@@ -2193,6 +2196,10 @@ packages:
 
   postgres@3.4.8:
     resolution: {integrity: sha512-d+JFcLM17njZaOLkv6SCev7uoLaBtfK86vMUXhW1Z4glPWh4jozno9APvW/XKFJ3CCxVoC7OL38BqRydtu5nGg==}
+    engines: {node: '>=12'}
+
+  postgres@3.4.9:
+    resolution: {integrity: sha512-GD3qdB0x1z9xgFI6cdRD6xu2Sp2WCOEoe3mtnyB5Ee0XrrL5Pe+e4CCnJrRMnL1zYtRDZmQQVbvOttLnKDLnaw==}
     engines: {node: '>=12'}
 
   postprocessing@6.39.5:
@@ -4481,6 +4488,8 @@ snapshots:
       source-map-js: 1.2.1
 
   postgres@3.4.8: {}
+
+  postgres@3.4.9: {}
 
   postprocessing@6.39.5(three@0.186.0):
     dependencies:

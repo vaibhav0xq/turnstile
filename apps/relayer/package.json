@@ -13,13 +13,15 @@
     "start": "node --env-file-if-exists=.env src/index.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --env-file-if-exists=.env --test --test-reporter=spec \"test/**/*.test.ts\"",
-    "smoke": "node scripts/smoke.mjs"
+    "smoke": "node scripts/smoke.mjs",
+    "db:setup": "node --env-file-if-exists=.env scripts/db-setup.mjs"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.1",
     "@turnstile/contracts": "workspace:*",
     "@turnstile/identity": "workspace:*",
     "hono": "^4.13.7",
+    "postgres": "^3.4.9",
     "viem": "^2.56.5"
   },
   "devDependencies": {

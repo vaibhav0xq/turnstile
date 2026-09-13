@@ -20,6 +20,8 @@ rotating entry codes and submits gate check-ins, provides a development faucet, 
 | `CORS_ORIGIN` | no | `*` or comma-separated origins |
 | `PORT` | no | HTTP port, default 8787 |
 | `STATIC_DIR` | no | Directory of a built `apps/web` to serve with SPA fallback (one deployable) |
+| `DATABASE_URL` | no | Postgres for the passport store; unset = the JSON file below |
+| `PASSPORT_FILE` | no | Passport JSON file without Postgres, default `.data/passports-<chainId>.json`; empty = memory only |
 
 Copy `.env.example` to `.env` and provide keys. For local Anvil, run `pnpm dev:chain` at the repository
 root (which deploys and seeds events), then `pnpm --filter @turnstile/relayer dev`.
@@ -67,9 +69,12 @@ The passport store (identity SPEC §4.6) holds each fan's private passport as th
 vault key produced — the relayer cannot read it. A write must carry an EIP-191 signature from the account
 key over `turnstile/passport-sync/v1 \n address \n keccak256(blob) \n issuedAt`, `issuedAt` within five
 minutes and newer than the stored watermark (`409 REPLAYED` otherwise), and a blob of at most 16 KiB; an
-empty blob clears the passport but keeps the watermark. Records live in `PASSPORT_FILE` (default
-`.data/passports-<chainId>.json`, git-ignored); reads are public, since a blob says nothing without the
-passkey.
+empty blob clears the passport but keeps the watermark. Records live in Postgres when `DATABASE_URL` is set
+— the watermark check runs inside the upsert, so several relayer processes and a host without a durable
+disk are fine — and otherwise in `PASSPORT_FILE` (default `.data/passports-<chainId>.json`, git-ignored).
+The schema is `db/schema.sql`; apply it once with `pnpm --filter @turnstile/relayer db:setup` — the relayer
+refuses to start against a database without the table and never runs DDL itself. Reads are public, since a
+blob says nothing without the passkey.
 
 | Relayed action | Forward request gas | Transaction gas |
 | --- | ---: | ---: |

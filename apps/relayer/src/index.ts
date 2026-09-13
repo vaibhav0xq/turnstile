@@ -18,6 +18,7 @@ import { drip } from "./drip.ts";
 import { findEvent, getEvents, tierFor } from "./events.ts";
 import { checkIn, lookupEntry } from "./gate.ts";
 import { PassportStore } from "./passport.ts";
+import { PostgresPassportBackend } from "./passport-postgres.ts";
 import { RateLimiter } from "./ratelimit.ts";
 import { relay, relayGas } from "./relay.ts";
 
@@ -40,7 +41,9 @@ const app = new Hono();
 const relayLimit = new RateLimiter(30, 60_000);
 const dripIpLimit = new RateLimiter(10, 60_000);
 const passportLimit = new RateLimiter(20, 60_000);
-const passports = new PassportStore(settings.passportFile);
+const passports = new PassportStore(
+  settings.databaseUrl ? await PostgresPassportBackend.open(settings.databaseUrl) : settings.passportFile,
+);
 
 app.use(
   "*",
@@ -143,10 +146,10 @@ app.post("/api/gate/check-in", async (context) => {
 });
 
 // The private passport: ciphertext in, ciphertext out. Writes carry the account key's signature (SPEC §4.6).
-app.get("/api/passport/:address", (context) => {
+app.get("/api/passport/:address", async (context) => {
   const address = context.req.param("address");
   if (!isAddress(address)) return json({ error: { code: "BAD_ADDRESS", message: "Not an address" } }, 400);
-  const record = passports.get(address);
+  const record = await passports.get(address);
   if (!record)
     return json({ error: { code: "NOT_FOUND", message: "No passport stored for this account" } }, 404);
   return json({ blob: record.blob, issuedAt: record.issuedAt, updatedAt: record.updatedAt });
@@ -211,5 +214,6 @@ app.onError((error) => {
 });
 
 serve({ fetch: app.fetch, port: settings.port }, (info) => {
-  console.log(`relayer listening on :${info.port} chain ${chainId}`);
+  const store = settings.databaseUrl ? "postgres" : settings.passportFile ? "file" : "memory";
+  console.log(`relayer listening on :${info.port} chain ${chainId} passports ${store}`);
 });

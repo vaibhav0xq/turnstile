@@ -89,7 +89,9 @@ export const settings = {
   port: Number(process.env["PORT"] || "8787"),
   /** Optional: serve the built web app (apps/web/dist) from this process, so one deployment is enough. */
   staticDir: process.env["STATIC_DIR"] ? resolve(process.cwd(), process.env["STATIC_DIR"]) : null,
-  /** Where encrypted passports live (identity SPEC §4.6). `PASSPORT_FILE=` (empty) keeps them in memory. */
+  /** Postgres for the passport store; unset = the JSON file below. */
+  databaseUrl: process.env["DATABASE_URL"] || null,
+  /** Where encrypted passports live without Postgres (identity SPEC §4.6). `PASSPORT_FILE=` keeps them in memory. */
   passportFile:
     process.env["PASSPORT_FILE"] === undefined
       ? resolve(appDir, `.data/passports-${chainId}.json`)
