@@ -1,13 +1,16 @@
 // The Postgres backend against a real database: same contract as the file backend, plus the write-side
-// watermark check that makes two relayer processes safe. Skipped without DATABASE_URL (CI has none).
+// watermark check that makes two relayer processes safe. Runs against TEST_DATABASE_URL, else DATABASE_URL,
+// and is skipped without either (CI has none). The backend has no delete on purpose, so the test removes
+// its own row through a plain connection afterwards and leaves the database as it found it.
 import assert from "node:assert/strict";
 import { after, before, describe, it } from "node:test";
 import { passportSyncMessage } from "@turnstile/identity";
+import postgres from "postgres";
 import { privateKeyToAccount } from "viem/accounts";
 import { PassportStore } from "../src/passport.ts";
 import { PostgresPassportBackend } from "../src/passport-postgres.ts";
 
-const url = process.env["DATABASE_URL"];
+const url = process.env["TEST_DATABASE_URL"] || process.env["DATABASE_URL"];
 // A throwaway account per run so parallel or repeated runs never collide on the primary key.
 const owner = privateKeyToAccount(
   `0x${Array.from({ length: 64 }, () => "0123456789abcdef"[Math.floor(Math.random() * 16)]).join("")}`,
@@ -27,6 +30,12 @@ describe("passport store on postgres", { skip: url ? false : "DATABASE_URL not s
   });
   after(async () => {
     await backend.close();
+    const sql = postgres(url as string, { max: 1 });
+    try {
+      await sql`delete from passports where address = ${owner.address}`;
+    } finally {
+      await sql.end();
+    }
   });
 
   it("stores, serves, clears and refuses replays across store instances", async () => {
