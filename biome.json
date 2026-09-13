@@ -12,7 +12,9 @@
       "!**/node_modules",
       "!spike",
       "!**/pnpm-lock.yaml",
-      "!**/package-lock.json"
+      "!**/package-lock.json",
+      "!packages/contracts/broadcast",
+      "!packages/contracts/deployments/*.json"
     ]
   },
   "formatter": {

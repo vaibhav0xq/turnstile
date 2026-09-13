@@ -107,7 +107,13 @@ Rehearsed on a fork of the live testnet (`anvil --fork-url https://testnet-rpc.m
 
 | Network | Forwarder | Implementation | Factory | Block | Verified |
 | --- | --- | --- | --- | --- | --- |
-| Monad testnet (10143) | — | — | — | — | — |
+| Monad testnet (10143) | [`0xf6b8b8E2cF881b01fFbeb3e97004591201333F34`](https://testnet.monadvision.com/address/0xf6b8b8E2cF881b01fFbeb3e97004591201333F34) | [`0x7e17B9EE54e2F2058950181B09794590b87DFa3f`](https://testnet.monadvision.com/address/0x7e17B9EE54e2F2058950181B09794590b87DFa3f) | [`0x5C6e597E96cBDf408537611554E2a53Da75042B2`](https://testnet.monadvision.com/address/0x5C6e597E96cBDf408537611554E2a53Da75042B2) | 62 312 597 – 62 312 604 | Sourcify runtime match ×3 (MonadVision), 14 Sep 2026 |
+
+Seed events (`CreateDemoEvent.s.sol`, `START_IN` 60 d, gate `0x6FA96BB331FcC7bb2701eF611C34705dc0fdF9CF`):
+`eventId 1` Neon Night at Metropolis `0x79a3e41Cbb8acd8c9A1A61a929bdBa302d3121B5` (block 62 312 967),
+`eventId 2` The Metropolis Players: Act III `0x9c4b7a654680b5a4d382b22bdAA10FB05DC23029` (block 62 312 969).
+Broadcasts with hashes and receipts: `broadcast/*/10143/`. Gas actually charged (Monad bills the limit):
+deploy 7 155 386 gas ≈ 0.737 MON, seeds 1 671 499 gas ≈ 0.172 MON, all at 103 gwei.
 
 ## Gas (max of successful calls, `forge test --gas-report`)
 

@@ -28,7 +28,7 @@ apps/web                 city → venue → seat → ticket → door, resale, or
 apps/relayer             sponsored ERC-2771 calls, gate verifier + checkIn, testnet drip, passport store (Hono) — ✅ + live smoke
 apps/gate                door scanner — lives in apps/web at /gate/:address
 packages/identity        passkey ceremonies, KDFs, EIP-712 Entry + BindDoorKey, vault + passport sync — ✅ 0.2.0, 51 tests
-packages/contracts       TurnstileFactory / TurnstileEvent (Foundry)   — ✅ implemented, 62 tests, not deployed
+packages/contracts       TurnstileFactory / TurnstileEvent (Foundry)   — ✅ 62 tests, live on Monad testnet
 packages/indexer         Envio HyperIndex: events, seats, fans, door feed — ✅ handlers + 5 tests, awaits testnet
 spike/                   Mera 0.2.0 spike (17 vectors, device pages)   — frozen evidence
 docs/                    spike report, device matrix, device reports
@@ -77,10 +77,11 @@ screenshot tooling.
 
 | Chain | Forwarder | Factory | Implementation | Events |
 | --- | --- | --- | --- | --- |
-| Monad testnet (10143) | _pending_ | _pending_ | _pending_ | _pending_ |
+| Monad testnet (10143) | [`0xf6b8…3F34`](https://testnet.monadvision.com/address/0xf6b8b8E2cF881b01fFbeb3e97004591201333F34) | [`0x5C6e…42B2`](https://testnet.monadvision.com/address/0x5C6e597E96cBDf408537611554E2a53Da75042B2) | [`0x7e17…Fa3f`](https://testnet.monadvision.com/address/0x7e17B9EE54e2F2058950181B09794590b87DFa3f) | club [`0x79a3…21B5`](https://testnet.monadvision.com/address/0x79a3e41Cbb8acd8c9A1A61a929bdBa302d3121B5) · theatre [`0x9c4b…3029`](https://testnet.monadvision.com/address/0x9c4b7a654680b5a4d382b22bdAA10FB05DC23029) |
 
-`packages/contracts/deployments/<chainId>.json` is the source of truth for the relayer and the web app;
-the testnet file lands here with its broadcast once the deployer wallets are funded (`docs/deploy-monad-testnet.md`).
+Deployed 14 Sep 2026 from block 62 312 597, all three contracts verified on MonadVision (Sourcify, runtime
+match). `packages/contracts/deployments/10143.json` is the source of truth for the relayer, the indexer and
+the web app — read it, do not copy addresses around. Runbook and gas figures: `docs/deploy-monad-testnet.md`.
 
 The spike is standalone: `cd spike && npm ci && npm run build && npm run verify` (headless Chromium, 17 checks).
 
@@ -107,7 +108,8 @@ Envio indexer written and tested in-process (events, seats, fans, live feed; the
 from `deployments/`); it goes live on Envio's hosted service once the testnet factory exists.
 Judge mode (guided two-minute run, finale on chain truth) and SPEC v1.3's compact `TS2:` entry code (the
 ticket QR drops from 57 to 49 modules; `TS1|` still decodes). Venue tiers are now derived from the seat rows.
-Next: Monad testnet deployment (`deployments/10143.json`), indexer → hosted service, demo video.
+Deployed to Monad testnet (`deployments/10143.json`, verified on MonadVision) with the two seed events; sales
+stay open until 13 Nov 2026. Next: hosted web + relayer, indexer → Envio hosted service, demo video.
 
 ## License
 

@@ -8,6 +8,10 @@ Live facts checked on 12 Sep 2026: chain id `10143`, base fee **100 gwei** (prot
 priority fee 2 gwei, block gas limit 150M, client `Monad/0.16.2`, MonadVision Sourcify API answering for chains
 143 and 10143 (v1 and v2 endpoints).
 
+Done on 14 Sep 2026 — addresses, blocks and what was actually charged are in `packages/contracts/README.md`
+and `research/notes.md`; the deployer key was read from a secret store (`--private-key "$VAR"`) instead of a
+keystore because the deploy ran on a shared sandbox disk. Kept here as the procedure for mainnet/redeploys.
+
 Two Monad rules shape everything below:
 
 - **Gas is charged on the gas *limit*, not gas used.** A transaction with a 1M limit that uses 100k gas pays
@@ -276,7 +280,8 @@ F=$(jq -r .factory deployments/10143.json); I=$(jq -r .implementation deployment
 cast call $F "implementation()(address)"   --rpc-url monad_testnet    # = $I
 cast call $F "trustedForwarder()(address)" --rpc-url monad_testnet    # = $W
 cast call $F "eventCount()(uint256)"       --rpc-url monad_testnet    # 0
-curl -s "https://sourcify-api-monad.blockvision.org/check-by-addresses?addresses=$F,$I,$W&chainIds=10143"   # status "perfect" or "partial" for all three
+for A in $F $I $W; do curl -s "https://sourcify-api-monad.blockvision.org/v2/contract/10143/$A"; echo; done   # "runtimeMatch":"match" ×3
+# (the v1 check-by-addresses endpoint on this instance answers status "false" even for verified contracts — ignore it)
 ```
 
 ## 9. Seed events — exact command

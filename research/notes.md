@@ -208,3 +208,22 @@ Exact rules text, team-size cap, KYC, video requirement, "Community Team" defini
   save → lock → *Forget this device* → sign in → open → same name and note back from ciphertext. The
   fixture server stores passports unverified for screenshots; the relayer's verification is unit-tested.
   `.glass-solid` is now opaque — at 0.97 alpha, beacon chips still read through the panel on software GL.
+
+## 14 Sep 2026 — Monad testnet deployment
+
+- Deployed from the Replit sandbox with the deployer key read from a secret (`--private-key "$VAR"`, no
+  keystore on the shared disk, nothing printed): forwarder `0xf6b8b8E2cF881b01fFbeb3e97004591201333F34`,
+  implementation `0x7e17B9EE54e2F2058950181B09794590b87DFa3f`, factory `0x5C6e597E96cBDf408537611554E2a53Da75042B2`
+  — exactly the CREATE addresses predicted from nonce 0/1/2. Blocks 62 312 597 / 600 / 604, base fee 100 gwei,
+  paid 103 gwei. Charged 1 147 874 + 5 253 675 + 753 837 gas = 0.737 MON (runbook estimate 0.71; forge's 130 %
+  multiplier on the limit is the difference). Deployer 5.000 → 4.263 → 4.091 MON after the seeds.
+- Sourcify verification inside the deploy worked for all three (`runtimeMatch: match`, no creation match
+  because `bytecode_hash = none`). The v1 `check-by-addresses` endpoint on the MonadVision instance reports
+  `status: false` regardless — query `GET /v2/contract/10143/<address>` instead. Runbook updated.
+- Seeds: `START_IN=5184000` (60 d, so sales survive judging: `salesEndAt` = 13 Nov 2026 09:29 IST), gate EOA
+  `0x6FA96BB331FcC7bb2701eF611C34705dc0fdF9CF` granted at creation, `BASE_URI` left at the placeholder until
+  the relayer has a public host (`setBaseURI` is one admin tx per event). Club `0x79a3e41Cbb8acd8c9A1A61a929bdBa302d3121B5`
+  (819 911 gas), theatre `0x9c4b7a654680b5a4d382b22bdAA10FB05DC23029` (851 588 gas).
+- Relayer and gate wallets hold 5 MON each: ≈ 150 relayed calls at the 320k limit, ≈ 250 check-ins at 180k.
+- Indexer `config.yaml` regenerated from `deployments/10143.json` (start block 62 312 572, the simulation
+  block, a safe lower bound). The Envio hosted deploy still needs the user's Envio account.

@@ -1,0 +1,9 @@
+{
+  "chainId": 10143,
+  "deployedAt": 1789342082,
+  "deployedAtBlock": 62312572,
+  "factory": "0x5C6e597E96cBDf408537611554E2a53Da75042B2",
+  "forwarder": "0xf6b8b8E2cF881b01fFbeb3e97004591201333F34",
+  "implementation": "0x7e17B9EE54e2F2058950181B09794590b87DFa3f",
+  "solc": "0.8.28"
+}
