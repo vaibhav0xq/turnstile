@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import type { SeatMap } from "../chain/seats";
 import type { VenueLayout } from "../venues/layout";
+import { Decks } from "./Decks";
 import { useDirector } from "./director";
 import { curtainShader, ledWallShader, useShaderMaterial } from "./materials";
 import { Seats } from "./Seats";
@@ -22,7 +23,7 @@ export function Venue({ layout, seatMap, interactive }: VenueProps) {
       <Stage layout={layout} />
       {layout.kind === "theatre" ? <Proscenium layout={layout} /> : <LedWall layout={layout} />}
       {layout.kind === "club" ? <Mezzanine layout={layout} /> : null}
-      {layout.kind === "theatre" ? <Balconies layout={layout} /> : null}
+      <Decks layout={layout} lips={layout.kind !== "club"} />
       <Rig layout={layout} volumetric={quality === "high"} />
       <Seats layout={layout} seatMap={seatMap} interactive={interactive} />
       {quality === "high" ? (
@@ -198,23 +199,38 @@ function Proscenium({ layout }: { layout: VenueLayout }) {
 }
 
 /** Club: the raised mezzanine that carries the booths, with an edge-lit lip. */
+const MEZZ_INNER = 19.6;
+const MEZZ_THETA = (150 * Math.PI) / 180;
+// Cylinder convention (x = r·sinθ, z = r·cosθ): the slab wraps the back of the room, centred on +z.
+const MEZZ_START = -MEZZ_THETA / 2;
+
 function Mezzanine({ layout }: { layout: VenueLayout }) {
-  const inner = 19.6;
+  const inner = MEZZ_INNER;
+  const theta = MEZZ_THETA;
+  const start = MEZZ_START;
   const outer = layout.radius - 0.3;
-  const theta = (150 * Math.PI) / 180;
-  const start = Math.PI / 2 - theta / 2;
+  // One sealed solid (annular sector, extruded up) instead of an open cylinder + ring: no dark wedge where
+  // an unlit back face used to show at the ends. The shape is drawn in XY and rotated flat, which maps
+  // its angle φ to θ = φ + π/2.
+  const slab = useMemo(() => {
+    const a0 = start - Math.PI / 2;
+    const a1 = a0 + theta;
+    const shape = new THREE.Shape();
+    shape.absarc(0, 0, outer, a0, a1, false);
+    shape.absarc(0, 0, inner, a1, a0, true);
+    shape.closePath();
+    const g = new THREE.ExtrudeGeometry(shape, { depth: 2.6, bevelEnabled: false, curveSegments: 72 });
+    g.rotateX(-Math.PI / 2);
+    return g;
+  }, [outer]);
+  useEffect(() => () => slab.dispose(), [slab]);
   return (
-    <group position={[0, 0, layout.stage.z + 1]}>
-      <mesh position={[0, 1.3, 0]}>
-        <cylinderGeometry args={[inner, inner, 2.6, 64, 1, true, start, theta]} />
-        <meshStandardMaterial color="#0d0e13" roughness={0.6} metalness={0.4} side={THREE.DoubleSide} />
-      </mesh>
-      <mesh position={[0, 2.6, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[inner, outer, 64, 1, start, theta]} />
-        <meshStandardMaterial color="#111218" roughness={0.5} metalness={0.4} side={THREE.DoubleSide} />
+    <group position={[layout.center.x, 0, layout.center.z]}>
+      <mesh geometry={slab}>
+        <meshStandardMaterial color="#171a24" emissive="#0b0c13" roughness={0.5} metalness={0.35} />
       </mesh>
       <mesh position={[0, 2.62, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[inner - 0.02, inner + 0.08, 96, 1, start, theta]} />
+        <ringGeometry args={[inner - 0.02, inner + 0.08, 96, 1, start - Math.PI / 2, theta]} />
         <meshBasicMaterial color="#ffb457" toneMapped={false} side={THREE.DoubleSide} />
       </mesh>
       <mesh position={[0, 3.5, 0]}>
@@ -227,40 +243,6 @@ function Mezzanine({ layout }: { layout: VenueLayout }) {
           opacity={0.8}
         />
       </mesh>
-    </group>
-  );
-}
-
-/** Theatre: curved fronts under the circle and the balcony. */
-function Balconies({ layout }: { layout: VenueLayout }) {
-  const center = layout.stage.z + 2;
-  const fronts = [
-    { r: 17.3, y: 4.6, h: 4.4, theta: 84 },
-    { r: 21.9, y: 8.8, h: 4.0, theta: 90 },
-  ];
-  return (
-    <group position={[0, 0, center]}>
-      {fronts.map((f) => {
-        const theta = (f.theta * Math.PI) / 180;
-        const start = Math.PI / 2 - theta / 2;
-        return (
-          <group key={f.r}>
-            <mesh position={[0, f.y - f.h / 2 + 0.2, 0]}>
-              <cylinderGeometry args={[f.r, f.r, f.h, 64, 1, true, start, theta]} />
-              <meshStandardMaterial
-                color="#2a1216"
-                roughness={0.7}
-                metalness={0.15}
-                side={THREE.DoubleSide}
-              />
-            </mesh>
-            <mesh position={[0, f.y + 0.25, 0]}>
-              <cylinderGeometry args={[f.r + 0.02, f.r + 0.02, 0.04, 96, 1, true, start, theta]} />
-              <meshBasicMaterial color="#ffd9a3" toneMapped={false} side={THREE.DoubleSide} />
-            </mesh>
-          </group>
-        );
-      })}
     </group>
   );
 }

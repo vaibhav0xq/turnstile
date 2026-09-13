@@ -80,7 +80,7 @@ export function World({ config, seatMap, onEnterEvent }: WorldProps) {
             radius={0.7}
           />
           <Vignette eskil={false} offset={0.2} darkness={0.7} />
-          <Noise premultiply blendFunction={BlendFunction.SOFT_LIGHT} opacity={0.35} />
+          <Noise premultiply blendFunction={BlendFunction.SOFT_LIGHT} opacity={0.26} />
           <SMAA />
         </EffectComposer>
       </Canvas>

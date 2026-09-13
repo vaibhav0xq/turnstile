@@ -67,9 +67,11 @@ export const ledWallShader = {
     uniform float uIntensity;
     varying vec2 vUv;
 
+    // Sine-free hash (Hoskins): fract(sin(x) * 43758) breaks down into speckle on low-precision GPUs.
     vec2 hash2(vec2 p) {
-      p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)));
-      return -1.0 + 2.0 * fract(sin(p) * 43758.5453123);
+      vec3 p3 = fract(vec3(p.xyx) * vec3(0.1031, 0.1030, 0.0973));
+      p3 += dot(p3, p3.yzx + 33.33);
+      return -1.0 + 2.0 * fract((p3.xx + p3.yz) * p3.zy);
     }
     float noise(vec2 p) {
       vec2 i = floor(p);
@@ -101,10 +103,14 @@ export const ledWallShader = {
       // slow horizontal bars sweeping the wall
       float bars = 0.5 + 0.5 * sin(uv.y * 26.0 - uTime * 1.2 + n1 * 6.0);
       col *= 0.65 + 0.55 * pow(bars, 3.0);
-      // pixel grid
-      vec2 g = fract(uv * vec2(96.0, 42.0));
-      float grid = smoothstep(0.0, 0.12, g.x) * smoothstep(0.0, 0.12, g.y);
-      col *= 0.55 + 0.45 * grid;
+      // pixel grid, filtered: the gap edges are at least a pixel wide, and the whole grid fades to its
+      // mean once a cell is only a couple of pixels across (a hard fract() grid shimmers from a distance).
+      vec2 cell = uv * vec2(96.0, 42.0);
+      vec2 g = fract(cell);
+      vec2 w = fwidth(cell);
+      float grid = smoothstep(0.0, 0.12 + w.x, g.x) * smoothstep(0.0, 0.12 + w.y, g.y);
+      float gridFade = 1.0 - smoothstep(0.3, 0.9, max(w.x, w.y));
+      col *= mix(0.94, 0.55 + 0.45 * grid, gridFade);
       // vignette so the edges read as a wall, not a light source
       float vig = smoothstep(0.0, 0.18, uv.x) * smoothstep(1.0, 0.82, uv.x) * smoothstep(0.0, 0.2, uv.y) * smoothstep(1.0, 0.8, uv.y);
       col *= 0.35 + 0.65 * vig;

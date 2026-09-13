@@ -4,7 +4,15 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { EventInfo } from "../src/chain/config.ts";
-import { buildLayout, seatLabel, seatViewpoint, VENUE_IDS, venueKind } from "../src/venues/layout.ts";
+import { rowArcs } from "../src/venues/decks.ts";
+import {
+  buildLayout,
+  seatFocus,
+  seatLabel,
+  seatViewpoint,
+  VENUE_IDS,
+  venueKind,
+} from "../src/venues/layout.ts";
 
 function event(
   venue: `0x${string}`,
@@ -122,4 +130,55 @@ test("labels and the view from a seat", () => {
   const view = seatViewpoint(layout, first);
   assert.ok(view.position.y > first.y, "the eye sits above the seat");
   assert.deepEqual(view.target, layout.camera.stageFocus, "every seat looks at the stage");
+});
+
+test("the lit-seat finale frames the seat from behind, looking past it towards the stage", () => {
+  for (const info of [club, theatre]) {
+    const layout = buildLayout(info);
+    for (const seat of [layout.byId.get(1), layout.byId.get(layout.seats.at(-1)?.id ?? 1)]) {
+      assert.ok(seat);
+      const shot = seatFocus(layout, seat);
+      const dx = Math.sin(seat.rotY);
+      const dz = Math.cos(seat.rotY);
+      // Camera behind the seat (against its facing direction), target ahead of it.
+      const behind = (shot.position.x - seat.x) * dx + (shot.position.z - seat.z) * dz;
+      const ahead = (shot.target.x - seat.x) * dx + (shot.target.z - seat.z) * dz;
+      assert.ok(behind < -3, `camera is ${behind.toFixed(2)} m along the seat's facing`);
+      assert.ok(ahead > 2, `target is ${ahead.toFixed(2)} m along the seat's facing`);
+      assert.ok(shot.position.y > seat.y + 2, "the eye is well above the seat");
+      // The seat itself sits below the line of sight, i.e. in the lower part of the frame.
+      const total = behind * -1 + ahead;
+      const lineAtSeat = shot.position.y + (shot.target.y - shot.position.y) * (-behind / total);
+      assert.ok(lineAtSeat > seat.y + 0.5, "the seat is under the sight line, not dead centre");
+    }
+  }
+});
+
+test("decks are derived from raised rows only and wrap the seats they carry", () => {
+  const flat = rowArcs(buildLayout(club));
+  const theatreArcs = rowArcs(buildLayout(theatre));
+  const tl = buildLayout(theatre);
+  const floorRows = tl.seats.filter((s) => s.y < 0.05).length;
+  assert.ok(floorRows > 0, "the stalls' front rows are on the floor");
+  assert.ok(theatreArcs.length > flat.length, "the theatre's tiers need more decks than the club's booths");
+  for (const arc of [...flat, ...theatreArcs]) {
+    assert.ok(arc.y >= 0.05, "no deck under a floor-level row");
+    assert.ok(arc.outer > arc.inner && arc.thetaLength > 0, `arc ${arc.key} has area`);
+    assert.ok(arc.riser >= 0 && arc.riser <= 1.6, `riser ${arc.riser} stays a step or a parapet`);
+    if (arc.lip) assert.ok(arc.y >= 1, "lips only on balcony fronts");
+  }
+  // Every raised seat has a deck under it: a ring sector at its height containing its radius and angle.
+  for (const seat of tl.seats.filter((s) => s.y >= 0.05)) {
+    const r = Math.hypot(seat.x - tl.center.x, seat.z - tl.center.z);
+    const theta = Math.atan2(seat.x - tl.center.x, seat.z - tl.center.z);
+    const under = theatreArcs.some(
+      (a) =>
+        Math.abs(a.y - seat.y) < 1e-6 &&
+        r >= a.inner - 1e-6 &&
+        r <= a.outer + 1e-6 &&
+        theta >= a.thetaStart - 1e-6 &&
+        theta <= a.thetaStart + a.thetaLength + 1e-6,
+    );
+    assert.ok(under, `seat ${seat.id} floats`);
+  }
 });

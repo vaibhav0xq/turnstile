@@ -46,6 +46,8 @@ export interface VenueLayout {
   byId: Map<number, SeatSpec>;
   sections: SectionSpec[];
   stage: { z: number; width: number; depth: number; height: number };
+  /** Centre the seat rows fan out from (the tiers are arcs around it; the stage sits just behind it). */
+  center: Vec3;
   /** Radius of the room shell. */
   radius: number;
   camera: { overview: Waypoint; entrance: Waypoint; stageFocus: Vec3 };
@@ -138,6 +140,7 @@ function finish(
   kind: VenueKind,
   sectionsIn: Array<Omit<SectionSpec, "seatIds"> & { seats: SeatSpec[] }>,
   stage: VenueLayout["stage"],
+  center: Vec3,
   radius: number,
   camera: VenueLayout["camera"],
 ): VenueLayout {
@@ -147,7 +150,7 @@ function finish(
     ...rest,
     seatIds: ss.map((s) => s.id),
   }));
-  return { kind, seats, byId, sections, stage, radius, camera };
+  return { kind, seats, byId, sections, stage, center, radius, camera };
 }
 
 const AMBER = "#ffb457";
@@ -222,9 +225,10 @@ function clubLayout(event: EventInfo): VenueLayout {
       }),
     });
   });
-  return finish("club", sections, stage, 30, {
+  return finish("club", sections, stage, center, 30, {
     overview: { position: { x: 0, y: 15, z: 24 }, target: { x: 0, y: 0.8, z: -5 } },
-    entrance: { position: { x: 0, y: 2.4, z: 27 }, target: { x: 0, y: 1.6, z: -8 } },
+    // The door opens onto the mezzanine: eye height on the slab, looking down over the floor.
+    entrance: { position: { x: 0, y: 6.2, z: 9.4 }, target: { x: 0, y: 0.6, z: -8 } },
     stageFocus: { x: 0, y: 2.2, z: stage.z - 1.5 },
   });
 }
@@ -317,9 +321,13 @@ function theatreLayout(event: EventInfo): VenueLayout {
       }),
     });
   });
-  return finish("theatre", sections, stage, 31, {
-    overview: { position: { x: 0, y: 12.5, z: 27 }, target: { x: 0, y: 2.5, z: -6 } },
-    entrance: { position: { x: 0, y: 2.6, z: 29 }, target: { x: 0, y: 2.6, z: -8 } },
+  return finish("theatre", sections, stage, center, 31, {
+    // From a high side box: straight from the back the balcony overhang hides the tiers below it, from
+    // the side all three stack up in one frame with the proscenium at the left.
+    overview: { position: { x: -23, y: 17, z: 12 }, target: { x: 3, y: 2.5, z: -4 } },
+    // The door looks back at the house from the front-left corner, the way the ushers see it: stalls,
+    // circle and balcony stacked in one frame. From behind the stalls the circle overhang hides all of it.
+    entrance: { position: { x: -13, y: 5.5, z: -4 }, target: { x: 4, y: 5, z: 12 } },
     stageFocus: { x: 0, y: 2.6, z: stage.z - 1 },
   });
 }
@@ -356,7 +364,7 @@ function genericLayout(event: EventInfo): VenueLayout {
       seats,
     };
   });
-  return finish("generic", sections, stage, Math.max(26, radius + 4), {
+  return finish("generic", sections, stage, center, Math.max(26, radius + 4), {
     overview: { position: { x: 0, y: 14, z: radius + 8 }, target: { x: 0, y: 1.5, z: -5 } },
     entrance: { position: { x: 0, y: 2.4, z: radius + 6 }, target: { x: 0, y: 1.6, z: -8 } },
     stageFocus: { x: 0, y: 2.2, z: stage.z - 1.5 },
@@ -385,6 +393,24 @@ export function seatViewpoint(layout: VenueLayout, seat: SeatSpec): Waypoint {
   return {
     position: { x: seat.x - dx * back, y: seat.y + eye, z: seat.z - dz * back },
     target: layout.camera.stageFocus,
+  };
+}
+
+/**
+ * A hero shot of one seat: a few metres behind and above it, on the line from the stage, so the seat sits
+ * in the lower third with the stage lit behind it.
+ */
+export function seatFocus(layout: VenueLayout, seat: SeatSpec): Waypoint {
+  const dx = Math.sin(seat.rotY);
+  const dz = Math.cos(seat.rotY);
+  const spot = layout.kind === "club" && seat.tier === 0;
+  const back = spot ? 4.5 : 5;
+  const up = spot ? 2.4 : 2.8;
+  // Aim past the seat so it sits in the lower third with the stage in the middle of the frame.
+  const ahead = spot ? 3 : 3.5;
+  return {
+    position: { x: seat.x - dx * back, y: seat.y + up, z: seat.z - dz * back },
+    target: { x: seat.x + dx * ahead, y: seat.y + (spot ? 0.3 : 0.6), z: seat.z + dz * ahead },
   };
 }
 

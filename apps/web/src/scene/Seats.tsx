@@ -152,18 +152,18 @@ function SectionInstances({ layout, section, seatMap, interactive }: SectionProp
         c.copy(COLORS.soldBody);
         g.copy(COLORS.black);
       }
+      // Yours is cyan until the door: once checked in it burns green — the state the whole demo ends on.
+      const own = status === "checkedIn" ? COLORS.green : COLORS.cyan;
       if (isMine) {
-        g.copy(COLORS.cyan).multiplyScalar(status === "checkedIn" ? 0.9 : 0.85);
-        c.copy(body).lerp(COLORS.cyan, 0.15);
+        g.copy(own).multiplyScalar(status === "checkedIn" ? 1.1 : 0.85);
+        c.copy(body).lerp(own, 0.15);
       }
       if (isHovered && interactive && (status === "available" || status === "listed" || isMine)) {
-        g.copy(isMine ? COLORS.cyan : status === "listed" ? COLORS.violet : COLORS.amber).multiplyScalar(
-          1.35,
-        );
+        g.copy(isMine ? own : status === "listed" ? COLORS.violet : COLORS.amber).multiplyScalar(1.35);
       }
       if (isSelected) {
-        g.copy(COLORS.cyan).multiplyScalar(1.6);
-        c.copy(body).lerp(COLORS.cyan, 0.25);
+        g.copy(isMine ? own : COLORS.cyan).multiplyScalar(1.6);
+        c.copy(body).lerp(isMine ? own : COLORS.cyan, 0.25);
       }
       m.setColorAt(i, c);
       t[i * 3] = g.r;
