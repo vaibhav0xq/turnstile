@@ -1,6 +1,6 @@
 // Seat → passkey → buy → bind, as one resumable flow the panels render from.
 import type { QueryClient } from "@tanstack/react-query";
-import type { Hex } from "viem";
+import { BaseError, ContractFunctionRevertedError, type Hex } from "viem";
 import { create } from "zustand";
 import { type AppConfig, type EventInfo, tierForSeat, tierPrice } from "../chain/config";
 import { type SeatMap, seatMapQueryKey } from "../chain/seats";
@@ -57,8 +57,14 @@ interface CheckoutState {
   delist(config: AppConfig, event: EventInfo, tokenId: number, queryClient: QueryClient): Promise<boolean>;
 }
 
-function explain(error: unknown): { code: string; message: string } {
+export function explain(error: unknown): { code: string; message: string } {
   if (error instanceof ApiError) return { code: error.code, message: friendly(error.code, error.message) };
+  if (error instanceof BaseError) {
+    const revert = error.walk((e) => e instanceof ContractFunctionRevertedError);
+    const name = revert instanceof ContractFunctionRevertedError ? revert.data?.errorName : undefined;
+    if (name) return { code: name, message: friendly(name, `Reverted: ${name}`) };
+    return { code: error.name, message: friendly(error.name, error.shortMessage) };
+  }
   if (
     error &&
     typeof error === "object" &&
@@ -104,6 +110,12 @@ function friendly(code: string, fallback: string): string {
       return "Only the passkey that holds this ticket can do that.";
     case "SelfPurchase":
       return "That's already your seat.";
+    case "InvalidConfig":
+      return "The event settings were rejected on-chain: check the dates and the resale fee.";
+    case "InvalidTiers":
+      return "The tiers were rejected on-chain: every tier needs seats and they must not overlap.";
+    case "INSUFFICIENT_FUNDS_CREATE":
+      return "Your account needs a little MON to publish an event (the testnet drip is off here).";
     default:
       return fallback;
   }

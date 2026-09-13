@@ -456,7 +456,7 @@ function Beacon({
         <cylinderGeometry args={[7, 7, 40, 12]} />
         <meshBasicMaterial />
       </mesh>
-      <Html position={[0, 12, 0]} center zIndexRange={[20, 0]} style={{ pointerEvents: "none" }}>
+      <Html position={[0, 12, 0]} center zIndexRange={[5, 0]} style={{ pointerEvents: "none" }}>
         <div
           className={`chip mono whitespace-nowrap transition-opacity ${hovered ? "opacity-100" : "opacity-70"}`}
         >

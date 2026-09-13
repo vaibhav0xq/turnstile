@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { extname, join, normalize } from "node:path";
 import { serve } from "@hono/node-server";
 import { turnstileEventAbi } from "@turnstile/contracts/abi";
-import { Hono } from "hono";
+import { type Context, Hono } from "hono";
 import { cors } from "hono/cors";
 import { getAddress, isAddress } from "viem";
 import {
@@ -62,7 +62,10 @@ app.get("/api/health", async () =>
   }),
 );
 
-app.get("/api/config", async () =>
+// `?fresh=1` skips the 15 s event cache (the organiser flow calls it right after `createEvent`).
+const fresh = (context: Context) => context.req.query("fresh") === "1";
+
+app.get("/api/config", async (context) =>
   json({
     chainId,
     rpcUrl: settings.publicRpcUrl,
@@ -74,20 +77,28 @@ app.get("/api/config", async () =>
     gate: gateAccount.address,
     gas: relayGas,
     drip: { enabled: settings.dripEnabled, amountWei: settings.dripAmount },
-    events: await getEvents(),
+    events: await getEvents(fresh(context)),
   }),
 );
-app.get("/api/events", async () => json(await getEvents()));
+app.get("/api/events", async (context) => json(await getEvents(fresh(context))));
 
-app.get("/api/events/:address/:tokenId", async (context) => {
-  const addressText = context.req.param("address");
-  const tokenText = context.req.param("tokenId");
-  if (!isAddress(addressText) || !/^[0-9]+$/.test(tokenText))
-    return json({ error: { code: "NOT_FOUND", message: "Unknown seat" } }, 404);
-  const event = await findEvent(getAddress(addressText));
+// Ticket metadata (`tokenURI`). Events are created with `baseURI = <api>/api/events/<eventId>/tickets/`;
+// the address form is kept for tooling.
+app.get("/api/events/:id/tickets/:tokenId", (context) => metadata(context));
+app.get("/api/events/:id/:tokenId", (context) => metadata(context));
+
+async function metadata(context: Context) {
+  const idText = context.req.param("id") ?? "";
+  const tokenText = context.req.param("tokenId") ?? "";
+  const notFound = () => json({ error: { code: "NOT_FOUND", message: "Unknown seat" } }, 404);
+  if (!/^[0-9]+$/.test(tokenText)) return notFound();
+  let event: Awaited<ReturnType<typeof findEvent>>;
+  if (isAddress(idText)) event = await findEvent(getAddress(idText));
+  else if (/^[0-9]+$/.test(idText)) event = (await getEvents()).find((e) => e.eventId === idText);
+  else return notFound();
   const tokenId = BigInt(tokenText);
   const tier = event ? tierFor(event, tokenId) : undefined;
-  if (!event || !tier) return json({ error: { code: "NOT_FOUND", message: "Unknown seat" } }, 404);
+  if (!event || !tier) return notFound();
   const states = (await publicClient.readContract({
     address: event.address,
     abi: turnstileEventAbi,
@@ -96,7 +107,7 @@ app.get("/api/events/:address/:tokenId", async (context) => {
   })) as readonly { checkedInAt: bigint }[];
   return json({
     name: `${event.name} — ${tier.name} #${tokenId}`,
-    description: `Ticket for ${event.name} at ${event.venue}`,
+    description: `${tier.name} seat #${tokenId} for ${event.name}, bound to the holder's passkey.`,
     image: null,
     attributes: [
       { trait_type: "Event", value: event.name },
@@ -105,7 +116,7 @@ app.get("/api/events/:address/:tokenId", async (context) => {
       { trait_type: "Checked in", value: (states[0]?.checkedInAt ?? 0n) !== 0n },
     ],
   });
-});
+}
 
 app.post("/api/relay", async (context) => {
   if (!relayLimit.allow(ip(context.req.raw.headers))) {

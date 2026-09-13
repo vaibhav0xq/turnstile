@@ -46,9 +46,9 @@ three seconds.
 
 ```sh
 curl localhost:8787/api/health
-curl localhost:8787/api/config
+curl localhost:8787/api/config                 # add ?fresh=1 to skip the 15 s event cache
 curl localhost:8787/api/events
-curl localhost:8787/api/events/0xEventAddress/42
+curl localhost:8787/api/events/3/tickets/42    # tokenURI target; /api/events/0xEventAddress/42 also works
 curl -X POST localhost:8787/api/relay -H 'content-type: application/json' -d '{"request":{...}}'
 curl 'localhost:8787/api/gate/lookup?code=TS1%7C...'
 curl -X POST localhost:8787/api/gate/check-in -H 'content-type: application/json' -d '{"code":"TS1|..."}'
@@ -57,7 +57,8 @@ curl -X POST localhost:8787/api/drip -H 'content-type: application/json' \
 ```
 
 All responses are JSON and all big integers are decimal strings. Gate check-in accepts
-`Authorization: Bearer <GATE_TOKEN>` when configured.
+`Authorization: Bearer <GATE_TOKEN>` when configured. Events are discovered from the factory
+(`eventCount` / `eventAt`), so one published from the organiser page shows up without a restart.
 
 | Relayed action | Forward request gas | Transaction gas |
 | --- | ---: | ---: |

@@ -106,6 +106,17 @@ canvas {
   border: 1px solid var(--color-line);
 }
 
+/* Full-page panels (passport, organiser) sit over the city: darker than a card so text stays readable. */
+.glass-solid {
+  background: rgba(13, 15, 19, 0.94);
+}
+
+/* A unit suffix ("MON", "seats", "% cap") drawn inside a field; beats the `input.field` padding. */
+input.field.with-suffix {
+  padding-right: 3.6rem;
+  text-align: right;
+}
+
 .hairline {
   border-color: var(--color-line);
 }

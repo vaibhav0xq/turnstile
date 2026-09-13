@@ -23,7 +23,7 @@ passkey ──PRF──┬── account namespace ──▶ secp256k1 account (
 ## Repository
 
 ```
-apps/web                 city → venue → seat → ticket → door (React 19 / R3F / Vite) — ✅ running on anvil
+apps/web                 city → venue → seat → ticket → door, resale, organiser (React 19 / R3F / Vite) — ✅ on anvil
 apps/relayer             sponsored ERC-2771 calls, gate verifier + checkIn, testnet drip (Hono) — ✅ + live smoke
 apps/gate                door scanner — lives in apps/web at /gate/:address
 packages/identity        passkey ceremonies, KDFs, EIP-712 Entry + BindDoorKey, vault — ✅ 0.2.0, 45 tests
@@ -94,8 +94,10 @@ shared vectors, invariants; scripts exercised on anvil and on a fork of the live
 
 14 Sep 2026 — resale from the ticket: list at or under the cap / delist / pass a free seat on, all relayed;
 taking a free listing is sponsored too. The sale clears the seller's door key and their old codes fail at
-the gate (`pnpm smoke` covers the whole round trip with a second identity).
-Next: Monad testnet deployment (`deployments/10143.json`), organiser view, Envio indexer, demo video.
+the gate (`pnpm smoke` covers the whole round trip with a second identity). Organiser page: publish an
+event from a passkey (tiers, venue, resale rules; the deployment's gate key is granted on creation) and
+watch sold / inside; the new room lights up in the city at once.
+Next: Monad testnet deployment (`deployments/10143.json`), Envio indexer, demo video.
 
 ## License
 

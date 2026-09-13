@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useNavigate } from "react-router";
+import { Link, useNavigate } from "react-router";
 import type { AppConfig, EventInfo } from "../../chain/config";
 import { tierPrice } from "../../chain/config";
 import { formatDate, formatMon } from "../../lib/format";
@@ -48,6 +48,12 @@ export function Landing({ config }: { config: AppConfig | undefined }) {
               onEnter={() => navigate(`/e/${event.address}`)}
             />
           ))}
+          <Link
+            to="/organise"
+            className="mono mt-1 self-end text-[11px] uppercase tracking-[0.16em] text-muted hover:text-paper"
+          >
+            Host your own night →
+          </Link>
         </div>
       </div>
     </div>

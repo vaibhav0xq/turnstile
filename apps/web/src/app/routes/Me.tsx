@@ -43,7 +43,7 @@ export function Me({ config }: { config: AppConfig | undefined }) {
 
   return (
     <div className="overlay flex items-end justify-start p-4 sm:items-center sm:justify-center sm:p-6">
-      <Panel className="fade-up w-full max-w-md p-5">
+      <Panel className="glass-solid fade-up w-full max-w-md p-5">
         <Kicker>Passport</Kicker>
         <div className="display mt-1 text-3xl">{address ? shortAddress(address, 6) : "No passkey yet"}</div>
         <div className="mono mt-1 text-xs text-muted">

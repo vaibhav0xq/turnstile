@@ -9,11 +9,20 @@ Fiber, with the passkey ceremonies from `@turnstile/identity` and the sponsored 
 /t/:address/:id   the ticket — rotating 30 s entry code (QR + text), "view from your seat", sell / pass on
 /gate/:address    the door — camera scanner (or paste a code) → relayer verifies → checkIn on-chain
 /me               the passport — session, tickets across events, "forget this device" (stateless test)
+/organise         the organiser — publish an event from your passkey, see sold / inside, copy the door link
 ```
 
 No wallet, no app: the account, the per-event door key and the vault key are all derived from the passkey's
 PRF output (`packages/identity/SPEC.md`). Free tiers are relayed through the ERC-2771 forwarder; paid seats
 are paid from the passkey account itself (the relayer's testnet drip tops up brand-new accounts).
+
+Publishing an event is the one action that costs the user gas: `TurnstileFactory.createEvent` takes
+`msg.sender` as the organiser, so the passkey account signs it directly (topped up by the testnet drip when
+needed). The form maps tiers onto the venue templates in order — club: floor, booths, gallery; theatre:
+stalls, circle, balcony — numbers seats 1…, 1001…, 2001… per tier, grants the deployment's gate key
+`GATE_ROLE` so `/gate/<event>` works from the first minute, and points `baseURI` at the relayer's metadata
+(`/api/events/<eventId>/tickets/`). The call is simulated first, so a bad configuration comes back by name
+(`InvalidConfig`, `InvalidTiers`) instead of as a failed transaction.
 
 Resale is capped by the organiser (`resaleCapBps` of face) and closes at doors. From the ticket a holder
 lists at or under the cap or delists (both relayed); a listed seat shows on the map as *Resale · price* with

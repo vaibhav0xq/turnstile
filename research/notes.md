@@ -180,3 +180,11 @@ Exact rules text, team-size cap, KYC, video requirement, "Community Team" defini
   with `BAD_SIGNATURE`. list ≈ 80k gas, delist ≈ 50k. Whole flow ≈ 3 s on anvil.
 - The workspace restart wiped `/tmp` and anvil; `pnpm dev:chain` reproduces the deterministic addresses, and
   the screenshot fixture server is now in the repo (`apps/web/scripts/fixture-server.py`) instead of `/tmp`.
+- Organiser page (`/organise`): `createEvent` is the one user-paid call (the factory reads `msg.sender`, on
+  purpose — the organiser must be a real account, not a relayed one). Measured 645k gas for three tiers on
+  anvil; the flow simulates first (`estimateContractGas` × 1.25, reverts come back by name) and funds the
+  account through the drip when needed. Metadata: events are created with `baseURI =
+  <api>/api/events/<eventId>/tickets/`, which the relayer now serves (the demo script already used that shape;
+  the old `/api/events/<address>/<tokenId>` route stays for tooling). `?fresh=1` skips the relayer's 15 s event
+  cache so the new beacon appears immediately. Verified from a headless browser: publish → smoke on the new
+  event (Balcony #2001 bought, passed on, checked in through the gate key granted at creation).

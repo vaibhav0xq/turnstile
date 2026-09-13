@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useMemo } from "react";
 import { BrowserRouter, Route, Routes, useNavigate } from "react-router";
-import { findEvent, useConfig } from "../chain/config";
+import { configQueryKey, findEvent, useConfig } from "../chain/config";
 import { useSeatMap } from "../chain/seats";
 import { useIdentity } from "../identity/store";
 import { installTapCounter } from "../lib/telemetry";
@@ -10,10 +10,12 @@ import { World } from "../scene/World";
 import { SeatCardLayer } from "../ui/SeatCard";
 import { ConnectionNotice, Curtain, ErrorToast, Readout, TopBar } from "../ui/Shell";
 import { buildLayout } from "../venues/layout";
+import { useOrganise } from "./organise";
 import { Event } from "./routes/Event";
 import { Gate } from "./routes/Gate";
 import { Landing } from "./routes/Landing";
 import { Me } from "./routes/Me";
+import { Organise } from "./routes/Organise";
 import { Ticket } from "./routes/Ticket";
 
 const queryClient = new QueryClient({
@@ -44,7 +46,10 @@ function Frame() {
     installTapCounter();
     if (import.meta.env.DEV) {
       // Dev probe for scripts/shoot.mjs: drive sign-in / purchase from --eval.
-      (window as unknown as { __identity?: unknown }).__identity = useIdentity;
+      const probe = window as unknown as { __identity?: unknown; __organise?: unknown; __app?: unknown };
+      probe.__identity = useIdentity;
+      probe.__organise = useOrganise;
+      probe.__app = { queryClient, config: () => queryClient.getQueryData(configQueryKey) };
     }
   }, []);
 
@@ -64,6 +69,7 @@ function Frame() {
         <Route path="/t/:address/:tokenId" element={<Ticket config={config.data} seatMap={seats.data} />} />
         <Route path="/gate/:address" element={<Gate config={config.data} seatMap={seats.data} />} />
         <Route path="/me" element={<Me config={config.data} />} />
+        <Route path="/organise" element={<Organise config={config.data} />} />
       </Routes>
       <Readout config={config.data} />
       <ErrorToast />
