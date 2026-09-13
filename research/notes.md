@@ -188,3 +188,10 @@ Exact rules text, team-size cap, KYC, video requirement, "Community Team" defini
   the old `/api/events/<address>/<tokenId>` route stays for tooling). `?fresh=1` skips the relayer's 15 s event
   cache so the new beacon appears immediately. Verified from a headless browser: publish → smoke on the new
   event (Balcony #2001 bought, passed on, checked in through the gate key granted at creation).
+- Envio HyperIndex (`packages/indexer`): v3 API (`indexer.onEvent`, `indexer.contractRegister`,
+  `context.chain.TurnstileEvent.add`), four entities (Event, Ticket, Fan, Activity), Monad testnet via
+  HyperSync `10143.hypersync.xyz`. `createTestIndexer()` with `simulate` runs the real handlers in-process —
+  no Docker, no Postgres — so the life of one seat (create → mint → bind → list → resale → rebind → check-in)
+  is a 5-test suite in the normal gate. Codegen (`envio codegen`) needs no network. `scripts/sync-config.mjs`
+  writes the chains block from `deployments/<chainId>.json`; anvil is skipped (HyperSync cannot see it).
+  Hosted-service deploy waits on the testnet factory and an Envio account (user's).

@@ -1,0 +1,26 @@
+{
+  "name": "@turnstile/indexer",
+  "version": "0.1.0",
+  "description": "Envio HyperIndex for Turnstile: events, tickets, fans and the live door feed, as GraphQL.",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "codegen": "envio codegen",
+    "sync-config": "node scripts/sync-config.mjs",
+    "dev": "envio dev",
+    "start": "envio start",
+    "typecheck": "node scripts/sync-config.mjs --check && envio codegen && tsc --noEmit -p tsconfig.json",
+    "test": "envio codegen && node --test test/*.test.ts"
+  },
+  "dependencies": {
+    "envio": "^3.5.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "typescript": "^5.9.2"
+  }
+}

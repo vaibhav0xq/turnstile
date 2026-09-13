@@ -1,0 +1,74 @@
+# Turnstile — what the door, the organiser and the fan's passport want to know, one query away.
+
+# One TurnstileEvent clone (a night). id = the event contract address.
+type Event {
+  id: ID!
+  eventId: BigInt!
+  organiser: String!
+  name: String!
+  venue: String! # bytes32 venue id, matches apps/web VENUE_IDS
+  startsAt: BigInt!
+  createdAt: BigInt!
+  createdBlock: BigInt!
+  sold: Int! # tickets minted (comps included)
+  comps: Int!
+  checkedIn: Int! # people inside
+  listed: Int! # open resale listings right now
+  resales: Int! # listings filled
+  primaryVolume: BigInt! # wei paid at the box office
+  resaleVolume: BigInt! # wei paid on the secondary market
+  resaleFees: BigInt! # wei kept by the organiser from resales
+  tickets: [Ticket!]! @derivedFrom(field: "event")
+  activity: [Activity!]! @derivedFrom(field: "event")
+}
+
+# One seat. id = "<event address>-<tokenId>".
+type Ticket {
+  id: ID!
+  event: Event!
+  tokenId: BigInt!
+  tier: Int!
+  holder: Fan!
+  faceValue: BigInt!
+  comp: Boolean!
+  doorKey: String # the holder's current door key; null after a resale until they rebind
+  listedPrice: BigInt # null when not listed
+  checkedInAt: BigInt # null until the gate admits it
+  mintedAt: BigInt!
+  handovers: Int! # how many times it changed hands on the resale market
+}
+
+# A passkey account as seen on chain: the attendance record behind the passport. id = address.
+type Fan {
+  id: ID!
+  tickets: Int! # seats held right now
+  bought: Int! # seats ever taken (box office + resale)
+  checkIns: Int! # nights actually attended
+  firstSeenAt: BigInt!
+  lastSeenAt: BigInt!
+  held: [Ticket!]! @derivedFrom(field: "holder")
+}
+
+# The live feed: everything that happened to a seat, newest first. id = "<chainId>-<block>-<logIndex>".
+type Activity {
+  id: ID!
+  event: Event!
+  ticket: Ticket!
+  kind: ActivityKind!
+  actor: String! # who the entry is about (buyer, holder, seller)
+  counterparty: String # the other side, when there is one (resale buyer, gate)
+  amount: BigInt! # wei moved, 0 when none
+  timestamp: BigInt!
+  block: BigInt!
+  txHash: String!
+}
+
+enum ActivityKind {
+  MINT
+  BIND
+  UNBIND
+  LIST
+  DELIST
+  RESALE
+  CHECKIN
+}

@@ -1,0 +1,4 @@
+.envio/
+generated/
+node_modules/
+.env

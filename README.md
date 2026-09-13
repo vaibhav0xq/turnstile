@@ -28,7 +28,7 @@ apps/relayer             sponsored ERC-2771 calls, gate verifier + checkIn, test
 apps/gate                door scanner — lives in apps/web at /gate/:address
 packages/identity        passkey ceremonies, KDFs, EIP-712 Entry + BindDoorKey, vault — ✅ 0.2.0, 45 tests
 packages/contracts       TurnstileFactory / TurnstileEvent (Foundry)   — ✅ implemented, 62 tests, not deployed
-packages/indexer         Envio HyperIndex                              — not started
+packages/indexer         Envio HyperIndex: events, seats, fans, door feed — ✅ handlers + 5 tests, awaits testnet
 spike/                   Mera 0.2.0 spike (17 vectors, device pages)   — frozen evidence
 docs/                    spike report, device matrix, device reports
 research/                hackathon report, build plan, notes, sources
@@ -97,7 +97,9 @@ taking a free listing is sponsored too. The sale clears the seller's door key an
 the gate (`pnpm smoke` covers the whole round trip with a second identity). Organiser page: publish an
 event from a passkey (tiers, venue, resale rules; the deployment's gate key is granted on creation) and
 watch sold / inside; the new room lights up in the city at once.
-Next: Monad testnet deployment (`deployments/10143.json`), Envio indexer, demo video.
+Envio indexer written and tested in-process (events, seats, fans, live feed; the factory address is synced
+from `deployments/`); it goes live on Envio's hosted service once the testnet factory exists.
+Next: Monad testnet deployment (`deployments/10143.json`), indexer → hosted service, demo video.
 
 ## License
 
