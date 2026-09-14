@@ -4,6 +4,7 @@
 //   node scripts/shoot.mjs /            → shots/root.png
 //   node scripts/shoot.mjs /e/0xabc… --wait 9000 --name event
 //   BASE_URL=http://127.0.0.1:4174 CHROMIUM=/path/to/chromium node scripts/shoot.mjs / /me
+//   node scripts/shoot.mjs / --tier high --wait 30000   → the composer on (bloom, grain), as a desktop GPU sees it
 import fs from "node:fs";
 import path from "node:path";
 import { launch, watch } from "./browser.mjs";
@@ -26,6 +27,9 @@ const probe = opt("--print", undefined); // JS expression evaluated after waitin
 const jpeg = opt("--jpeg", undefined); // JPEG quality (1–100) instead of PNG, for stills that ship in public/
 const outDir = opt("--out", undefined); // directory for the file (default: shots/, which is gitignored)
 const dpr = Number(opt("--dpr", "1")); // device scale factor; < 1 renders a wide layout into a small still
+// pin the quality tier (high | low | min): headless starts low on 4 cores and the PerformanceMonitor steps
+// it down to min within seconds under software GL, so the composer (bloom, grain) never shows in a shot
+const tier = opt("--tier", undefined);
 const routes = args.length ? args : ["/"];
 
 const base = process.env["BASE_URL"] ?? "http://127.0.0.1:4174";
@@ -39,7 +43,32 @@ try {
     const page = await browser.newPage();
     const watcher = watch(page);
     const started = performance.now();
+    if (tier) {
+      // the director picks its starting tier from the core count; make that pick the requested one so the
+      // scene mounts at that tier rather than stepping up (a step up compiles every program again)
+      await page.evaluateOnNewDocument((t) => {
+        Object.defineProperty(navigator, "hardwareConcurrency", { get: () => (t === "high" ? 8 : 4) });
+      }, tier);
+    }
     await page.goto(base + route, { waitUntil: "load", timeout: 90_000 });
+    if (tier) {
+      await page.evaluate(
+        (t) =>
+          new Promise((resolve) => {
+            const tick = () => {
+              const d = window.__director;
+              if (!d) {
+                setTimeout(tick, 50);
+                return;
+              }
+              d.setState({ quality: t, setQuality: () => {} });
+              resolve(true);
+            };
+            tick();
+          }),
+        tier,
+      );
+    }
     if (script) {
       await new Promise((r) => setTimeout(r, evalDelay));
       await page.evaluate(script);

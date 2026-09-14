@@ -5,7 +5,19 @@ import * as THREE from "three";
 import type { EventInfo } from "../chain/config";
 import { mulberry } from "../lib/random";
 import { keepOutRects } from "./anchor";
-import { BEACON_SLOTS, type Building, beaconSlot, buildCity, PAVILION } from "./city-gen";
+import {
+  BEACON_SLOTS,
+  type Building,
+  beaconSlot,
+  buildCity,
+  GATE_LINE_Z,
+  PAVILION,
+  PITCH,
+  PLAZA_HALF,
+  PLAZA_LAMP_X,
+  PLAZA_LAMP_Z,
+  plazaFrame,
+} from "./city-gen";
 import { useDirector } from "./director";
 import { flightPose, LABELS_FROM } from "./flight";
 import { Ground } from "./Ground";
@@ -28,9 +40,13 @@ const cityVertex = /* glsl */ `
   attribute float aSeed;
   attribute float aSize;
   attribute float aWarm;
+  // 1 for a person's phone screen: from the street these are not lamps, so they fade as the eye drops
+  attribute float aCrowd;
   uniform float uTime;
   uniform float uProgress;
   uniform float uPixelRatio;
+  // points are sized for a desktop frame; a phone's frame is a third as wide, so its lamps shrink to match
+  uniform float uFrame;
   uniform float uDim;
   varying float vWarm;
   varying float vAlpha;
@@ -49,12 +65,14 @@ const cityVertex = /* glsl */ `
     float beacon = step(1.5, aWarm);
     float blink = mix(1.0, smoothstep(0.35, 0.6, sin(uTime * 1.3 + aSeed * 50.0)), beacon);
     // clamped: a window a few units from the lens must stay a lamp, not a blob
-    gl_PointSize = clamp(aSize * uPixelRatio * flicker * (240.0 / -mv.z), 2.0 * uPixelRatio, 9.0 * uPixelRatio);
+    float px = uPixelRatio * uFrame;
+    gl_PointSize = clamp(aSize * px * flicker * (240.0 / -mv.z), 2.0 * px, 9.0 * px);
     gl_Position = projectionMatrix * mv;
     vWarm = aWarm;
-    // haze: far windows dissolve into the night
-    float fade = exp(-max(0.0, -mv.z - 160.0) * 0.0024);
-    vAlpha = k * (0.55 + 0.45 * flicker) * fade * uDim * blink;
+    // haze: far windows dissolve into the night; and a point right in front of the lens is not a lamp
+    float fade = exp(-max(0.0, -mv.z - 160.0) * 0.0024) * smoothstep(3.0, 12.0, -mv.z);
+    float street = mix(1.0, smoothstep(4.0, 16.0, cameraPosition.y), aCrowd);
+    vAlpha = k * (0.55 + 0.45 * flicker) * fade * uDim * blink * street;
   }
 `;
 
@@ -105,18 +123,24 @@ const skyFragment = /* glsl */ `
 `;
 
 /**
- * The square around a beacon: market strings, lanterns and a crowd's worth of phone screens. One small point
+ * The life on a plaza: festoon strings down both sides between the lamp posts, and a crowd's worth of phone
+ * screens — queues at the gate line, people milling in the forecourt, a few already inside. One small point
  * cloud per present beacon, drawn with the city's point material so it resolves and dims with the rest.
+ * Laid out in plaza-local metres (see plazaFrame) and turned into the beacon group's frame here.
  */
 function plazaGeometry(slot: [number, number], detail: number): THREE.BufferGeometry {
-  // Positions are local to the beacon group (which sits at the slot); the slot only seeds the layout.
   const rnd = mulberry(9001 + Math.round(slot[0] * 7 + slot[1] * 13));
+  const { forward } = plazaFrame(slot);
+  const right = [forward[1], -forward[0]] as const;
   const pos: number[] = [];
   const sca: number[] = [];
   const seed: number[] = [];
   const size: number[] = [];
   const warm: number[] = [];
-  const push = (x: number, y: number, z: number, s: number, w: number) => {
+  const crowdFlag: number[] = [];
+  const push = (lx: number, y: number, lz: number, s: number, w: number, person = 0) => {
+    const x = right[0] * lx + forward[0] * lz;
+    const z = right[1] * lx + forward[1] * lz;
     pos.push(x, y, z);
     const r = 120 + rnd() * 120;
     const th = rnd() * Math.PI * 2;
@@ -124,39 +148,59 @@ function plazaGeometry(slot: [number, number], detail: number): THREE.BufferGeom
     seed.push(rnd());
     size.push(s);
     warm.push(w);
+    crowdFlag.push(person);
   };
-  // strings of bulbs radiating from the column, sagging between posts
-  const strings = 10;
-  for (let k = 0; k < strings; k++) {
-    const a = (k / strings) * Math.PI * 2 + rnd() * 0.3;
-    const len = 12 + rnd() * 10;
-    const n = Math.floor((len / 1.1) * detail);
-    for (let i = 0; i < n; i++) {
-      const u = (i + 0.5) / n;
-      const r = 5 + u * len;
-      const sag = Math.sin(u * Math.PI * 3) * 0.35;
-      push(Math.cos(a) * r, 3.4 - sag - u * 0.6, Math.sin(a) * r, 1.5, 0.85 + rnd() * 0.15);
+  // festoons: a string of bulbs from post to post down each side, sagging between them
+  const stringX = PLAZA_LAMP_X - 0.6;
+  for (const side of [-1, 1]) {
+    for (let k = 0; k + 1 < PLAZA_LAMP_Z.length; k++) {
+      const z0 = PLAZA_LAMP_Z[k] ?? 0;
+      const z1 = PLAZA_LAMP_Z[k + 1] ?? 0;
+      const n = Math.max(2, Math.floor(((z1 - z0) / 1.1) * detail));
+      for (let i = 0; i < n; i++) {
+        const u = (i + 0.5) / n;
+        const sag = Math.sin(u * Math.PI) * 0.55;
+        push(side * stringX, 4.9 - sag, z0 + (z1 - z0) * u, 1.5, 0.85 + rnd() * 0.15);
+      }
     }
   }
-  // lanterns on a ring of posts
-  const posts = 14;
-  for (let k = 0; k < posts; k++) {
-    const a = (k / posts) * Math.PI * 2;
-    push(Math.cos(a) * 9.5, 3.9, Math.sin(a) * 9.5, 3.0, 0.95);
-  }
-  // the crowd: dense near the column, thinning out to the streets, a cool screen glow here and there
-  const crowd = Math.floor(260 * detail);
+  // the crowd: four queues short of the gate line, the forecourt behind them, a few inside
+  const crowd = Math.floor(220 * detail);
+  const forecourtEnd = PLAZA_HALF + PITCH - 3;
   for (let i = 0; i < crowd; i++) {
-    const r = 5.5 + rnd() ** 0.7 * 20;
-    const a = rnd() * Math.PI * 2;
     const cool = rnd() < 0.22;
-    push(
-      Math.cos(a) * r,
-      0.5 + rnd() * 1.4,
-      Math.sin(a) * r,
-      1.1 + rnd() * 0.9,
-      cool ? rnd() * 0.25 : 0.7 + rnd() * 0.3,
-    );
+    const w = cool ? rnd() * 0.25 : 0.7 + rnd() * 0.3;
+    const pick = rnd();
+    if (pick < 0.4) {
+      // a queue: a lane's width of people, thinning with distance from the gates
+      const lane = (Math.floor(rnd() * 4) - 1.5) * 1.7;
+      push(
+        lane + (rnd() - 0.5) * 0.9,
+        0.6 + rnd() * 1.1,
+        GATE_LINE_Z + 1.5 + rnd() ** 1.6 * 12,
+        1.1 + rnd() * 0.7,
+        w,
+        1,
+      );
+    } else if (pick < 0.85) {
+      push(
+        (rnd() - 0.5) * 22,
+        0.6 + rnd() * 1.1,
+        GATE_LINE_Z + 2 + rnd() * (forecourtEnd - GATE_LINE_Z - 2),
+        1.1 + rnd() * 0.9,
+        w,
+        1,
+      );
+    } else {
+      push(
+        (rnd() - 0.5) * 16,
+        0.6 + rnd() * 1.1,
+        PAVILION.d / 2 + 1 + rnd() * (GATE_LINE_Z - PAVILION.d / 2 - 3),
+        1.1 + rnd() * 0.7,
+        w,
+        1,
+      );
+    }
   }
   const g = new THREE.BufferGeometry();
   g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
@@ -164,6 +208,7 @@ function plazaGeometry(slot: [number, number], detail: number): THREE.BufferGeom
   g.setAttribute("aSeed", new THREE.Float32BufferAttribute(seed, 1));
   g.setAttribute("aSize", new THREE.Float32BufferAttribute(size, 1));
   g.setAttribute("aWarm", new THREE.Float32BufferAttribute(warm, 1));
+  g.setAttribute("aCrowd", new THREE.Float32BufferAttribute(crowdFlag, 1));
   g.computeBoundingSphere();
   return g;
 }
@@ -187,6 +232,7 @@ export function City({ events, onEnter }: CityProps) {
     g.setAttribute("aSeed", new THREE.BufferAttribute(data.seeds, 1));
     g.setAttribute("aSize", new THREE.BufferAttribute(data.sizes, 1));
     g.setAttribute("aWarm", new THREE.BufferAttribute(data.warm, 1));
+    g.setAttribute("aCrowd", new THREE.BufferAttribute(new Float32Array(data.warm.length), 1));
     g.computeBoundingSphere();
     return g;
   }, [data]);
@@ -195,6 +241,7 @@ export function City({ events, onEnter }: CityProps) {
       uTime: { value: 0 },
       uProgress: { value: 0 },
       uPixelRatio: { value: Math.min(window.devicePixelRatio, 2) },
+      uFrame: { value: Math.min(1, Math.max(0.4, window.innerWidth / 1200)) },
       uDim: { value: 1.0 },
       uWarm: { value: new THREE.Color("#ffc98a") },
       uCool: { value: new THREE.Color("#8fd6ff") },
