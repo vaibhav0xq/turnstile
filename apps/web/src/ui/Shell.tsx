@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router";
 import { type AppConfig, chainName } from "../chain/config";
 import { useIdentity } from "../identity/store";
+import { environmentLabel } from "../lib/environment";
 import { formatMs, shortAddress } from "../lib/format";
 import { useTelemetry } from "../lib/telemetry";
 import { useDirector } from "../scene/director";
@@ -20,6 +21,12 @@ export function TopBar({ config, onSignIn }: { config: AppConfig | undefined; on
   const live = fan && fan.expiresAt > Date.now();
   const location = useLocation();
   const home = location.pathname === "/";
+  const envLabel = environmentLabel(config?.environmentLabel, window.location.hostname);
+  // A rehearsal origin says so in the tab as well as the header — the staging URL is not the product's home.
+  useEffect(() => {
+    const base = "Turnstile — access that follows you";
+    document.title = envLabel ? `[${envLabel}] ${base}` : base;
+  }, [envLabel]);
 
   return (
     <header className="pointer-events-none fixed inset-x-0 top-0 z-30 flex items-start justify-between p-4 sm:p-6">
@@ -37,6 +44,15 @@ export function TopBar({ config, onSignIn }: { config: AppConfig | undefined; on
             {config ? chainName(config.chainId) : "connecting"}
           </span>
         </span>
+        {envLabel ? (
+          <span
+            className="chip mono border-amber/60 bg-amber/10 text-[10px] uppercase tracking-[0.2em] text-amber"
+            title="Internal rehearsal origin — not the final host. Passkeys made here stay here."
+            data-testid="environment-label"
+          >
+            {envLabel}
+          </span>
+        ) : null}
       </Link>
 
       <div className="pointer-events-auto flex items-center gap-2">

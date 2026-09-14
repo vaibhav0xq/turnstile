@@ -92,6 +92,10 @@ export const gateWallet = createWalletClient({
 export const settings = {
   publicRpcUrl: process.env["PUBLIC_RPC_URL"] || rpcUrl,
   explorer: process.env["EXPLORER_URL"] || null,
+  /** Shown in the web app's header (e.g. `staging`) so a rehearsal origin is never mistaken for the real one. */
+  environmentLabel: process.env["ENVIRONMENT_LABEL"]?.trim() || null,
+  /** Public origin for absolute URLs in ticket metadata; unset = taken from each request (proxy headers first). */
+  publicOrigin: process.env["PUBLIC_ORIGIN"]?.replace(/\/+$/, "") || null,
   gateToken: process.env["GATE_TOKEN"] || null,
   dripEnabled: process.env["DRIP_ENABLED"] === "1",
   dripAmount: BigInt(process.env["DRIP_AMOUNT_WEI"] || "100000000000000000"),

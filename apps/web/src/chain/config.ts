@@ -31,6 +31,8 @@ export interface AppConfig {
   chainId: number;
   rpcUrl: string;
   explorer: string | null;
+  /** Deployment label from the relayer (`ENVIRONMENT_LABEL`, e.g. `staging`); null on the real thing. */
+  environmentLabel: string | null;
   factory: Address;
   forwarder: Address;
   implementation: Address;

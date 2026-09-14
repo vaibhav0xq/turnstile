@@ -6,6 +6,7 @@ import { type Context, Hono } from "hono";
 import { cors } from "hono/cors";
 import { getAddress, isAddress } from "viem";
 import {
+  chain,
   chainId,
   deployment,
   gateAccount,
@@ -21,6 +22,7 @@ import { PassportStore } from "./passport.ts";
 import { PostgresPassportBackend } from "./passport-postgres.ts";
 import { RateLimiter } from "./ratelimit.ts";
 import { relay, relayGas } from "./relay.ts";
+import { renderTicketSvg, requestOrigin } from "./ticket-image.ts";
 
 function json(value: unknown, status = 200): Response {
   return new Response(
@@ -76,6 +78,7 @@ app.get("/api/config", async (context) =>
     chainId,
     rpcUrl: settings.publicRpcUrl,
     explorer: settings.explorer,
+    environmentLabel: settings.environmentLabel,
     factory: deployment.factory,
     forwarder: deployment.forwarder,
     implementation: deployment.implementation,
@@ -89,38 +92,75 @@ app.get("/api/config", async (context) =>
 app.get("/api/events", async (context) => json(await getEvents(fresh(context))));
 
 // Ticket metadata (`tokenURI`). Events are created with `baseURI = <api>/api/events/<eventId>/tickets/`;
-// the address form is kept for tooling.
+// the address form is kept for tooling. `…/image.svg` is what `image` points at.
+app.get("/api/events/:id/tickets/:tokenId/image.svg", (context) => ticketImage(context));
 app.get("/api/events/:id/tickets/:tokenId", (context) => metadata(context));
 app.get("/api/events/:id/:tokenId", (context) => metadata(context));
 
-async function metadata(context: Context) {
+const notFound = () => json({ error: { code: "NOT_FOUND", message: "Unknown seat" } }, 404);
+
+/** Resolves `:id` (eventId or address) and `:tokenId` to the event, its tier and the seat's chain state. */
+async function seatLookup(context: Context) {
   const idText = context.req.param("id") ?? "";
   const tokenText = context.req.param("tokenId") ?? "";
-  const notFound = () => json({ error: { code: "NOT_FOUND", message: "Unknown seat" } }, 404);
-  if (!/^[0-9]+$/.test(tokenText)) return notFound();
+  if (!/^[0-9]+$/.test(tokenText)) return null;
   let event: Awaited<ReturnType<typeof findEvent>>;
   if (isAddress(idText)) event = await findEvent(getAddress(idText));
   else if (/^[0-9]+$/.test(idText)) event = (await getEvents()).find((e) => e.eventId === idText);
-  else return notFound();
+  else return null;
   const tokenId = BigInt(tokenText);
   const tier = event ? tierFor(event, tokenId) : undefined;
-  if (!event || !tier) return notFound();
+  if (!event || !tier) return null;
   const states = (await publicClient.readContract({
     address: event.address,
     abi: turnstileEventAbi,
     functionName: "seatStates",
     args: [tokenId, 1n],
   })) as readonly { checkedInAt: bigint }[];
+  const checkedIn = (states[0]?.checkedInAt ?? 0n) !== 0n;
+  return { event, tier, tokenId, checkedIn };
+}
+
+async function metadata(context: Context) {
+  const seat = await seatLookup(context);
+  if (!seat) return notFound();
+  const { event, tier, tokenId, checkedIn } = seat;
+  const origin = requestOrigin(context.req.raw.headers, context.req.url, settings.publicOrigin);
   return json({
     name: `${event.name} — ${tier.name} #${tokenId}`,
     description: `${tier.name} seat #${tokenId} for ${event.name}, bound to the holder's passkey.`,
-    image: null,
+    image: `${origin}/api/events/${event.eventId}/tickets/${tokenId}/image.svg`,
+    external_url: `${origin}/t/${event.address}/${tokenId}`,
     attributes: [
       { trait_type: "Event", value: event.name },
       { trait_type: "Tier", value: tier.name },
       { trait_type: "Seat", value: tokenId },
-      { trait_type: "Checked in", value: (states[0]?.checkedInAt ?? 0n) !== 0n },
+      { trait_type: "Checked in", value: checkedIn },
     ],
+  });
+}
+
+async function ticketImage(context: Context) {
+  const seat = await seatLookup(context);
+  if (!seat) return notFound();
+  const { event, tier, tokenId, checkedIn } = seat;
+  const svg = renderTicketSvg({
+    eventName: event.name,
+    tierName: tier.name,
+    seatId: Number(tokenId),
+    seatIndex: Number(tokenId) - tier.firstSeat,
+    seatCount: tier.seatCount,
+    startsAt: event.startsAt,
+    checkedIn,
+    chainName: chain.name,
+    eventAddress: event.address,
+  });
+  return new Response(svg, {
+    headers: {
+      "content-type": "image/svg+xml; charset=UTF-8",
+      // The card changes once at check-in; a minute of caching keeps marketplaces from hammering the RPC.
+      "cache-control": "public, max-age=60",
+    },
   });
 }
 
