@@ -95,6 +95,11 @@ forge script script/CreateDemoEvent.s.sol --rpc-url monad_testnet --account depl
 # → "Neon Night at Metropolis" (300 free GA + 12 booths at 0.05 MON, cap 110 %, fee 5 %)
 #   "The Metropolis Players: Act III" (Stalls / Circle / Balcony, face-value resale, fee 10 %)
 # START_IN is seconds until doors; sales stay open until then, so use weeks, not the 2 h default.
+
+BASE_URI=https://<web>/api/events/ \
+forge script script/SetBaseURI.s.sol --rpc-url monad_testnet --account deployer --broadcast --slow
+# → every event the broadcaster administers gets baseURI = BASE_URI + eventId + "/tickets/"
+#   (EVENT_IDS=1,2 to limit); run again whenever the public origin moves (staging → final domain).
 ```
 
 Rehearsed on a fork of the live testnet (`anvil --fork-url https://testnet-rpc.monad.xyz`): deploy uses
@@ -113,7 +118,10 @@ Seed events (`CreateDemoEvent.s.sol`, `START_IN` 60 d, gate `0x6FA96BB331FcC7bb2
 `eventId 1` Neon Night at Metropolis `0x79a3e41Cbb8acd8c9A1A61a929bdBa302d3121B5` (block 62 312 967),
 `eventId 2` The Metropolis Players: Act III `0x9c4b7a654680b5a4d382b22bdAA10FB05DC23029` (block 62 312 969).
 Broadcasts with hashes and receipts: `broadcast/*/10143/`. Gas actually charged (Monad bills the limit):
-deploy 7 155 386 gas ≈ 0.737 MON, seeds 1 671 499 gas ≈ 0.172 MON, all at 103 gwei.
+deploy 7 155 386 gas ≈ 0.737 MON, seeds 1 671 499 gas ≈ 0.172 MON, all at 103 gwei. `baseURI` of both
+events set to the staging origin `https://turnstile-michellecox8789.replit.app/api/events/<id>/tickets/` on
+14 Sep 2026 (`SetBaseURI.s.sol`, blocks 62 326 574 and 62 326 581, 110 350 gas each) — re-run for the final
+domain.
 
 ## Gas (max of successful calls, `forge test --gas-report`)
 

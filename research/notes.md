@@ -235,3 +235,9 @@ Exact rules text, team-size cap, KYC, video requirement, "Community Team" defini
 - Passports moved to Postgres for the hosted relayer (`DATABASE_URL`): the JSON file does not survive a
   redeploy on the host and the store has to be safe with more than one process — the watermark check now
   runs inside the upsert. Schema applied once with `pnpm --filter @turnstile/relayer db:setup`.
+- Staging publish (14 Sep 2026, Replit, `https://turnstile-michellecox8789.replit.app`, not the final domain):
+  `/api/health` ok on chain 10143; smoke against the deployed origin passed end to end in 15 s (sponsored buy
+  1.2 s and check-in 0.6 s relayer-side; the difference to local is the hop to the host); passport PUT / replay
+  409 / GET / clear verified against the production Postgres. `setBaseURI` on both events → this origin
+  (`SetBaseURI.s.sol`, 110 350 gas each); `tokenURI(1)` of the club now resolves to live metadata that says
+  "Checked in: true" for the smoke seat.

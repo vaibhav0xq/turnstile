@@ -182,7 +182,7 @@ does not load `.env` on its own):
 | `FORWARDER` | `Deploy.s.sol` | leave **unset** for the first deployment; set to reuse an existing forwarder when redeploying only implementation + factory |
 | `GATE_ADDRESS` | `CreateDemoEvent.s.sol` | the gate EOA — grants `GATE_ROLE` at creation |
 | `START_IN` | `CreateDemoEvent.s.sol` | seconds until the seed events start. Use **`3888000`** (45 days) so sales stay open while `apps/web` is built; the default 2 h closes sales an hour later |
-| `BASE_URI` | `CreateDemoEvent.s.sol` | `https://<your-web-host>/api/events/` — placeholder is fine, the organiser can `setBaseURI` later |
+| `BASE_URI` | `CreateDemoEvent.s.sol`, `SetBaseURI.s.sol` | `https://<your-web-host>/api/events/` — placeholder is fine at seeding; `SetBaseURI.s.sol` re-points every event you administer once the host exists (done 14 Sep 2026 for the staging origin) |
 | `MONADSCAN_API_KEY` | only the Monadscan fallback in §7 | free key from monadscan.com |
 
 Nothing else: no `PRIVATE_KEY` variable anywhere — the deployer is a keystore, `--account deployer`.

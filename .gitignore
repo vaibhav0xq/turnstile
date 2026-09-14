@@ -16,7 +16,7 @@ spike/dist/
 # foundry (packages/contracts) — Soldeer installs into dependencies/, the lock file is committed
 cache/
 packages/contracts/dependencies/
-broadcast/**/dry-run/
+packages/contracts/broadcast/**/dry-run/
 packages/contracts/deployments/31337.json
 
 # env & secrets — never commit keys; see .env.example

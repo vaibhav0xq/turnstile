@@ -83,6 +83,11 @@ Deployed 14 Sep 2026 from block 62 312 597, all three contracts verified on Mona
 match). `packages/contracts/deployments/10143.json` is the source of truth for the relayer, the indexer and
 the web app — read it, do not copy addresses around. Runbook and gas figures: `docs/deploy-monad-testnet.md`.
 
+**Staging** (web + relayer on Monad testnet, not the final domain): <https://turnstile-michellecox8789.replit.app>
+— `/api/health` for the relayer, `pnpm smoke -- --relayer <origin> --rpc https://testnet-rpc.monad.xyz` runs
+the full buy → bind → resale → check-in path against it. Both seed events' `baseURI` point at this origin
+(`<origin>/api/events/<id>/tickets/`); `script/SetBaseURI.s.sol` re-points them when the host moves.
+
 The spike is standalone: `cd spike && npm ci && npm run build && npm run verify` (headless Chromium, 17 checks).
 
 `pnpm verify` is the commit gate: `pnpm install --frozen-lockfile`, `pnpm check` (biome, tsc, node tests, forge
@@ -109,7 +114,8 @@ from `deployments/`); it goes live on Envio's hosted service once the testnet fa
 Judge mode (guided two-minute run, finale on chain truth) and SPEC v1.3's compact `TS2:` entry code (the
 ticket QR drops from 57 to 49 modules; `TS1|` still decodes). Venue tiers are now derived from the seat rows.
 Deployed to Monad testnet (`deployments/10143.json`, verified on MonadVision) with the two seed events; sales
-stay open until 13 Nov 2026. Next: hosted web + relayer, indexer → Envio hosted service, demo video.
+stay open until 13 Nov 2026. Web + relayer on a staging origin (above) with passports in Postgres; smoke,
+passport sync and token metadata verified there. Next: final domain, indexer → Envio hosted service, demo video.
 
 ## License
 
