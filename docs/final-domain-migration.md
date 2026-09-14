@@ -33,9 +33,12 @@ Set through the deployment's environment (the *Publishing* pane, production scop
 | `PUBLIC_ORIGIN` | `https://<final>` (no trailing slash) | metadata `image` / `external_url`, ticket image links; the relayer refuses to trust `X-Forwarded-Host` |
 | `ENVIRONMENT_LABEL` | **remove** | the STAGING chip and the tab-title prefix go away |
 | `CORS_ORIGIN` | leave unset (`*`) — or `https://<final>` if you want it exact | same-origin web needs nothing; set it only if a second front-end origin appears |
-| `VITE_RP_ID` | leave unset | web hostname is the RP ID; setting it wrongly breaks every passkey |
+| `VITE_RP_ID` | `<apex>` (e.g. `turnstile.example`, no scheme) | the passkey RP ID; must equal the page hostname or a registrable suffix of it — a wrong value breaks every passkey. The apex lets any future subdomain share credentials. Pair it with the `www` → apex redirect below; on a platform hostname (`*.replit.app`) leave it unset |
 | `CHAIN_ID`, `EXPLORER_URL`, keys, `GATE_TOKEN`, `DATABASE_URL` | unchanged | |
 
+- [ ] One canonical host: the relayer answers `www.<apex>` with a 301 to the apex before any page loads (small
+      middleware, built in the remaining-work plan's step 1), so apex and `www` never grow separate passkey
+      populations.
 - [ ] Republish. Watch the relayer boot log: no `PUBLIC_ORIGIN is not set` warning.
 
 ## 3. Verify the origin
