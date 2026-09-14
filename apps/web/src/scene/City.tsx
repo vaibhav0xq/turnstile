@@ -174,7 +174,10 @@ interface CityProps {
 }
 
 export function City({ events, onEnter }: CityProps) {
-  const beacons = useMemo(() => events.map((_, i) => beaconSlot(i)), [events]);
+  // one plaza per slot: past six lit nights the picker stops adding beacons (the bill still lists them),
+  // rather than stacking a seventh pavilion, beacon and hit target on the first
+  const lit = useMemo(() => events.slice(0, BEACON_SLOTS.length), [events]);
+  const beacons = useMemo(() => lit.map((_, i) => beaconSlot(i)), [lit]);
   const quality = useDirector((s) => s.quality);
   const data = useMemo(() => buildCity(BEACON_SLOTS, quality === "high" ? 1 : 0.5), [quality]);
   const geometry = useMemo(() => {
@@ -252,7 +255,7 @@ export function City({ events, onEnter }: CityProps) {
       <Buildings buildings={data.buildings} startedAt={started} material={mass} />
       <Skyline towers={data.skyline} material={mass} />
       <points geometry={geometry} material={material} frustumCulled={false} />
-      {events.map((event, i) => (
+      {lit.map((event, i) => (
         <Beacon
           key={event.address}
           event={event}

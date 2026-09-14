@@ -166,8 +166,8 @@ export function Pavilion({ event, slot }: { event: EventInfo; slot: readonly [nu
       <Instances geometry={pole} material={metal} count={LAMPS} place={placePole} />
       <Instances geometry={unit} material={amber} count={LAMPS} place={placeLampHead} />
 
-      {/* the lobby's spill in front of the doors, and the lamps over the gate line */}
-      <pointLight position={[0, 3.6, FACE + 3]} intensity={22} distance={26} color="#ffc98a" decay={1.6} />
+      {/* one light per venue (the beacon's own is the other): the lamps over the gate line, which is what
+          the hero stands among; the lobby's spill on the paving is the ground shader's business */}
       <pointLight
         position={[0, 5, GATE_LINE_Z + 1]}
         intensity={18}
