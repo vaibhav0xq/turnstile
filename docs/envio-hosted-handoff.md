@@ -9,7 +9,7 @@ click, what to check, and what to wire up afterwards so the bounty's "actually d
 | Piece | Where | State |
 |-------|-------|-------|
 | Chains + contracts | `packages/indexer/config.yaml` | Monad testnet `10143`, factory `0x5C6e…42B2`, start block `62312572` (generated from `deployments/10143.json` by `pnpm sync-config`; `TurnstileEvent` clones register dynamically from `EventCreated`) |
-| Schema | `schema.graphql` | `Event`, `Ticket`, `Fan`, `Activity` (+ `ActivityKind`: MINT · BIND · UNBIND · LIST · DELIST · RESALE · CHECKIN) |
+| Schema | `schema.graphql` | `Event`, `Ticket`, `Fan`, `Activity`, per-chain `Stats`, minute throughput `EventMinute`, and immutable resale `Handover` rows (+ `ActivityKind`: MINT · BIND · UNBIND · LIST · DELIST · RESALE · CHECKIN) |
 | Handlers | `src/handlers/turnstile.ts` | `EventCreated` plus every seat-lifecycle event (`TicketMinted`, `DoorKeyBound`, `DoorKeyCleared`, `Listed`, `Delisted`, `ListingFilled`, `CheckedIn`); the admin settings events `SalesEndUpdated` / `BaseURIUpdated` are deliberately not indexed. `DoorKeyCleared` inside a resale updates the seat without a feed row |
 | Tests | `test/handlers.test.ts` | 5 in-process tests (`createTestIndexer`), no Docker; run by `pnpm verify` |
 | Runtime | `package.json` | `envio ^3.5.0` (lock resolves 3.10.0), Node ≥ 24, pnpm 10 — all inside Envio Cloud's requirements (≥ 2.21.5, not 2.29.x, pnpm 10.32-compatible) |
@@ -17,6 +17,10 @@ click, what to check, and what to wire up afterwards so the bounty's "actually d
 
 Nothing consumes the GraphQL endpoint yet. The root `.env.example` reserves `VITE_ENVIO_GRAPHQL_URL`; the web
 and the relayer read chain state over RPC today.
+
+The current generated chains block contains Monad testnet only. Once a Monad mainnet deployment exists,
+`sync-config` can add chain `143` beside `10143`; chain-qualified entity ids let both networks share one
+indexer without deterministic event or account addresses colliding.
 
 ## 1. Account and first deployment (you)
 
@@ -59,18 +63,19 @@ smoke-test seats plus one per judge run; the theatre (`0x9c4b…3029`, eventId 2
 
 ```graphql
 # both seed events, with the counters the organiser page shows
-{ Event(order_by: { eventId: asc }) {
-    id eventId name organiser startsAt sold comps checkedIn listed resales primaryVolume resaleVolume resaleFees } }
+{ Event(where: { chainId: { _eq: 10143 } }, order_by: { eventId: asc }) {
+    id chainId address eventId name organiser startsAt sold comps checkedIn listed resales primaryVolume resaleVolume resaleFees } }
 
 # every seat on the club, newest first
-{ Ticket(where: { event_id: { _eq: "0x79a3e41cbb8acd8c9a1a61a929bdba302d3121b5" } }, order_by: { tokenId: desc }) {
+{ Ticket(where: { chainId: { _eq: 10143 }, event: { address: { _eq: "0x79a3e41cbb8acd8c9a1a61a929bdba302d3121b5" } } }, order_by: { tokenId: desc }) {
     id tokenId tier faceValue comp doorKey listedPrice checkedInAt mintedAt handovers holder { id } } }
 
 # the attendance record behind the passport
-{ Fan(order_by: { checkIns: desc }, limit: 10) { id tickets bought checkIns firstSeenAt lastSeenAt } }
+{ Fan(where: { chainId: { _eq: 10143 } }, order_by: { checkIns: desc }, limit: 10) {
+    id chainId address tickets bought checkIns firstSeenAt lastSeenAt } }
 
 # the live feed
-{ Activity(order_by: { timestamp: desc }, limit: 20) {
+{ Activity(where: { chainId: { _eq: 10143 } }, order_by: { timestamp: desc }, limit: 20) {
     id kind actor counterparty amount timestamp txHash event { eventId } ticket { tokenId } } }
 ```
 
@@ -82,7 +87,8 @@ Checks:
       (`0x6FA9…F9CF`) and whose `txHash` is the admit hash on the summary card.
 - [ ] The smoke test's resale shows as `LIST` → `RESALE` rows, `handovers: 1` on that seat, `doorKey: null`
       after the resale until the buyer rebinds.
-- [ ] Id casing: Hasura ids are lower-case hex strings — query with lower-case addresses.
+- [ ] Id casing: entity ids are prefixed by the chain id and their address portions are lower-case. Query the
+      explicit `chainId` and lower-case `address` fields rather than constructing ids in clients.
 - [ ] Note the endpoint URL and the deployment id in `research/notes.md`.
 
 ## 3. Wire it into the app (me, once the URL exists)
@@ -112,6 +118,164 @@ Mechanics:
 - Tests: a fixture of the four queries' JSON shapes; the handler tests already pin the entity fields.
 - README: "Indexer: deployed on Envio Cloud — `<url>`; the door feed, organiser stream and passport history
   read from it" and the bounty line; `docs/README.md` index; `.env.example` comment loses "later:".
+
+### Web app queries
+
+These are the four surfaces the web app's Live layer renders, enabled only when
+`VITE_ENVIO_GRAPHQL_URL` is set. Every `$address` / `$addresses` variable must be lower-cased: the indexer
+stores all address-valued fields lower-cased (see the schema header), so `_eq` is exact.
+
+#### Organiser live board
+
+```graphql
+query OrganiserLiveBoard($chainId: Int!, $address: String!) {
+  Event(where: { chainId: { _eq: $chainId }, address: { _eq: $address } }, limit: 1) {
+    id
+    chainId
+    address
+    name
+    sold
+    comps
+    checkedIn
+    listed
+    resales
+    primaryVolume
+    resaleVolume
+    resaleFees
+  }
+  Activity(
+    where: { chainId: { _eq: $chainId }, event: { address: { _eq: $address } } }
+    order_by: [{ timestamp: desc }, { block: desc }]
+    limit: 20
+  ) {
+    id
+    kind
+    actor
+    counterparty
+    amount
+    timestamp
+    txHash
+    ticket { tokenId tier }
+  }
+  EventMinute(
+    where: { chainId: { _eq: $chainId }, event: { address: { _eq: $address } } }
+    order_by: { minute: desc }
+    limit: 30
+  ) {
+    minute
+    mints
+    checkIns
+    resales
+    volume
+  }
+}
+```
+
+#### Passport history
+
+```graphql
+query PassportHistory($chainId: Int!, $address: String!) {
+  Fan(where: { chainId: { _eq: $chainId }, address: { _eq: $address } }, limit: 1) {
+    id
+    chainId
+    address
+    tickets
+    bought
+    checkIns
+    firstSeenAt
+    lastSeenAt
+  }
+  Activity(
+    where: { chainId: { _eq: $chainId }, actor: { _eq: $address } }
+    order_by: [{ timestamp: desc }, { block: desc }]
+  ) {
+    id
+    kind
+    amount
+    timestamp
+    txHash
+    event { name address }
+    ticket { tokenId }
+  }
+}
+```
+
+#### City pulse
+
+```graphql
+query CityPulse($chainId: Int!, $addresses: [String!]!) {
+  Stats(where: { chainId: { _eq: $chainId } }, limit: 1) {
+    events
+    sold
+    comps
+    checkedIn
+    resales
+    fans
+    primaryVolume
+    resaleVolume
+    resaleFees
+    lastActivityAt
+    lastBlock
+  }
+  Event(
+    where: { chainId: { _eq: $chainId }, address: { _in: $addresses } }
+    order_by: { startsAt: asc }
+  ) {
+    id
+    address
+    name
+    sold
+    comps
+    checkedIn
+    listed
+    resales
+    primaryVolume
+    resaleVolume
+  }
+  Activity(
+    where: { chainId: { _eq: $chainId }, event: { address: { _in: $addresses } } }
+    order_by: [{ timestamp: desc }, { block: desc }]
+    limit: 10
+  ) {
+    id
+    kind
+    actor
+    amount
+    timestamp
+    event { name address }
+    ticket { tokenId }
+  }
+}
+```
+
+#### Ticket provenance
+
+```graphql
+query TicketProvenance($chainId: Int!, $eventAddress: String!, $tokenId: bigint!) {
+  Activity(
+    where: {
+      chainId: { _eq: $chainId }
+      ticket: {
+        chainId: { _eq: $chainId }
+        tokenId: { _eq: $tokenId }
+        event: { address: { _eq: $eventAddress } }
+      }
+    }
+    order_by: [{ timestamp: asc }, { block: asc }]
+  ) {
+    id
+    kind
+    actor
+    counterparty
+    amount
+    timestamp
+    block
+    txHash
+    event { name address }
+    ticket { tokenId tier }
+  }
+}
+```
 
 ## 4. Bounty checklist (Best Use of Envio)
 

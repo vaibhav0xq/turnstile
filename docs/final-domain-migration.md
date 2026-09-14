@@ -10,7 +10,11 @@ judge runs must pass *before* the README claims the domain.
 
 ## 0. Decide
 
-- [ ] Final origin chosen: `https://<final>`. A custom domain is the clean case. Keeping the `.replit.app`
+- [x] Final origin chosen (14 Sep 2026): **`https://turnstile.show`** — `<final>` and `<apex>` below mean
+      `turnstile.show`. Backups if it is gone at checkout: `turnstile.club`, then `turnstile.one`; the
+      runbook is identical, only the name changes. Hosting stays option A (single Replit origin, Reserved VM
+      through judging). The domain is not bought or linked yet, so nothing below has run.
+- [ ] (Only if the plan changes back to the platform name.) Final origin `https://<final>`. A custom domain is the clean case. Keeping the `.replit.app`
       name is possible but the web labels *any* `*.replit.app` host `staging` on its own
       (`apps/web/src/lib/environment.ts`, a rule the tests cover) — drop that rule in the commit that declares
       the origin final, skip §1, and still set §2's `PUBLIC_ORIGIN`.
@@ -36,9 +40,15 @@ Set through the deployment's environment (the *Publishing* pane, production scop
 | `VITE_RP_ID` | `<apex>` (e.g. `turnstile.example`, no scheme) | the passkey RP ID; must equal the page hostname or a registrable suffix of it — a wrong value breaks every passkey. The apex lets any future subdomain share credentials. Pair it with the `www` → apex redirect below; on a platform hostname (`*.replit.app`) leave it unset |
 | `CHAIN_ID`, `EXPLORER_URL`, keys, `GATE_TOKEN`, `DATABASE_URL` | unchanged | |
 
-- [ ] One canonical host: the relayer answers `www.<apex>` with a 301 to the apex before any page loads (small
-      middleware, built in the remaining-work plan's step 1), so apex and `www` never grow separate passkey
-      populations.
+- [ ] One canonical host: with `PUBLIC_ORIGIN=https://<apex>` the relayer already answers `www.<apex>` with a
+      301 (308 for non-GET) to the same path on the apex, before static files or the API (`apps/relayer/src/
+      canonical-host.ts`); add any other purchased alias (for example the backup domains, if bought) to
+      `REDIRECT_HOSTS` as a comma-separated list. Check: `curl -sI https://www.<apex>/e/x` → `301` with
+      `location: https://<apex>/e/x`. This keeps apex and `www` from growing separate passkey populations.
+- [ ] RPC: `RPC_URL` = the Alchemy Monad testnet HTTPS URL (writes and reads), `RPC_FALLBACK_URLS` =
+      `https://testnet-rpc.monad.xyz` (reads only fail over; transactions stay pinned to the primary),
+      `PUBLIC_RPC_URL` = the browser-restricted Alchemy key, `PUBLIC_RPC_FALLBACK_URLS` = the public RPC.
+      `/api/health` then reports `rpc.provider: "alchemy"` and the fallback host list.
 - [ ] Republish. Watch the relayer boot log: no `PUBLIC_ORIGIN is not set` warning.
 
 ## 3. Verify the origin

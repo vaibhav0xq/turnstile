@@ -1,8 +1,12 @@
 # Turnstile — what the door, the organiser and the fan's passport want to know, one query away.
+# Every address-valued field (ids, organiser, actor, counterparty, seller, buyer, doorKey) is lower-cased,
+# so clients filter with `_eq` on lower-cased input and never construct ids by hand.
 
-# One TurnstileEvent clone (a night). id = the event contract address.
+# One TurnstileEvent clone (a night). id = "<chainId>-<event address lowercased>".
 type Event {
   id: ID!
+  chainId: Int!
+  address: String! # lowercased event contract address
   eventId: BigInt!
   organiser: String!
   name: String!
@@ -20,12 +24,15 @@ type Event {
   resaleFees: BigInt! # wei kept by the organiser from resales
   tickets: [Ticket!]! @derivedFrom(field: "event")
   activity: [Activity!]! @derivedFrom(field: "event")
+  minutes: [EventMinute!]! @derivedFrom(field: "event")
+  handoverRows: [Handover!]! @derivedFrom(field: "event") # immutable resale handover records
 }
 
-# One seat. id = "<event address>-<tokenId>".
+# One seat. id = "<chainId>-<event address lowercased>-<tokenId>".
 type Ticket {
   id: ID!
   event: Event!
+  chainId: Int!
   tokenId: BigInt!
   tier: Int!
   holder: Fan!
@@ -38,9 +45,12 @@ type Ticket {
   handovers: Int! # how many times it changed hands on the resale market
 }
 
-# A passkey account as seen on chain: the attendance record behind the passport. id = address.
+# A passkey account as seen on chain: the attendance record behind the passport.
+# id = "<chainId>-<address lowercased>".
 type Fan {
   id: ID!
+  chainId: Int!
+  address: String! # lowercased passkey account address
   tickets: Int! # seats held right now
   bought: Int! # seats ever taken (box office + resale)
   checkIns: Int! # nights actually attended
@@ -54,10 +64,55 @@ type Activity {
   id: ID!
   event: Event!
   ticket: Ticket!
+  chainId: Int!
   kind: ActivityKind!
   actor: String! # who the entry is about (buyer, holder, seller)
   counterparty: String # the other side, when there is one (resale buyer, gate)
   amount: BigInt! # wei moved, 0 when none
+  timestamp: BigInt!
+  block: BigInt!
+  txHash: String!
+}
+
+# One per-chain rollup, created when the chain's first event appears. id = "<chainId>".
+type Stats {
+  id: ID!
+  chainId: Int!
+  events: Int!
+  sold: Int!
+  comps: Int!
+  checkedIn: Int!
+  resales: Int!
+  fans: Int! # distinct fans first seen on this chain
+  primaryVolume: BigInt!
+  resaleVolume: BigInt!
+  resaleFees: BigInt!
+  lastActivityAt: BigInt!
+  lastBlock: BigInt!
+}
+
+# One event's throughput in a minute. id = "<Event.id>-<floor(timestamp / 60)>".
+type EventMinute {
+  id: ID!
+  event: Event!
+  chainId: Int!
+  minute: BigInt! # unix seconds at the start of the bucket
+  mints: Int!
+  checkIns: Int!
+  resales: Int!
+  volume: BigInt! # mint and resale wei in this minute
+}
+
+# One immutable resale transfer. id = "<chainId>-<block>-<logIndex>".
+type Handover {
+  id: ID!
+  event: Event!
+  ticket: Ticket!
+  chainId: Int!
+  seller: String!
+  buyer: String!
+  price: BigInt!
+  fee: BigInt! # organiser fee emitted by ListingFilled
   timestamp: BigInt!
   block: BigInt!
   txHash: String!

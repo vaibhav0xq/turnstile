@@ -8,6 +8,8 @@ rollback_on_reorg: false
 field_selection:
   transaction_fields:
     - hash
+# Monad mainnet (143) can join the generated chains block once its contracts are deployed.
+# Entity ids are chain-qualified, so testnet and mainnet can safely share this config.
 contracts:
   - name: TurnstileFactory
     events:

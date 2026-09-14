@@ -305,9 +305,9 @@ prompt counts, timings and the JSON from the device page.
 
 | # | Work | Effort | Target |
 |---|---|---|---|
-| 1 | Domain + hosting: buy domain, link apex + `www`, `www` → apex redirect, Alchemy keys + `fallback` transports + health label, `VITE_RP_ID`, max machines 1, migration §8 steps 1–4 (not `baseURI` yet) | 1.5 days + DNS wait | 16 Sep |
+| 1 | Domain + hosting: buy `turnstile.show`, link apex + `www`, Alchemy keys, `VITE_RP_ID`, Reserved VM, migration §8 steps 1–4 (not `baseURI` yet). Code side done 14 Sep: `www` → apex redirect middleware (`REDIRECT_HOSTS`), viem `fallback` transports in relayer and browser (`RPC_FALLBACK_URLS`, `PUBLIC_RPC_FALLBACK_URLS`), `/api/health` `rpc` block and `/api/config.rpcProvider` | 1.5 days + DNS wait | 16 Sep |
 | 2 | Envio: deploy indexer, schema additions (`Stats`, `EventMinute`, `Handover`), client + four surfaces, freshness chip | 3 days | 20 Sep |
-| 3 | App surface fixes (§5): judge-only stopwatch, mobile header, scrims, 404 / loading states, non-owner ticket copy, checkout failure copy, gate operator token, tour target (newest free event + `?event=`) | 2 days | 22 Sep |
+| 3 | App surface fixes (§5) — done 14 Sep: judge-only stopwatch, mobile header, scrims, 404 / loading / unknown-seat states, non-owner and unsold ticket copy, checkout failure copy, gate operator token, tour target (newest free event + `?event=`) | 2 days | 22 Sep |
 | 3b | Portal gate: submission fields open — read requirements, enter repo, re-confirm track + bounties, adjust this plan | 0.5 day | 22–23 Sep |
 | 4 | 3D fixes on the judge path (§4.1, 4.4, 4.5, 4.6, 4.8): loader + fallback, theatre reframe, followspot wash, finale beat, mobile tier | 3 days | 25 Sep |
 | 5 | Landing / website (§3) with live Envio numbers, OG image, footer, FAQ, LCP budget | 3 days | 29 Sep |
@@ -320,6 +320,14 @@ prompt counts, timings and the JSON from the device page.
 Rules that hold throughout: every commit gated and authored by you; nothing sensitive in the repo; Envio, the
 domain and Alchemy are your accounts — I prepare the exact steps and verify afterwards.
 
-**Decisions needed from you:** the domain name; hosting option A vs B; whether mainnet is in scope (drives the
-multichain line in the Envio config); whether the demo video uses a fresh "Opening Night" event or the seed
-events as they are.
+## 12. Decisions taken (14 Sep 2026)
+
+| Question | Decision | Consequence in this plan |
+|---|---|---|
+| Domain | **`turnstile.show`** (backups `turnstile.club`, `turnstile.one` if the first is gone at checkout) | `PUBLIC_ORIGIN=https://turnstile.show`, `VITE_RP_ID=turnstile.show`, `REDIRECT_HOSTS` covers `www` automatically; the migration runbook names it. No migration step runs until the domain is bought and linked. |
+| Hosting | **Option A** — Replit single origin + custom domain, **Reserved VM** through judging (fallback: Autoscale with max machines = 1) | No `VITE_API_URL`, no CORS. The relayer stays single-process, which its tx queue, rate limits and drip cooldown assume. |
+| Mainnet | **Testnet-only judged submission**, mainnet-ready architecture documented | Envio config keeps chain `10143` only; entity ids are chain-qualified so `143` can be added without a re-index of ids. README/write-up state the testnet deployment plainly. No mainnet keys, funds or deployments before the deadline. |
+| Demo video event | **Fresh "Opening Night" club event**, seeded the day before capture | Capture uses `?event=<address>` to target it; the judge default (no parameter) is the newest event that still has a free seat, so the seeded night is also what a judge lands on. Seed script + storyboard dry run stay in step 8. |
+
+Still yours to do when ready (each has an exact runbook): buy and link the domain (§8 steps 1–4), create the
+Alchemy app and keys, deploy the indexer to Envio hosted and hand back `VITE_ENVIO_GRAPHQL_URL`, publish.
