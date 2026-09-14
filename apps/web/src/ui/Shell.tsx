@@ -11,7 +11,18 @@ import { Dot, Kicker } from "./primitives";
 
 export function Curtain() {
   const curtain = useDirector((s) => s.curtain);
-  return <div className="curtain" style={{ opacity: curtain ? 1 : 0 }} aria-hidden />;
+  const flash = useDirector((s) => s.flash);
+  return (
+    <>
+      <div className="curtain" style={{ opacity: curtain ? 1 : 0 }} aria-hidden />
+      {/* The flash rises fast at the bottom of the dive and lifts slowly off the descending room. */}
+      <div
+        className="flash"
+        style={{ opacity: flash ? 1 : 0, transitionDuration: flash ? "240ms" : "720ms" }}
+        aria-hidden
+      />
+    </>
+  );
 }
 
 /** Boot veil: "Lighting the city…" until the world has drawn its first frame, then a 700 ms lift. */

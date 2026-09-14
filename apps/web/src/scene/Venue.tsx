@@ -6,7 +6,7 @@ import type { SeatMap } from "../chain/seats";
 import type { VenueLayout } from "../venues/layout";
 import { Decks } from "./Decks";
 import { houseLevel, useDirector } from "./director";
-import { curtainShader, ledWallShader, useShaderMaterial } from "./materials";
+import { curtainShader, hazeShader, ledWallShader, useShaderMaterial } from "./materials";
 import { Seats } from "./Seats";
 
 interface VenueProps {
@@ -22,7 +22,13 @@ export function Venue({ layout, seatMap, interactive }: VenueProps) {
       <Room layout={layout} />
       <Stage layout={layout} />
       {layout.kind === "theatre" ? <Proscenium layout={layout} /> : <LedWall layout={layout} />}
-      {layout.kind === "club" ? <Mezzanine layout={layout} /> : null}
+      {layout.kind === "club" ? (
+        <>
+          <Mezzanine layout={layout} />
+          <BoothLights layout={layout} />
+          <Haze layout={layout} visible={quality !== "min"} />
+        </>
+      ) : null}
       <Decks layout={layout} lips={layout.kind !== "club"} />
       <Rig layout={layout} volumetric={quality === "high"} />
       {/* Sparkles and the volumetric cones stay mounted at every tier and are hidden instead: mounting
@@ -305,6 +311,81 @@ function Mezzanine({ layout }: { layout: VenueLayout }) {
           </mesh>
         </group>
       ))}
+    </group>
+  );
+}
+
+/**
+ * Club: pendants over the booth arc, a top-down fill so the sofas and tables read as furniture and not as
+ * flat colour. Hung from the roof on rods, so the light comes from somewhere.
+ */
+function BoothLights({ layout }: { layout: VenueLayout }) {
+  const house = useHouseLights([16, 16, 16]);
+  const r = MEZZ_INNER + 3.6;
+  const angles = [-0.82, 0, 0.82];
+  return (
+    <group position={[layout.center.x, 0, layout.center.z]}>
+      {angles.map((a, i) => (
+        <group key={a} position={[r * Math.sin(a), 0, r * Math.cos(a)]}>
+          <mesh position={[0, 8.6, 0]}>
+            <cylinderGeometry args={[0.03, 0.03, 3.2, 8]} />
+            <meshStandardMaterial color="#2a2d3a" roughness={0.4} metalness={0.8} />
+          </mesh>
+          <mesh position={[0, 6.9, 0]}>
+            <coneGeometry args={[0.42, 0.5, 20, 1, true]} />
+            <meshStandardMaterial color="#1c1e27" roughness={0.5} metalness={0.7} side={THREE.DoubleSide} />
+          </mesh>
+          <mesh position={[0, 6.66, 0]} rotation={[Math.PI / 2, 0, 0]}>
+            <circleGeometry args={[0.36, 20]} />
+            <meshBasicMaterial color="#ffe2b8" toneMapped={false} />
+          </mesh>
+          <pointLight
+            ref={house(i)}
+            position={[0, 6.5, 0]}
+            intensity={16}
+            distance={13}
+            decay={1.7}
+            color="#ffdcb0"
+          />
+        </group>
+      ))}
+    </group>
+  );
+}
+
+/** Club: two sheets of low haze over the floor, lit by the wall's colours, drifting slowly. */
+function Haze({ layout, visible }: { layout: VenueLayout; visible: boolean }) {
+  const glow = { transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false };
+  const low = useShaderMaterial({ ...hazeShader, ...glow, side: THREE.DoubleSide });
+  const high = useShaderMaterial({ ...hazeShader, ...glow, side: THREE.DoubleSide });
+  useFrame(({ clock }) => {
+    const t = clock.getElapsedTime();
+    const level = 0.5 + 0.5 * houseLevel();
+    const lowTime = low.uniforms["uTime"];
+    if (lowTime) lowTime.value = t;
+    const highTime = high.uniforms["uTime"];
+    if (highTime) highTime.value = t + 37;
+    const lowOpacity = low.uniforms["uOpacity"];
+    if (lowOpacity) lowOpacity.value = 0.42 * level;
+    const highOpacity = high.uniforms["uOpacity"];
+    if (highOpacity) highOpacity.value = 0.22 * level;
+  });
+  useEffect(() => {
+    for (const m of [low, high]) {
+      const radius = m.uniforms["uRadius"];
+      if (radius) radius.value = layout.radius;
+    }
+  }, [low, high, layout.radius]);
+  const size = layout.radius * 2;
+  // The room's floor and wall are centred on the origin, and so is the shader's edge fade.
+  return (
+    <group visible={visible}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 1.0, 0]} material={low} frustumCulled={false}>
+        <planeGeometry args={[size, size]} />
+      </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 2.1, 0]} material={high} frustumCulled={false}>
+        <planeGeometry args={[size, size]} />
+      </mesh>
     </group>
   );
 }

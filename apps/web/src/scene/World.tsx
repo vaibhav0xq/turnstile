@@ -53,12 +53,17 @@ function Scene({ config, seatMap, onEnterEvent }: WorldProps) {
   const chapter = useDirector((s) => s.chapter);
   const eventAddress = useDirector((s) => s.eventAddress);
   const hoveredBeacon = useDirector((s) => s.hoveredBeacon);
+  const transition = useDirector((s) => s.transition);
   const quality = useDirector((s) => s.quality);
   const setQuality = useDirector((s) => s.setQuality);
   const event = findEvent(config, eventAddress ?? undefined);
   const layout = useMemo(() => (event ? buildLayout(event) : null), [event]);
   const events = config?.events ?? [];
   const focusBeacon = hoveredBeacon ? events.findIndex((e) => e.address === hoveredBeacon) : -1;
+  const diveBeacon =
+    transition?.kind === "dive"
+      ? events.findIndex((e) => e.address.toLowerCase() === transition.eventAddress.toLowerCase())
+      : -1;
   const reduced =
     typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -111,7 +116,11 @@ function Scene({ config, seatMap, onEnterEvent }: WorldProps) {
           ) : (
             <Venue layout={layout} seatMap={seatMap} interactive={chapter === "venue"} />
           )}
-          <CameraRig layout={layout} focusBeacon={focusBeacon >= 0 ? focusBeacon : null} />
+          <CameraRig
+            layout={layout}
+            focusBeacon={focusBeacon >= 0 ? focusBeacon : null}
+            diveBeacon={diveBeacon >= 0 ? diveBeacon : null}
+          />
           {/* Re-run on every cut so a venue's programs link behind the curtain, not on its first frame. */}
           <Preload all key={`${chapter}:${eventAddress ?? ""}`} />
         </Suspense>

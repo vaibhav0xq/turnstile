@@ -430,6 +430,17 @@ input:focus-visible {
   transition: opacity 520ms ease;
 }
 
+/* Passing through the beacon: warm white at the centre, amber at the edges. Duration is set inline. */
+.flash {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: radial-gradient(ellipse at 50% 55%, #fff3dc 0%, #ffcf8f 42%, #d9822f 100%);
+  pointer-events: none;
+  transition-property: opacity;
+  transition-timing-function: ease-in-out;
+}
+
 /* Boot veil: over the canvas, under the DOM, until the first frame is drawn. */
 .veil {
   position: fixed;

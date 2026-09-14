@@ -7,6 +7,18 @@ export type ViewMode = "overview" | "seat" | "focus";
 /** high — bloom, noise, volumetrics · low — bloom only, DPR ≤ 1.5, half the city · min — no post at all. */
 export type Quality = "high" | "low" | "min";
 
+/**
+ * The move from the city into a room: the camera dives into the beacon (`dive`), a warm flash hides the
+ * scene swap at the bottom, then it comes down out of the light into the house (`descent`) while the seats
+ * light up row by row. The camera rig drives both from `startedAt`.
+ */
+export type Transition =
+  | { kind: "dive"; eventAddress: string; chapter: Chapter; startedAt: number }
+  | { kind: "descent"; startedAt: number };
+
+export const DIVE_MS = 600;
+export const DESCENT_MS = 800;
+
 interface DirectorState {
   chapter: Chapter;
   eventAddress: string | null;
@@ -17,8 +29,11 @@ interface DirectorState {
   /** "View from here" (camera sits in the seat) or "focus" (camera looks at it). */
   viewMode: ViewMode;
   viewSeat: number | null;
-  /** Full-black curtain used to cut between scenes. */
+  /** Full-black curtain used to cut between scenes that do not start in the city. */
   curtain: boolean;
+  /** Warm full-frame flash at the bottom of the dive, covering the scene swap. */
+  flash: boolean;
+  transition: Transition | null;
   /** House-lights reveal, 0 → 1 after a scene enters. */
   revealStartedAt: number;
   hoveredBeacon: string | null;
@@ -45,6 +60,8 @@ interface DirectorState {
   markReady(): void;
   goFlat(): void;
   setLit(on: boolean): void;
+  /** The rig has landed the descent: hand the camera back to the user. */
+  endTransition(): void;
 }
 
 /** Starting tier: phones and small-core machines begin low; the PerformanceMonitor only steps it down. */
@@ -57,40 +74,93 @@ export function initialQuality(): Quality {
 
 /**
  * House-lights level, 0.3 → 1. Down over 400 ms once a followspot is on (the beat before it snaps on),
- * back up over 600 ms after it goes out. Read per frame by the room, the stage and the LED wall.
+ * back up over 600 ms after it goes out. Read per frame by the room, the stage and the LED wall. After a
+ * scene enters, the house comes up from a glow over 1.1 s, so the room is lit by the time the descent lands.
  */
 export function houseLevel(now = performance.now()): number {
-  const { litAt, unlitAt } = useDirector.getState();
+  const { litAt, unlitAt, revealStartedAt } = useDirector.getState();
   const ease = (x: number) => (x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x));
-  if (litAt !== null) return 1 - 0.7 * ease((now - litAt) / 400);
-  if (unlitAt !== null) return 0.3 + 0.7 * ease((now - unlitAt) / 600);
-  return 1;
+  const rise = 0.15 + 0.85 * ease((now - revealStartedAt) / 1100);
+  if (litAt !== null) return (1 - 0.7 * ease((now - litAt) / 400)) * rise;
+  if (unlitAt !== null) return (0.3 + 0.7 * ease((now - unlitAt) / 600)) * rise;
+  return rise;
 }
 
-let cutTimer: ReturnType<typeof setTimeout> | null = null;
+function reducedMotion(): boolean {
+  return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+function sameAddress(a: string | null | undefined, b: string | null | undefined): boolean {
+  return (a ?? null)?.toLowerCase() === (b ?? null)?.toLowerCase();
+}
+
+const timers: Array<ReturnType<typeof setTimeout>> = [];
 
 export const useDirector = create<DirectorState>()((set, get) => {
-  /** Cut to black, swap the scene, then let the lights come up. */
-  function cutTo(next: Partial<DirectorState>) {
-    if (cutTimer) clearTimeout(cutTimer);
-    const same =
-      next.chapter === get().chapter &&
-      (next.eventAddress ?? null)?.toLowerCase() === get().eventAddress?.toLowerCase();
+  const later = (fn: () => void, ms: number) => timers.push(setTimeout(fn, ms));
+  const clearTimers = () => {
+    for (const t of timers.splice(0)) clearTimeout(t);
+  };
+
+  /**
+   * Move to another scene. From the city into a room it is the dive → flash → descent; anywhere else
+   * (room to door, room back to the city) a cut to black, the scene swapped behind it.
+   */
+  function cutTo(next: Partial<DirectorState> & { chapter: Chapter }) {
+    const state = get();
+    const same = next.chapter === state.chapter && sameAddress(next.eventAddress, state.eventAddress);
     if (same) {
-      set(next);
+      // Back to the scene on screen while a dive or a curtain cut is still pending: cancel it, or its
+      // timers would swap the scene out from under the new route. A running descent is left to land.
+      if (state.transition?.kind === "dive" || state.curtain) {
+        clearTimers();
+        set({ ...next, transition: null, flash: false, curtain: false });
+      } else {
+        set(next);
+      }
       return;
     }
-    set({ curtain: true });
-    cutTimer = setTimeout(() => {
+    const t = state.transition;
+    if (t?.kind === "dive" && t.chapter === next.chapter && sameAddress(t.eventAddress, next.eventAddress)) {
+      return; // already on the way there
+    }
+    clearTimers();
+    const swap = () => ({
+      ...next,
+      revealStartedAt: performance.now(),
+      hoveredSeat: null,
+      hoveredBeacon: null,
+    });
+    const canDive =
+      state.chapter === "city" &&
+      next.chapter !== "city" &&
+      typeof next.eventAddress === "string" &&
+      state.ready &&
+      !state.flat &&
+      !reducedMotion() &&
+      // the city has to be on screen to dive out of: a direct load into a room just cuts
+      performance.now() - state.revealStartedAt > 1200;
+    if (canDive) {
+      const eventAddress = next.eventAddress as string;
       set({
-        ...next,
+        transition: { kind: "dive", eventAddress, chapter: next.chapter, startedAt: performance.now() },
         curtain: false,
-        revealStartedAt: performance.now(),
-        hoveredSeat: null,
-        hoveredBeacon: null,
+        flash: false,
       });
-      cutTimer = null;
-    }, 520);
+      later(() => set({ flash: true }), DIVE_MS - 240);
+      later(() => set({ ...swap(), transition: { kind: "descent", startedAt: performance.now() } }), DIVE_MS);
+      later(() => set({ flash: false }), DIVE_MS + 60);
+      // safety net: if the rig never lands the descent (tab hidden, canvas gone), free the camera anyway
+      later(
+        () => {
+          if (get().transition?.kind === "descent") set({ transition: null });
+        },
+        DIVE_MS + DESCENT_MS + 400,
+      );
+      return;
+    }
+    set({ curtain: true, flash: false, transition: null });
+    later(() => set({ ...swap(), curtain: false }), 520);
   }
 
   return {
@@ -102,6 +172,8 @@ export const useDirector = create<DirectorState>()((set, get) => {
     viewMode: "overview",
     viewSeat: null,
     curtain: false,
+    flash: false,
+    transition: null,
     revealStartedAt: performance.now(),
     hoveredBeacon: null,
     quality: initialQuality(),
@@ -139,7 +211,10 @@ export const useDirector = create<DirectorState>()((set, get) => {
     markReady: () => {
       if (!get().ready) set({ ready: true });
     },
-    goFlat: () => set({ flat: true, ready: true, curtain: false }),
+    goFlat: () => {
+      clearTimers();
+      set({ flat: true, ready: true, curtain: false, flash: false, transition: null });
+    },
     setLit: (on) =>
       set(
         on
@@ -148,5 +223,8 @@ export const useDirector = create<DirectorState>()((set, get) => {
             ? { litAt: null, unlitAt: performance.now() }
             : {},
       ),
+    endTransition: () => {
+      if (get().transition?.kind === "descent") set({ transition: null });
+    },
   };
 });

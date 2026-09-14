@@ -109,9 +109,16 @@ Ordered by what appears on the judge path.
 2. **City.** Density and depth: a skyline silhouette against the fog, a ground haze gradient, more point
    mass near the beacons, beacons as light columns with a halo and a ground pool rather than flat pillars;
    labels anchored with leader lines and hidden when they would cross DOM copy (the mobile collision). Keep
-   idle drift; add ±2° pointer parallax on desktop.
+   idle drift; add ±2° pointer parallax on desktop. — **Done 14 Sep**: far skyline ring in the haze, height
+   haze on all building masses, plaza light clouds around each beacon, halo + ground pool + leader line,
+   labels climb the column to clear the hero copy / bill / top bar and hide off the edges, pointer parallax
+   (desktop, off while dragging).
 3. **Descent.** Replace the fade-to-black cut with a 1.4 s dolly from the beacon into the room and the house
-   lights coming up row by row (this is the "wow" beat the build plan promised and the video needs).
+   lights coming up row by row (this is the "wow" beat the build plan promised and the video needs). — **Done
+   14 Sep**: 600 ms dive into the beacon → warm flash over the scene swap → 800 ms descent onto the room's
+   waypoint, house lights rising with the seats; falls back to the black cut for direct loads, the door, the
+   way back to the city, `prefers-reduced-motion` and the flat fallback. Mid-dive navigation cancels or
+   redirects the dive (tests in `apps/web/test/director.test.ts`).
 4. **Theatre.** Reframe the overview so the proscenium and all three tiers fit at 16:9 and 3:2 (the current
    side box at (−23, 17, 12) clips both edges); find and remove the stray seat fragments bottom-left (instances
    placed below the stalls apron); give the curtain folds and a warm key light; balcony rail catches light.
@@ -122,7 +129,9 @@ Ordered by what appears on the judge path.
 6. **Finale.** House lights down for 400 ms before the followspot snaps on; a faint dust in the beam; the
    confirmed tx hash typed into the mono readout. Keep the seat card hidden (done).
 7. **Club.** Booths get a top-down fill so they read as furniture, not flat pink; the LED wall gets three
-   authored programmes (noise, type, beat) cycling slowly; a low haze layer above the floor.
+   authored programmes (noise, type, beat) cycling slowly; a low haze layer above the floor. — **Done 14
+   Sep**: three pendants over the booth arc, LED wall on a 90 s wheel (flow / type ticker / beat rings and
+   spectrum), two drifting haze sheets (hidden on the `min` tier).
 8. **Mobile quality tier.** Bloom off below the `low` tier, DPR cap 1.5, halve city point count, no
    post-processing noise; measure ≥ 30 fps on a mid-range Android.
 9. **Verification.** Re-run the judge frames after each step; keep `shots/judge-*.png` as the reference set.
@@ -311,7 +320,7 @@ prompt counts, timings and the JSON from the device page.
 | 3b | Portal gate: submission fields open — read requirements, enter repo, re-confirm track + bounties, adjust this plan | 0.5 day | 22–23 Sep |
 | 4 | 3D fixes on the judge path (§4.1, 4.4, 4.5, 4.6, 4.8) — done 14 Sep: loader + flat fallback with a DOM seat list, theatre reframe, followspot wash, quality tiers (mobile) | 3 days | 25 Sep |
 | 5 | Landing / website (§3) — done 14 Sep: hero CTA + sub-claim, programme sections 01–05 with stills from the judge run, FAQ, footer, OG / manifest / robots / icons, scene chunk split (lazy `World`, 877 kB app + 1.2 MB scene). Left: `VITE_SITE_URL` on the final origin (absolute OG URLs + canonical), Lighthouse pass on the final host, city pulse numbers need the hosted Envio | 3 days | 29 Sep |
-| 6 | 3D depth (§4.2, 4.3, 4.7): city density, descent dolly, club dressing | 2–3 days | 2 Oct |
+| 6 | 3D depth (§4.2, 4.3, 4.7): city density, descent dolly, club dressing — done 14 Sep; left in §4: theatre reframe (4.4), seat view in the followspot (4.5), finale (4.6), mobile tier (4.8) | 2–3 days | 2 Oct |
 | 7 | Smoke + judge run on the final origin, **then** re-point `baseURI` (migration order); device matrix (§9), fixes from it | 3 days | 6 Oct |
 | 8 | Freeze: README, write-up, code review, gate + push; seed-night script; storyboard dry run | 1 day | 7 Oct |
 | 9 | Capture and edit the video; submit | 2 days | 9–10 Oct |

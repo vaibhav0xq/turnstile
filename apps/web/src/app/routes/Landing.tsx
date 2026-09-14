@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router";
 import type { AppConfig, EventInfo } from "../../chain/config";
 import { tierPrice } from "../../chain/config";
 import { formatDate, formatMon } from "../../lib/format";
+import { registerKeepOut } from "../../scene/anchor";
 import { useDirector } from "../../scene/director";
 import { CityPulse } from "../../ui/live/CityPulse";
 import { Button, Kicker } from "../../ui/primitives";
@@ -19,10 +20,20 @@ export function Landing({ config }: { config: AppConfig | undefined }) {
   const targetEvent = useTour((s) => s.targetEvent);
   const navigate = useNavigate();
   const overlay = useRef<HTMLDivElement>(null);
+  const copy = useRef<HTMLDivElement>(null);
   const bill = useRef<HTMLDivElement>(null);
   useEffect(() => {
     showCity();
   }, [showCity]);
+  // The beacon labels in the city stay clear of the hero copy and the bill (they hide where they would cross).
+  useEffect(() => {
+    const offCopy = registerKeepOut(copy.current);
+    const offBill = registerKeepOut(bill.current);
+    return () => {
+      offCopy();
+      offBill();
+    };
+  }, []);
 
   // The wheel over the bare city scrolls the page (the programme lives below the fold), not the camera:
   // the canvas is under the overlay, so its dolly would otherwise win wherever there is no DOM.
@@ -56,7 +67,7 @@ export function Landing({ config }: { config: AppConfig | undefined }) {
           explicit min-height replaces the flex item's automatic content minimum, and without it a short
           viewport squeezes the block to one screen and the bill overflows up under the top bar. */}
       <div className="relative flex min-h-dvh shrink-0 flex-col justify-end gap-8 p-5 pb-8 pt-20 sm:flex-row sm:items-end sm:justify-between sm:p-8 sm:pt-24">
-        <div className="max-w-xl">
+        <div ref={copy} className="max-w-xl">
           <Kicker className="fade-up">Identity-bound tickets · Monad</Kicker>
           <h1 className="display fade-up mt-3 text-[13vw] leading-[0.9] sm:text-7xl md:text-8xl">
             Access that

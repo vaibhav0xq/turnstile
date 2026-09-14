@@ -4,8 +4,9 @@ import { type RefObject, useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import type { EventInfo } from "../chain/config";
 import { mulberry } from "../lib/random";
+import { keepOutRects } from "./anchor";
 import { useDirector } from "./director";
-import { beaconShader, useShaderMaterial } from "./materials";
+import { beaconShader, haloShader, makeMassMaterial, poolShader, useShaderMaterial } from "./materials";
 
 /** Where each event's beacon stands in the city; the venue itself is rendered at the origin later. */
 export const BEACON_SLOTS: Array<[number, number]> = [
@@ -105,11 +106,51 @@ interface Building {
 
 interface CityData {
   buildings: Building[];
+  skyline: Building[];
   positions: Float32Array;
   scatter: Float32Array;
   seeds: Float32Array;
   sizes: Float32Array;
   warm: Float32Array;
+}
+
+/**
+ * The far skyline: clusters of tall slabs out in the haze, so the horizon is a city and not the edge of a
+ * plane. Its own stream, so it never shifts the downtown generation.
+ */
+function buildSkyline(): Building[] {
+  const rnd = mulberry(4242);
+  const towers: Building[] = [];
+  const clusters = 15;
+  for (let c = 0; c < clusters; c++) {
+    const angle = ((c + rnd() * 0.6) / clusters) * Math.PI * 2;
+    const radius = 300 + rnd() * 180;
+    const tall = rnd() < 0.35;
+    const n = 6 + Math.floor(rnd() * 10);
+    for (let i = 0; i < n; i++) {
+      const spread = 24 + rnd() * 70;
+      const a = angle + (rnd() - 0.5) * 0.28;
+      const r = radius + (rnd() - 0.5) * spread;
+      const w = 10 + rnd() * 18;
+      const d = 10 + rnd() * 18;
+      const h = (tall ? 60 : 28) + rnd() * (tall ? 95 : 50);
+      towers.push({ x: Math.cos(a) * r, z: Math.sin(a) * r, w, d, h, seed: rnd() });
+    }
+  }
+  // a low continuous belt between downtown and the clusters, so the ring never reads as islands
+  for (let i = 0; i < 110; i++) {
+    const a = rnd() * Math.PI * 2;
+    const r = 262 + rnd() * 70;
+    towers.push({
+      x: Math.cos(a) * r,
+      z: Math.sin(a) * r,
+      w: 9 + rnd() * 14,
+      d: 9 + rnd() * 14,
+      h: 14 + rnd() * 34,
+      seed: rnd(),
+    });
+  }
+  return towers;
 }
 
 /**
@@ -122,6 +163,7 @@ function buildCity(beacons: Array<[number, number]>, detail = 1): CityData {
   const rnd = mulberry(1337);
   const drnd = mulberry(7331);
   const buildings: Building[] = [];
+  const skyline = buildSkyline();
   const pos: number[] = [];
   const sca: number[] = [];
   const seed: number[] = [];
@@ -213,14 +255,96 @@ function buildCity(beacons: Array<[number, number]>, detail = 1): CityData {
       push(t, 0.4, i * pitch, 2.0, 0.95);
     }
   }
+  // the far towers carry a sparse scatter of windows and a red top, so the silhouette reads as inhabited
+  for (const t of skyline) {
+    const n = Math.floor((t.h / 6) * detail);
+    for (let i = 0; i < n; i++) {
+      const side = drnd() < 0.5 ? -1 : 1;
+      const alongX = drnd() < 0.5;
+      const u = drnd() - 0.5;
+      push(
+        t.x + (alongX ? u * t.w : (side * t.w) / 2),
+        2 + drnd() * (t.h - 3),
+        t.z + (alongX ? (side * t.d) / 2 : u * t.d),
+        1.6 + drnd() * 1.2,
+        drnd() < 0.75 ? 0.8 + drnd() * 0.2 : drnd() * 0.3,
+      );
+    }
+    if (t.h > 90) push(t.x, t.h + 0.8, t.z, 4.5, 0.05);
+  }
   return {
     buildings,
+    skyline,
     positions: new Float32Array(pos),
     scatter: new Float32Array(sca),
     seeds: new Float32Array(seed),
     sizes: new Float32Array(size),
     warm: new Float32Array(warm),
   };
+}
+
+/**
+ * The square around a beacon: market strings, lanterns and a crowd's worth of phone screens. One small point
+ * cloud per present beacon, drawn with the city's point material so it resolves and dims with the rest.
+ */
+function plazaGeometry(slot: [number, number], detail: number): THREE.BufferGeometry {
+  // Positions are local to the beacon group (which sits at the slot); the slot only seeds the layout.
+  const rnd = mulberry(9001 + Math.round(slot[0] * 7 + slot[1] * 13));
+  const pos: number[] = [];
+  const sca: number[] = [];
+  const seed: number[] = [];
+  const size: number[] = [];
+  const warm: number[] = [];
+  const push = (x: number, y: number, z: number, s: number, w: number) => {
+    pos.push(x, y, z);
+    const r = 120 + rnd() * 120;
+    const th = rnd() * Math.PI * 2;
+    sca.push(x + Math.cos(th) * r, 40 + rnd() * 60, z + Math.sin(th) * r);
+    seed.push(rnd());
+    size.push(s);
+    warm.push(w);
+  };
+  // strings of bulbs radiating from the column, sagging between posts
+  const strings = 10;
+  for (let k = 0; k < strings; k++) {
+    const a = (k / strings) * Math.PI * 2 + rnd() * 0.3;
+    const len = 12 + rnd() * 10;
+    const n = Math.floor((len / 1.1) * detail);
+    for (let i = 0; i < n; i++) {
+      const u = (i + 0.5) / n;
+      const r = 5 + u * len;
+      const sag = Math.sin(u * Math.PI * 3) * 0.35;
+      push(Math.cos(a) * r, 3.4 - sag - u * 0.6, Math.sin(a) * r, 1.5, 0.85 + rnd() * 0.15);
+    }
+  }
+  // lanterns on a ring of posts
+  const posts = 14;
+  for (let k = 0; k < posts; k++) {
+    const a = (k / posts) * Math.PI * 2;
+    push(Math.cos(a) * 9.5, 3.9, Math.sin(a) * 9.5, 3.0, 0.95);
+  }
+  // the crowd: dense near the column, thinning out to the streets, a cool screen glow here and there
+  const crowd = Math.floor(260 * detail);
+  for (let i = 0; i < crowd; i++) {
+    const r = 5.5 + rnd() ** 0.7 * 20;
+    const a = rnd() * Math.PI * 2;
+    const cool = rnd() < 0.22;
+    push(
+      Math.cos(a) * r,
+      0.5 + rnd() * 1.4,
+      Math.sin(a) * r,
+      1.1 + rnd() * 0.9,
+      cool ? rnd() * 0.25 : 0.7 + rnd() * 0.3,
+    );
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute("aScatter", new THREE.Float32BufferAttribute(sca, 3));
+  g.setAttribute("aSeed", new THREE.Float32BufferAttribute(seed, 1));
+  g.setAttribute("aSize", new THREE.Float32BufferAttribute(size, 1));
+  g.setAttribute("aWarm", new THREE.Float32BufferAttribute(warm, 1));
+  g.computeBoundingSphere();
+  return g;
 }
 
 interface CityProps {
@@ -272,6 +396,8 @@ export function City({ events, onEnter }: CityProps) {
     if (progress) progress.value = THREE.MathUtils.clamp((performance.now() - started.current) / 3200, 0, 1);
   });
   useEffect(() => () => geometry.dispose(), [geometry]);
+  const mass = useMemo(() => makeMassMaterial(), []);
+  useEffect(() => () => mass.dispose(), [mass]);
 
   const sky = useShaderMaterial({
     uniforms: {
@@ -292,7 +418,8 @@ export function City({ events, onEnter }: CityProps) {
       </mesh>
       <hemisphereLight args={["#34405f", "#07080c", 1.6]} />
       <Streets />
-      <Buildings buildings={data.buildings} startedAt={started} />
+      <Buildings buildings={data.buildings} startedAt={started} material={mass} />
+      <Skyline towers={data.skyline} material={mass} />
       <points geometry={geometry} material={material} frustumCulled={false} />
       {/* ground plane catches the hemisphere light faintly and hides the horizon */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.2, 0]}>
@@ -300,7 +427,14 @@ export function City({ events, onEnter }: CityProps) {
         <meshBasicMaterial color="#090a10" />
       </mesh>
       {events.map((event, i) => (
-        <Beacon key={event.address} event={event} position={beacons[i] ?? [0, 0]} onEnter={onEnter} />
+        <Beacon
+          key={event.address}
+          event={event}
+          position={beacons[i] ?? [0, 0]}
+          onEnter={onEnter}
+          points={material}
+          detail={quality === "high" ? 1 : 0.5}
+        />
       ))}
     </group>
   );
@@ -340,7 +474,15 @@ function Streets() {
 }
 
 /** Dark building masses the windows sit on; they rise out of the ground during the reveal. */
-function Buildings({ buildings, startedAt }: { buildings: Building[]; startedAt: RefObject<number> }) {
+function Buildings({
+  buildings,
+  startedAt,
+  material,
+}: {
+  buildings: Building[];
+  startedAt: RefObject<number>;
+  material: THREE.Material;
+}) {
   const mesh = useRef<THREE.InstancedMesh>(null);
   const lastProgress = useRef(-1);
   useFrame(() => {
@@ -363,57 +505,177 @@ function Buildings({ buildings, startedAt }: { buildings: Building[]; startedAt:
     m.instanceMatrix.needsUpdate = true;
   });
   return (
-    <instancedMesh ref={mesh} args={[undefined, undefined, buildings.length]} frustumCulled={false}>
+    <instancedMesh
+      ref={mesh}
+      args={[undefined, undefined, buildings.length]}
+      material={material}
+      frustumCulled={false}
+    >
       <boxGeometry args={[1, 1, 1]} />
-      <meshStandardMaterial
-        color="#1a1f33"
-        emissive="#0e1120"
-        emissiveIntensity={1}
-        roughness={0.9}
-        metalness={0.05}
-      />
     </instancedMesh>
   );
 }
+
+/** The far towers: placed once, they sit in the haze before downtown has risen. */
+function Skyline({ towers, material }: { towers: Building[]; material: THREE.Material }) {
+  const mesh = useRef<THREE.InstancedMesh>(null);
+  useEffect(() => {
+    const m = mesh.current;
+    if (!m) return;
+    towers.forEach((t, i) => {
+      tmpObject.position.set(t.x, t.h / 2, t.z);
+      tmpObject.scale.set(t.w, t.h, t.d);
+      tmpObject.updateMatrix();
+      m.setMatrixAt(i, tmpObject.matrix);
+    });
+    m.instanceMatrix.needsUpdate = true;
+  }, [towers]);
+  return (
+    <instancedMesh
+      ref={mesh}
+      args={[undefined, undefined, towers.length]}
+      material={material}
+      frustumCulled={false}
+    >
+      <boxGeometry args={[1, 1, 1]} />
+    </instancedMesh>
+  );
+}
+
+/** Heights the name chip may sit at above the ring, lowest first; it climbs the column to clear page copy. */
+const CHIP_HEIGHTS = [12, 24, 38, 54, 72] as const;
+const CHIP_HOME: number = CHIP_HEIGHTS[0];
+const tmpVec = new THREE.Vector3();
 
 function Beacon({
   event,
   position,
   onEnter,
+  points,
+  detail,
 }: {
   event: EventInfo;
   position: [number, number];
   onEnter: (event: EventInfo) => void;
+  /** The city's point material, so the plaza resolves and dims with the rest of the lights. */
+  points: THREE.ShaderMaterial;
+  detail: number;
 }) {
-  const material = useShaderMaterial({
-    ...beaconShader,
-    transparent: true,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending,
-    side: THREE.DoubleSide,
-    toneMapped: false,
-  });
-  const uniforms = material.uniforms;
+  const glow = { transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false };
+  const material = useShaderMaterial({ ...beaconShader, ...glow, side: THREE.DoubleSide });
+  const halo = useShaderMaterial({ ...haloShader, ...glow, side: THREE.DoubleSide });
+  const pool = useShaderMaterial({ ...poolShader, ...glow });
   const hovered = useDirector((s) => s.hoveredBeacon === event.address);
+  const diving = useDirector(
+    (s) =>
+      s.transition?.kind === "dive" &&
+      s.transition.eventAddress.toLowerCase() === event.address.toLowerCase(),
+  );
   const hover = useDirector((s) => s.hoverBeacon);
   const ring = useRef<THREE.Mesh>(null);
-  useFrame(({ clock }) => {
+  const light = useRef<THREE.PointLight>(null);
+  const chip = useRef<HTMLDivElement>(null);
+  const [x, z] = position;
+  const plaza = useMemo(() => plazaGeometry([x, z], detail), [x, z, detail]);
+  useEffect(() => () => plaza.dispose(), [plaza]);
+  // The halo plane stands on the ground (y 0 → 64); its shader turns it toward the camera.
+  const haloGeometry = useMemo(() => new THREE.PlaneGeometry(18, 64).translate(0, 32, 0), []);
+  useEffect(() => () => haloGeometry.dispose(), [haloGeometry]);
+  const leader = useMemo(() => {
+    const g = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(0, 0, 0),
+      new THREE.Vector3(0, 1, 0),
+    ]);
+    const m = new THREE.LineBasicMaterial({
+      color: "#ffb457",
+      transparent: true,
+      opacity: 0.5,
+      toneMapped: false,
+      depthWrite: false,
+    });
+    const line = new THREE.Line(g, m);
+    line.position.y = 1;
+    line.scale.y = CHIP_HOME - 2.2;
+    return line;
+  }, []);
+  useEffect(
+    () => () => {
+      leader.geometry.dispose();
+      (leader.material as THREE.Material).dispose();
+    },
+    [leader],
+  );
+  const label = useRef<THREE.Group>(null);
+  // Rough on-screen extent of the chip, for the keep-out test (mono 11px + padding + dot).
+  const chipHalfWidth = Math.min(160, 24 + event.name.length * 3.4);
+  const animated = useMemo(() => [material.uniforms, halo.uniforms, pool.uniforms], [material, halo, pool]);
+  useFrame(({ clock, camera, size }) => {
     const t = clock.getElapsedTime();
-    const time = uniforms["uTime"];
-    if (time) time.value = t;
-    const boost = uniforms["uBoost"];
-    if (boost) boost.value = THREE.MathUtils.lerp(boost.value as number, hovered ? 1 : 0, 0.12);
+    const lit = hovered || diving;
+    const level = diving ? 1.6 : lit ? 1 : 0;
+    for (const u of animated) {
+      const time = u["uTime"];
+      if (time) time.value = t;
+      const boost = u["uBoost"];
+      if (boost) boost.value = THREE.MathUtils.lerp(boost.value as number, level, 0.12);
+    }
     if (ring.current) {
       const s = 1 + 0.08 * Math.sin(t * 2.2);
-      ring.current.scale.setScalar(s * (hovered ? 1.25 : 1));
+      ring.current.scale.setScalar(s * (lit ? 1.25 : 1));
+    }
+    if (light.current) {
+      light.current.intensity = THREE.MathUtils.lerp(light.current.intensity, lit ? 70 : 34, 0.1);
+    }
+    // The chip climbs the column to stay clear of the page's copy (the hero, the bill on a phone) and hides
+    // if no height clears it or the point is behind the camera; the leader line follows. The canvas fills
+    // the viewport, so canvas and client coordinates agree.
+    const el = chip.current;
+    const anchor = label.current;
+    if (!el || !anchor) return;
+    const rects = keepOutRects();
+    let height = -1;
+    for (const h of CHIP_HEIGHTS) {
+      tmpVec.set(x, h, z).project(camera);
+      if (tmpVec.z > 1) break;
+      const sx = (tmpVec.x * 0.5 + 0.5) * size.width;
+      const sy = (-tmpVec.y * 0.5 + 0.5) * size.height;
+      // off the sides of a narrow screen, or up in the top bar: no height helps, stop looking
+      if (sx - chipHalfWidth < 8 || sx + chipHalfWidth > size.width - 8) break;
+      if (sy - 13 < 64) break;
+      // below the bottom edge: a higher rung may still be on screen
+      if (sy + 13 > size.height - 8) continue;
+      let clear = true;
+      for (const r of rects) {
+        if (
+          sx + chipHalfWidth > r.left - 6 &&
+          sx - chipHalfWidth < r.right + 6 &&
+          sy + 13 > r.top - 6 &&
+          sy - 13 < r.bottom + 6
+        ) {
+          clear = false;
+          break;
+        }
+      }
+      if (clear) {
+        height = h;
+        break;
+      }
+    }
+    const hidden = height < 0;
+    const visibility = hidden ? "hidden" : "visible";
+    if (el.style.visibility !== visibility) el.style.visibility = visibility;
+    leader.visible = !hidden;
+    if (!hidden) {
+      anchor.position.y = THREE.MathUtils.damp(anchor.position.y, height, 8, 1 / 60);
+      leader.scale.y = Math.max(0.1, anchor.position.y - 2.2);
     }
   });
-  const [x, z] = position;
   return (
     <group position={[x, 0, z]}>
       <mesh position={[0, 45, 0]} material={material}>
         <cylinderGeometry args={[1.4, 2.2, 90, 24, 1, true]} />
       </mesh>
+      <mesh geometry={haloGeometry} material={halo} frustumCulled={false} />
       <mesh ref={ring} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.05, 0]}>
         <ringGeometry args={[4.2, 4.8, 64]} />
         <meshBasicMaterial
@@ -424,17 +686,12 @@ function Beacon({
           side={THREE.DoubleSide}
         />
       </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
-        <circleGeometry args={[4.2, 48]} />
-        <meshBasicMaterial color="#ffb457" toneMapped={false} transparent opacity={hovered ? 0.35 : 0.14} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]} material={pool}>
+        <circleGeometry args={[20, 48]} />
       </mesh>
-      <pointLight
-        position={[0, 6, 0]}
-        intensity={hovered ? 60 : 30}
-        distance={60}
-        color="#ffb457"
-        decay={1.5}
-      />
+      <points geometry={plaza} material={points} frustumCulled={false} />
+      <primitive object={leader} />
+      <pointLight ref={light} position={[0, 6, 0]} intensity={34} distance={70} color="#ffb457" decay={1.5} />
       {/* generous hit target */}
       <mesh
         position={[0, 20, 0]}
@@ -456,14 +713,17 @@ function Beacon({
         <cylinderGeometry args={[7, 7, 40, 12]} />
         <meshBasicMaterial />
       </mesh>
-      <Html position={[0, 12, 0]} center zIndexRange={[5, 0]} style={{ pointerEvents: "none" }}>
-        <div
-          className={`chip mono whitespace-nowrap transition-opacity ${hovered ? "opacity-100" : "opacity-70"}`}
-        >
-          <span className="dot" />
-          {event.name}
-        </div>
-      </Html>
+      <group ref={label} position={[0, CHIP_HOME, 0]}>
+        <Html center zIndexRange={[5, 0]} style={{ pointerEvents: "none" }}>
+          <div
+            ref={chip}
+            className={`chip mono whitespace-nowrap transition-opacity ${hovered ? "opacity-100" : "opacity-70"}`}
+          >
+            <span className="dot" />
+            {event.name}
+          </div>
+        </Html>
+      </group>
     </group>
   );
 }
