@@ -1,11 +1,11 @@
 // One canonical host. Passkeys are scoped to the RP ID (the page's registrable domain by default), so an
-// app reachable as both `turnstile.show` and `www.turnstile.show` would grow two passkey populations.
+// app reachable as both `turnstile.work` and `www.turnstile.work` would grow two passkey populations.
 // The relayer answers alias hosts with a redirect before any page — and therefore any credential — is created.
 // Aliases are `www.<canonical>` plus whatever REDIRECT_HOSTS lists (a backup domain pointed at the same
 // deployment, say). Health checks and the deployment's own hostname never match, so they are untouched.
 
 export type CanonicalHostPolicy = {
-  /** Canonical origin, no trailing slash (`https://turnstile.show`). */
+  /** Canonical origin, no trailing slash (`https://turnstile.work`). */
   origin: string;
   /** Lower-case hostnames (no port) that redirect to the canonical origin. */
   aliases: ReadonlySet<string>;

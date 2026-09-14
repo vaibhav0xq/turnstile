@@ -10,10 +10,13 @@ judge runs must pass *before* the README claims the domain.
 
 ## 0. Decide
 
-- [x] Final origin chosen (14 Sep 2026): **`https://turnstile.show`** — `<final>` and `<apex>` below mean
-      `turnstile.show`. Backups if it is gone at checkout: `turnstile.club`, then `turnstile.one`; the
-      runbook is identical, only the name changes. Hosting stays option A (single Replit origin, Reserved VM
-      through judging). The domain is not bought or linked yet, so nothing below has run.
+- [x] Final origin chosen (14 Sep 2026, revised the same day): **`https://turnstile.work`** — `<final>` and
+      `<apex>` below mean `turnstile.work`. (`turnstile.show` was the first pick and was dropped as too
+      expensive for the MVP.) Backups if it is gone at checkout: `turnstile.club`, then `turnstile.one`; the
+      runbook is identical, only the name changes. Canonical host `https://turnstile.work`, `www` → apex,
+      `VITE_RP_ID=turnstile.work`. Hosting stays option A (single Replit origin, Reserved VM through judging).
+      The domain is not bought or linked yet, so nothing below has run: no migration, no `baseURI` re-point,
+      no final `PUBLIC_ORIGIN`; testing continues on the Replit staging URL.
 - [ ] (Only if the plan changes back to the platform name.) Final origin `https://<final>`. A custom domain is the clean case. Keeping the `.replit.app`
       name is possible but the web labels *any* `*.replit.app` host `staging` on its own
       (`apps/web/src/lib/environment.ts`, a rule the tests cover) — drop that rule in the commit that declares
