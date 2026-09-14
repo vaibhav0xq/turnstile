@@ -98,7 +98,7 @@ export type DoorSession = {
   readonly expiresAt: number;
   readonly ended: boolean;
   signEntry(input: { eventId: bigint; tokenId: bigint; slot?: bigint }): Promise<SignedEntry>;
-  /** `signEntry` rendered as the scannable string — compact `TS2:…` unless `form: "long"` (SPEC §4.3). */
+  /** `signEntry` rendered as the scannable string — base45 `TS3:…` unless `form` says otherwise (SPEC §4.3). */
   code(input: { eventId: bigint; tokenId: bigint; slot?: bigint; form?: EntryCodeForm }): Promise<string>;
   end(): void;
   [Symbol.dispose](): void;
@@ -386,7 +386,7 @@ function doorSession(
       return lifecycle.ended();
     },
     signEntry,
-    code: async ({ form = "compact", ...input }) => {
+    code: async ({ form = "base45", ...input }) => {
       const signed = await signEntry(input);
       return encodeEntryCode({ event, message: signed.message, signature: signed.signature }, form);
     },

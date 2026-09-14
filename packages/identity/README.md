@@ -15,7 +15,7 @@ await withAccountSession(account, (acct) => relayer.buy({ signer: acct, eventId,
 
 // Enter: one fresh biometric at the door → a never-funded per-event key; codes rotate every 30 s.
 const door = await deriveDoorKey({ rpId, event, expectCredentialId: credential.credentialId });
-const qr = await door.code({ eventId, tokenId }); // "TS2:10143:…:1:42:59640000:…" (or { form: "long" } → "TS1|…")
+const qr = await door.code({ eventId, tokenId }); // "TS3:10143:1:42:59640000:<base45>" ({ form: "compact" } → "TS2:…", "long" → "TS1|…")
 
 // Passport: one prompt → AES-GCM key; blobs are safe to store anywhere.
 const vault = await openVault({ rpId, expectCredentialId: credential.credentialId });
@@ -42,7 +42,7 @@ pnpm build           # dist/ (ESM + d.ts)
 ```
 src/constants.ts   frozen labels, salts, TTLs, chain ids
 src/kdf.ts         PRF output → account / door / vault keys
-src/entry.ts       EIP-712 Entry, slots, TS1 / TS2 entry-code strings
+src/entry.ts       EIP-712 Entry, slots, TS1 / TS2 / TS3 entry-code strings
 src/vault.ts       passport blob format (AES-256-GCM)
 src/passport.ts    passport sync message + blob shape check (SPEC §4.6)
 src/identity.ts    ceremonies + sessions (Mera wrapper)

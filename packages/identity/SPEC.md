@@ -1,6 +1,6 @@
 # @turnstile/identity — specification v1.3
 
-Status: **frozen** (v1 12 Sep 2026; v1.1 additive, same day — §4.2 wording, §4.5 `BindDoorKey`; v1.2 additive, 13 Sep — §4.6 passport sync; v1.3 additive, 14 Sep — §4.3 compact entry code). Everything below
+Status: **frozen** (v1 12 Sep 2026; v1.1 additive, same day — §4.2 wording, §4.5 `BindDoorKey`; v1.2 additive, 13 Sep — §4.6 passport sync; v1.3 additive, 14 Sep — §4.3 compact entry code; v1.4 additive, 14 Sep — §4.3 base45 entry code). Everything below
 is pinned by `vectors/kdf.json`, `vectors/entry.json` and `vectors/bind.json`; `pnpm vectors:check` fails in CI
 when the code drifts, and `packages/contracts` re-verifies the same vectors on-chain (`forge test`). A change to any constant, KDF step, blob layout or
 typed-data field is a **spec revision**: bump the `v1` in the affected label, regenerate the vectors, and
@@ -128,9 +128,23 @@ TS2:<chainId>:<eventAddress hex UPPERCASE, no 0x>:<eventId>:<tokenId>:<slot>:<si
 Every character is in the QR *alphanumeric* set (digits, `A–Z`, `:`), so the symbol packs 5.5 bits per
 character instead of 8: ≈ 195 characters, version 8 at ECC M — two versions smaller than the long form, i.e.
 larger modules on the same phone screen. Separators and case are part of the form: `TS1` is `|`-separated
-lowercase `0x`-hex, `TS2` is `:`-separated bare uppercase hex; a decoder rejects a mix. Decoders MUST accept
-both forms; tickets SHOULD render the compact one. `vectors/entry.json` pins both spellings of the same
-signature (`entryCode`, `entryCodeCompact`).
+lowercase `0x`-hex, `TS2` is `:`-separated bare uppercase hex; a decoder rejects a mix.
+
+base45 form (v1.4, additive — same fields, same values; the two byte strings share one blob):
+
+```
+TS3:<chainId>:<eventId>:<tokenId>:<slot>:<base45(eventAddress ‖ signature)>
+```
+
+`base45` is RFC 9285 (alphabet `0–9 A–Z space $ % * + - . / :`, two bytes → three characters, a final single
+byte → two), the encoding designed for QR alphanumeric mode: 1.5 characters per byte instead of 2. The blob is
+the 20 address bytes followed by the 65 signature bytes, 85 bytes → exactly 128 characters, and it is always
+the last field because base45 can emit `:` (and a space) — a decoder splits on the first five `:` only and
+takes the remainder whole. ≈ 152 characters, version 6 at ECC M (version 5 at ECC L), two versions below
+`TS2`. Decoding is strict: 128 characters, the RFC alphabet, no triplet above 65535 (`GGW`), and the same field
+ranges as the other forms; everything else is `CODE_FORMAT_INVALID`. Decoders MUST accept all three forms;
+tickets SHOULD render the base45 one. `vectors/entry.json` pins the three spellings of the same signature
+(`entryCode`, `entryCodeCompact`, `entryCodeBase45`).
 
 ### 4.4 Passport blob
 
@@ -224,7 +238,9 @@ Revision log: **v1** (12 Sep 2026) initial freeze. **v1.1** (12 Sep 2026) additi
 note, §4.5 `BindDoorKey`, `vectors/bind.json`; no derived key, label or existing vector changed. **v1.2** (13 Sep 2026)
 additive: §4.6 passport sync — an EIP-191 message and store rules around the unchanged §4.4 blob; no key
 material, label or vector touched. **v1.3** (14 Sep 2026) additive: §4.3 compact `TS2:` spelling of the entry
-code; `vectors/entry.json` gains `entryCodeCompact`, every existing field is unchanged.
+code; `vectors/entry.json` gains `entryCodeCompact`, every existing field is unchanged. **v1.4** (14 Sep 2026)
+additive: §4.3 base45 `TS3:` spelling (RFC 9285 blob for address ‖ signature); `vectors/entry.json` gains
+`entryCodeBase45`, every existing field is unchanged; `TS1` and `TS2` decode exactly as before.
 
 Labels carry the version (`…/v1`). A revision that must change a derived key introduces `v2` labels beside
 `v1`, keeps `v1` derivation available for migration, and documents the migration here. The EIP-712 domain

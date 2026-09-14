@@ -49,6 +49,8 @@ export const DOOR_SESSION_TTL_MS = 60 * 60_000;
 export const ENTRY_CODE_PREFIX = "TS1";
 /** Prefix of the compact, QR-alphanumeric entry-code string (SPEC §4.3, v1.3). */
 export const ENTRY_CODE_COMPACT_PREFIX = "TS2";
+/** §4.3 base45 form: the same fields with address and signature as one RFC 9285 base45 blob. */
+export const ENTRY_CODE_BASE45_PREFIX = "TS3";
 
 /** Monad chain ids. */
 export const MONAD_MAINNET = 143;

@@ -15,11 +15,12 @@ import {
 import {
   EIP712_NAME,
   EIP712_VERSION,
+  ENTRY_CODE_BASE45_PREFIX,
   ENTRY_CODE_COMPACT_PREFIX,
   ENTRY_CODE_PREFIX,
   SLOT_MS,
 } from "./constants.ts";
-import { utf8 } from "./encoding.ts";
+import { base45Decode, base45Encode, fromHex, toHex, utf8 } from "./encoding.ts";
 import { IdentityError } from "./errors.ts";
 import { assertEventRef, type EventRef } from "./kdf.ts";
 
@@ -154,11 +155,14 @@ export type EntryCode = {
   readonly signature: Hex;
 };
 
-/** Both scannable spellings of an entry code. */
-export type EntryCodeForm = "long" | "compact";
+/** The scannable spellings of an entry code, oldest first. */
+export type EntryCodeForm = "long" | "compact" | "base45";
 
 const SIGNATURE_HEX = /^0x[0-9a-f]{130}$/i;
 const DIGITS = /^[0-9]+$/;
+/** base45 form: 20 address bytes ‖ 65 signature bytes = 85 bytes → 42 triplets + one 2-character tail. */
+const BASE45_BLOB_BYTES = 85;
+const BASE45_BLOB_CHARS = 128;
 
 /**
  * Long form: `TS1|<chainId>|<event address lowercase>|<eventId>|<tokenId>|<slot>|<signature hex>` — 7 fields,
@@ -169,8 +173,14 @@ const DIGITS = /^[0-9]+$/;
  * (digits, A–Z, `:`), so the code packs 5.5 bits per character instead of 8 and drops two QR versions
  * (≈ 195 chars, version 8 at ECC M): bigger modules on the same phone screen, faster lock at the door.
  *
- * Nothing in either is secret (the signature is public proof of presence for that slot); `checkIn` is what
- * consumes it, once. `decodeEntryCode` accepts both.
+ * base45 form (`form: "base45"`): `TS3:<chainId>:<eventId>:<tokenId>:<slot>:<base45(address ‖ signature)>` —
+ * the numbers stay decimal and the two byte strings become one RFC 9285 base45 blob of exactly 128
+ * characters (1.5 characters per byte instead of 2). Still all QR-alphanumeric, ≈ 152 chars: version 6 at
+ * ECC M, two more versions down. The blob is fixed-length because base45 can emit `:` (and a space), so it
+ * is always the last field and never split on separators.
+ *
+ * Nothing in any of them is secret (the signature is public proof of presence for that slot); `checkIn` is
+ * what consumes it, once. `decodeEntryCode` accepts all three.
  */
 export function encodeEntryCode(code: EntryCode, form: EntryCodeForm = "long"): string {
   assertEventRef(code.event);
@@ -180,6 +190,12 @@ export function encodeEntryCode(code: EntryCode, form: EntryCodeForm = "long"): 
   }
   const { eventId, tokenId, slot } = code.message;
   const numbers = [String(code.event.chainId), eventId.toString(), tokenId.toString(), slot.toString()];
+  if (form === "base45") {
+    const blob = new Uint8Array(BASE45_BLOB_BYTES);
+    blob.set(fromHex(code.event.eventAddress, "event address"), 0);
+    blob.set(fromHex(code.signature, "signature"), 20);
+    return [ENTRY_CODE_BASE45_PREFIX, ...numbers, base45Encode(blob)].join(":");
+  }
   if (form === "compact") {
     return [
       ENTRY_CODE_COMPACT_PREFIX,
@@ -203,25 +219,52 @@ export function entryCodeForm(text: string): EntryCodeForm | null {
   const head = text.trimStart();
   if (head.startsWith(`${ENTRY_CODE_PREFIX}|`)) return "long";
   if (head.startsWith(`${ENTRY_CODE_COMPACT_PREFIX}:`)) return "compact";
+  if (head.startsWith(`${ENTRY_CODE_BASE45_PREFIX}:`)) return "base45";
   return null;
 }
 
 export function decodeEntryCode(text: string): EntryCode {
   const form = entryCodeForm(text);
   if (!form) throw new IdentityError("CODE_FORMAT_INVALID", "not a Turnstile entry code");
-  const parts = text.trim().split(form === "compact" ? ":" : "|");
-  if (parts.length !== 7) {
-    throw new IdentityError("CODE_FORMAT_INVALID", "not a Turnstile entry code");
+  const parts = text.trim().split(form === "long" ? "|" : ":");
+  let chainIdText: string;
+  let addressText: string;
+  let eventIdText: string;
+  let tokenIdText: string;
+  let slotText: string;
+  let signatureText: string;
+  if (form === "base45") {
+    // Five decimal fields, then the blob — which may itself contain ':' — so split on the first five only.
+    if (parts.length < 6) throw new IdentityError("CODE_FORMAT_INVALID", "not a Turnstile entry code");
+    [, chainIdText, eventIdText, tokenIdText, slotText] = parts as [string, string, string, string, string];
+    const blobText = parts.slice(5).join(":");
+    if (blobText.length !== BASE45_BLOB_CHARS) {
+      throw new IdentityError("CODE_FORMAT_INVALID", "entry code has a malformed address or signature");
+    }
+    let blob: Uint8Array;
+    try {
+      blob = base45Decode(blobText); // strict: alphabet and 16-bit range
+    } catch (cause) {
+      throw new IdentityError("CODE_FORMAT_INVALID", "entry code has a malformed address or signature", {
+        cause,
+      });
+    }
+    addressText = toHex(blob.subarray(0, 20));
+    signatureText = toHex(blob.subarray(20));
+  } else {
+    if (parts.length !== 7) {
+      throw new IdentityError("CODE_FORMAT_INVALID", "not a Turnstile entry code");
+    }
+    [, chainIdText, addressText, eventIdText, tokenIdText, slotText, signatureText] = parts as [
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+    ];
   }
-  const [, chainIdText, addressText, eventIdText, tokenIdText, slotText, signatureText] = parts as [
-    string,
-    string,
-    string,
-    string,
-    string,
-    string,
-    string,
-  ];
   if (
     !DIGITS.test(chainIdText) ||
     !DIGITS.test(eventIdText) ||
@@ -234,7 +277,10 @@ export function decodeEntryCode(text: string): EntryCode {
   // as written) and a lowercase 0x signature — existing TS1 codes must decode exactly as before.
   let eventAddress: string;
   let signature: Hex;
-  if (form === "compact") {
+  if (form === "base45") {
+    eventAddress = addressText;
+    signature = signatureText as Hex;
+  } else if (form === "compact") {
     if (!/^[0-9A-F]{40}$/.test(addressText) || !/^[0-9A-F]{130}$/.test(signatureText)) {
       throw new IdentityError("CODE_FORMAT_INVALID", "entry code has a malformed address or signature");
     }

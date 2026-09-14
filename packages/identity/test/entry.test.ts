@@ -4,6 +4,7 @@ import { createSecp256k1SigningSession } from "@category-labs/mera";
 import { toViemAccount } from "@category-labs/mera/viem";
 import { encodeAbiParameters, type Hex, hexToBytes, keccak256, stringToHex } from "viem";
 import { SLOT_MS } from "../src/constants.ts";
+import { base45Decode, base45Encode, utf8, utf8Decode } from "../src/encoding.ts";
 import {
   currentSlot,
   decodeEntryCode,
@@ -167,6 +168,72 @@ describe("entry code string", () => {
       decodeEntryCode(long),
       "tolerates surrounding whitespace",
     );
+  });
+
+  it("base45 form is the densest spelling, pinned, and decodes to the same code", () => {
+    const compact = encodeEntryCode({ event, message, signature: V.signature }, "compact");
+    const dense = encodeEntryCode({ event, message, signature: V.signature }, "base45");
+    assert.equal(dense, V.entryCodeBase45);
+    assert.match(dense, /^TS3:[0-9A-Z $%*+\-./:]+$/, "only the QR alphanumeric set");
+    assert.equal(dense.length, 152, "five decimal fields plus a fixed 128-character blob");
+    assert.ok(dense.length < compact.length, `${dense.length} vs ${compact.length} chars`);
+    assert.equal(entryCodeForm(dense), "base45");
+    assert.equal(entryCodeForm("TS3|nope"), null);
+    assert.deepEqual(decodeEntryCode(dense), decodeEntryCode(compact));
+    assert.deepEqual(
+      decodeEntryCode(`\n${dense}  `),
+      decodeEntryCode(compact),
+      "tolerates surrounding whitespace",
+    );
+    // The blob may contain ':' and ' ' (both are base45 digits) — the decoder must not split on them.
+    const blob = dense.split(":").slice(5).join(":");
+    assert.equal(blob.length, 128);
+    assert.ok(blob.includes(":") || blob.includes(" "), "vector exercises the awkward digits");
+  });
+
+  it("base45 form is strict about its blob", () => {
+    const dense = V.entryCodeBase45;
+    const blob = dense.slice(dense.length - 128);
+    const head = dense.slice(0, dense.length - 128);
+    const bad = [
+      `${head}${blob.slice(0, 127)}`, // short blob
+      `${head}${blob}0`, // long blob
+      `${head}${blob.toLowerCase()}`, // lowercase is outside the alphabet
+      `${head}${"GGW".repeat(42)}00`, // GGW is 65536: over 16 bits (RFC 9285 §4)
+      `${head}${blob.slice(0, 125)}#${blob.slice(126)}`, // '#' is not a base45 digit
+      dense.replaceAll(":", "|"), // long-form separators
+      dense.replace("TS3:", "TS3:0x"),
+      dense.replace(":59640000:", ":18446744073709551616:"), // slot > uint64
+    ];
+    for (const text of bad) {
+      assert.throws(
+        () => decodeEntryCode(text),
+        (e: unknown) => isIdentityError(e) && e.code === "CODE_FORMAT_INVALID",
+        `should reject ${JSON.stringify(text.slice(0, 40))}…`,
+      );
+    }
+  });
+
+  it("base45 matches the RFC 9285 examples both ways and rejects what the RFC rejects", () => {
+    assert.equal(base45Encode(utf8("AB")), "BB8");
+    assert.equal(base45Encode(utf8("Hello!!")), "%69 VD92EX0");
+    assert.equal(base45Encode(utf8("base-45")), "UJCLQE7W581");
+    assert.equal(utf8Decode(base45Decode("QED8WEX0")), "ietf!");
+    assert.equal(utf8Decode(base45Decode("%69 VD92EX0")), "Hello!!");
+    assert.equal(base45Encode(new Uint8Array()), "");
+    assert.deepEqual(base45Decode(""), new Uint8Array());
+    for (const text of ["GGW", "A", ":::", "ZZZ", "bb8", "BB8!"]) {
+      assert.throws(
+        () => base45Decode(text),
+        (e: unknown) => isIdentityError(e) && e.code === "INPUT_INVALID",
+        text,
+      );
+    }
+    // round trip over every byte value and both tail lengths
+    for (const length of [1, 2, 3, 64, 65, 85, 256]) {
+      const bytes = Uint8Array.from({ length }, (_, i) => (i * 37 + length) & 0xff);
+      assert.deepEqual(base45Decode(base45Encode(bytes)), bytes, `round trip ${length}`);
+    }
   });
 
   it("long form still takes a checksummed address and keeps it as written (v1 behaviour)", () => {

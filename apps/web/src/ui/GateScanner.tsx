@@ -200,7 +200,7 @@ export function GateScanner({ event, initialCode, onAdmitted }: GateScannerProps
         <div className="flex gap-2">
           <input
             className="field mono text-xs"
-            placeholder="TS2:… (or TS1|…)"
+            placeholder="TS3:… (TS2:… and TS1|… also work)"
             value={manual}
             onChange={(e) => {
               setManual(e.target.value);

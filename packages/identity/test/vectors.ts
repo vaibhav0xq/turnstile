@@ -32,6 +32,7 @@ export type EntryVector = {
   v: number;
   entryCode: string;
   entryCodeCompact: string;
+  entryCodeBase45: string;
 };
 
 export type BindVector = {

@@ -23,6 +23,21 @@ interface TicketPanelProps {
   binding: boolean;
 }
 
+/**
+ * The code as vector art: an SVG data URL scales to any screen density with every module square-edged, where
+ * a downscaled bitmap goes grey at the edges. ECC M and a two-module quiet zone; the base45 form is ≈ 152
+ * alphanumeric characters, so this is a version 6 symbol (41×41) — see SPEC §4.3.
+ */
+export async function renderQr(text: string): Promise<string> {
+  const svg = await QRCode.toString(text, {
+    type: "svg",
+    errorCorrectionLevel: "M",
+    margin: 2,
+    color: { dark: "#07080a", light: "#f3efe7" },
+  });
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
 /** Live entry code: a new EIP-712 signature every 30-second slot, from the per-event door key. */
 export function useEntryCode(event: EventInfo, tokenId: number, door: DoorKeySession | null) {
   const [code, setCode] = useState<string | null>(null);
@@ -37,14 +52,7 @@ export function useEntryCode(event: EventInfo, tokenId: number, door: DoorKeySes
     setSlotEndsAt(slotStart + SLOT_MS);
     const text = await door.code({ eventId: BigInt(event.eventId), tokenId: BigInt(tokenId) });
     setCode(text);
-    setQr(
-      await QRCode.toDataURL(text, {
-        errorCorrectionLevel: "M",
-        margin: 1,
-        width: 640,
-        color: { dark: "#07080a", light: "#f3efe7" },
-      }),
-    );
+    setQr(await renderQr(text));
     timer.current = setTimeout(() => void refresh(), slotStart + SLOT_MS - Date.now() + 20);
   }, [door, event.eventId, tokenId]);
 
@@ -233,20 +241,24 @@ function CodeView({
         aria-label={big ? "Shrink code" : "Show fullscreen"}
       >
         {qr ? (
-          <img src={qr} alt="Entry code" className="block h-auto w-full" draggable={false} />
+          <img src={qr} alt="Entry code" className="block aspect-square h-auto w-full" draggable={false} />
         ) : (
           <div className="grid aspect-square place-items-center text-ink">
             <Spinner className="border-ink/30 border-t-ink" />
           </div>
         )}
-        <div className="absolute right-3 top-3 grid place-items-center">
+      </button>
+      {/* The countdown lives beside the symbol, not on it: nothing may cover a finder pattern. */}
+      <div className={`mt-3 flex items-center gap-2 text-xs ${big ? "text-ink/70" : "text-muted"}`}>
+        <span className="relative grid h-10 w-10 shrink-0 place-items-center" data-testid="slot-countdown">
           <svg width="40" height="40" viewBox="0 0 40 40" aria-hidden>
             <circle
               cx="20"
               cy="20"
               r={r}
-              fill="rgba(7,8,10,0.06)"
-              stroke="rgba(7,8,10,0.15)"
+              fill="none"
+              stroke={big ? "rgba(7,8,10,0.15)" : "currentColor"}
+              strokeOpacity={big ? 1 : 0.25}
               strokeWidth="3"
             />
             <circle
@@ -254,7 +266,7 @@ function CodeView({
               cy="20"
               r={r}
               fill="none"
-              stroke="#07080a"
+              stroke={big ? "#07080a" : "currentColor"}
               strokeWidth="3"
               strokeDasharray={c}
               strokeDashoffset={c * (1 - frac)}
@@ -262,16 +274,16 @@ function CodeView({
               transform="rotate(-90 20 20)"
             />
           </svg>
-          <span className="mono absolute text-[10px] text-ink">{Math.ceil(remaining / 1000)}</span>
-        </div>
-      </button>
+          <span className={`mono absolute text-[10px] ${big ? "text-ink" : ""}`}>
+            {Math.ceil(remaining / 1000)}
+          </span>
+        </span>
+        <span>Rotates every 30 s. A screenshot dies with the slot; a forward can't sign the next one.</span>
+      </div>
       <div
-        className={`mono mt-3 break-all text-[10px] leading-relaxed ${big ? "max-w-[86vw] text-ink/70" : "text-muted"}`}
+        className={`mono mt-2 break-all text-[10px] leading-relaxed ${big ? "max-w-[86vw] text-ink/70" : "text-muted"}`}
       >
         {code ? `${code.slice(0, 48)}…` : ""}
-      </div>
-      <div className={`mt-1 text-xs ${big ? "text-ink/70" : "text-muted"}`}>
-        Rotates every 30 s. A screenshot dies with the slot; a forward can't sign the next one.
       </div>
       {!big && code ? (
         <div className="mt-3 flex flex-wrap items-center gap-2">

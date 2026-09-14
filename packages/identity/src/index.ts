@@ -11,7 +11,7 @@
 
 export * from "./bind.ts";
 export * from "./constants.ts";
-export { b64u, fromHex, toHex, zeroize } from "./encoding.ts";
+export { b64u, base45Decode, base45Encode, fromHex, toHex, zeroize } from "./encoding.ts";
 export * from "./entry.ts";
 export * from "./errors.ts";
 export * from "./identity.ts";

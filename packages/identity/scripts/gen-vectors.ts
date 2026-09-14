@@ -156,6 +156,7 @@ async function build() {
     v: Number(v),
     entryCode: encodeEntryCode({ event, message: ENTRY, signature }),
     entryCodeCompact: encodeEntryCode({ event, message: ENTRY, signature }, "compact"),
+    entryCodeBase45: encodeEntryCode({ event, message: ENTRY, signature }, "base45"),
     foundry: [
       "bytes32 digest = keccak256(abi.encodePacked(hex'1901', domainSeparator, structHash)); assertEq(digest, vector.digest);",
       "(uint8 v, bytes32 r, bytes32 s) = vm.sign(uint256(doorKeyPrivateKey), digest); // RFC 6979 → identical r, s, v",
