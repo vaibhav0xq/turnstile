@@ -141,7 +141,7 @@ export function renderTicketSvg(input: TicketImageInput): string {
   const status = input.checkedIn ? "INSIDE · CHECKED IN ON CHAIN" : "BOUND TO THE HOLDER'S PASSKEY";
   const title = wrap(input.eventName || "Untitled event", 16, 3);
   const titleSize = title.some((l) => [...l].length > 12) ? 92 : 108;
-  const tier = clip(input.tierName || "Seat", 28);
+  const tier = clip(input.tierName || "Seat", 24);
   const date = utcDate(input.startsAt);
   // Rows curve around the stage line, like the room in the app; the lit seat is the light source.
   const fan = seatFan(input.seatIndex, input.seatCount, W / 2, STAGE_Y);
@@ -191,7 +191,9 @@ export function renderTicketSvg(input: TicketImageInput): string {
     // stub
     `<circle cx="92" cy="822" r="10" fill="${accent}"/>` +
     `<text x="118" y="831" font-family="${MONO}" font-size="24" letter-spacing="4" fill="${accent}">${status}</text>` +
-    `<text x="80" y="${H - 62}" font-family="${MONO}" font-size="22" fill="${PALETTE.muted}">${escapeXml(address)} · ${clamp(Math.floor(input.seatIndex) || 0, 0, Math.max(0, input.seatCount - 1)) + 1} of ${input.seatCount} in ${escapeXml(clip(tier, 18))}</text>` +
+    // the footer's two runs share one baseline: ~30 monospace chars on the left, 23 on the right, so they
+    // stay apart at 22 px even with a wide fallback font (a tier name here made them collide)
+    `<text x="80" y="${H - 62}" font-family="${MONO}" font-size="22" fill="${PALETTE.muted}">${escapeXml(address)} · ${clamp(Math.floor(input.seatIndex) || 0, 0, Math.max(0, input.seatCount - 1)) + 1} of ${input.seatCount}</text>` +
     `<text x="${W - 80}" y="${H - 62}" text-anchor="end" font-family="${MONO}" font-size="22" fill="${PALETTE.cyan}">one passkey · no wallet</text>` +
     `</svg>`
   );

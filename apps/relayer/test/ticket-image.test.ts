@@ -24,7 +24,7 @@ describe("ticket image", () => {
     assert.match(svg, />#3</);
     assert.match(svg, /13 Nov 2025 · 02:13 UTC/);
     assert.match(svg, /TURNSTILE · MONAD TESTNET/);
-    assert.match(svg, /0x79a3…21B5 · 3 of 300 in General Admission/);
+    assert.match(svg, /0x79a3…21B5 · 3 of 300</);
     assert.doesNotMatch(svg, /<script|href=|url\(http|@import/i);
     assert.equal(renderTicketSvg(base), svg, "deterministic");
   });

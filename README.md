@@ -27,9 +27,9 @@ passkey ──PRF──┬── account namespace ──▶ secp256k1 account (
 apps/web                 city → venue → seat → ticket → door, resale, organiser (React 19 / R3F / Vite) — ✅ on anvil
 apps/relayer             sponsored ERC-2771 calls, gate verifier + checkIn, testnet drip, passport store (Hono) — ✅ + live smoke
 apps/gate                door scanner — lives in apps/web at /gate/:address
-packages/identity        passkey ceremonies, KDFs, EIP-712 Entry + BindDoorKey, vault + passport sync — ✅ 0.2.0, 51 tests
+packages/identity        passkey ceremonies, KDFs, EIP-712 Entry + BindDoorKey, vault + passport sync — ✅ 0.2.0, 54 tests
 packages/contracts       TurnstileFactory / TurnstileEvent (Foundry)   — ✅ 62 tests, live on Monad testnet
-packages/indexer         Envio HyperIndex: events, seats, fans, door feed — ✅ handlers + 5 tests, awaits testnet
+packages/indexer         Envio HyperIndex: events, seats, fans, door feed — ✅ handlers + 5 tests, hosted deploy pending
 spike/                   Mera 0.2.0 spike (17 vectors, device pages)   — frozen evidence
 docs/                    spike report, device matrix, device reports
 research/                hackathon report, build plan, notes, sources
@@ -117,14 +117,18 @@ taking a free listing is sponsored too. The sale clears the seller's door key an
 the gate (`pnpm smoke` covers the whole round trip with a second identity). Organiser page: publish an
 event from a passkey (tiers, venue, resale rules; the deployment's gate key is granted on creation) and
 watch sold / inside; the new room lights up in the city at once.
-Envio indexer written and tested in-process (events, seats, fans, live feed; the factory address is synced
-from `deployments/`); it goes live on Envio's hosted service once the testnet factory exists.
+Envio indexer written and tested in-process (events, seats, fans, live feed); `config.yaml` already points at
+the testnet factory from `deployments/` — what is left is the deploy to Envio's hosted service.
 Judge mode (guided two-minute run, finale on chain truth) and SPEC v1.3/v1.4's denser entry codes (`TS2:`
 QR-alphanumeric, then `TS3:` with an RFC 9285 base45 blob: the ticket QR drops from 57 to 49 to 41 modules;
 `TS1|` and `TS2:` still decode). Venue tiers are now derived from the seat rows.
 Deployed to Monad testnet (`deployments/10143.json`, verified on MonadVision) with the two seed events; sales
 stay open until 13 Nov 2026. Web + relayer on a staging origin (above) with passports in Postgres; smoke,
-passport sync and token metadata verified there. Next: final domain, indexer → Envio hosted service, demo video.
+passport sync and token metadata verified there. Staging republished 14 Sep with the judge run, `TS3:` codes,
+the ticket image and the staging chip: `pnpm --filter @turnstile/web run judge -- --base <origin>` against it
+lands on a lit seat in 38 s / 6 taps / 2 passkey prompts with three testnet transactions; both seed events'
+`tokenURI` resolve to metadata whose `image.svg` renders. Next: final domain (then re-point `baseURI` and
+`PUBLIC_ORIGIN`), indexer → Envio hosted service, demo video (`docs/demo-video-storyboard.md`).
 
 ## License
 
