@@ -66,20 +66,28 @@ export function StatusLegend() {
     { tone: "green", label: "Inside" },
     { tone: "violet", label: "Listed" },
   ];
+  const row = (className: string) => (
+    <div className={`flex flex-wrap items-center gap-x-4 gap-y-1 ${className}`}>
+      {items.map((i) => (
+        <span key={i.label} className="flex items-center gap-2 text-xs text-muted">
+          <Dot tone={i.tone} />
+          {i.label}
+        </span>
+      ))}
+    </div>
+  );
+  // A closed <details> withholds everything but its summary whatever CSS the children carry, so the
+  // always-open desktop row is its own element and the phone folds a second copy behind one word.
   return (
-    <details className="group">
-      <summary className="mono cursor-pointer list-none text-[11px] text-muted hover:text-paper sm:hidden [&::-webkit-details-marker]:hidden">
-        <span className="group-open:hidden">Legend ▾</span>
-        <span className="hidden group-open:inline">Legend ▴</span>
-      </summary>
-      <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 sm:mt-0 max-sm:hidden max-sm:group-open:flex">
-        {items.map((i) => (
-          <span key={i.label} className="flex items-center gap-2 text-xs text-muted">
-            <Dot tone={i.tone} />
-            {i.label}
-          </span>
-        ))}
-      </div>
-    </details>
+    <>
+      {row("max-sm:hidden")}
+      <details className="group sm:hidden">
+        <summary className="mono cursor-pointer list-none text-[11px] text-muted hover:text-paper [&::-webkit-details-marker]:hidden">
+          <span className="group-open:hidden">Legend ▾</span>
+          <span className="hidden group-open:inline">Legend ▴</span>
+        </summary>
+        {row("mt-1.5")}
+      </details>
+    </>
   );
 }
