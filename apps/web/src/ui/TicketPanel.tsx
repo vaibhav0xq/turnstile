@@ -338,7 +338,10 @@ function CodeView({
             {Math.ceil(remaining / 1000)}
           </span>
         </span>
-        <span>Rotates every 30 s. A screenshot dies with the slot; a forward can't sign the next one.</span>
+        <span>
+          Rotates every 30 s and is accepted for about a minute. A screenshot goes stale; a forward can't sign
+          the next one.
+        </span>
       </div>
       <div
         className={`mono mt-2 break-all text-[10px] leading-relaxed ${big ? "max-w-[86vw] text-ink/70" : "text-muted"}`}

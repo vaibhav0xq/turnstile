@@ -126,8 +126,9 @@ export function Me({ config }: { config: AppConfig | undefined }) {
           <div className="mt-2 flex flex-col gap-2 text-xs text-muted">
             <p>
               A key your phone or laptop makes and keeps — unlocked with your face, fingerprint or device PIN.
-              There is no password to remember and nothing to install; Apple, Google and Microsoft sync it
-              between your own devices.
+              There is no password to remember and nothing to install. Most password managers (Apple, Google,
+              Microsoft) sync it between your own devices; a security key or a locked-down manager keeps it on
+              one.
             </p>
             <p>
               Here one passkey does three jobs. It signs as your account on Monad, so a seat is minted to you

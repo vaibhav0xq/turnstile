@@ -44,9 +44,14 @@ export function Organise({ config }: { config: AppConfig | undefined }) {
   const reset = useOrganise((s) => s.reset);
   const [draft, setDraft] = useState<EventDraft>(() => defaultDraft());
   const [touched, setTouched] = useState(false);
+  // Leaving mid-publish must not forget a transaction in flight: the panel picks it up again on return and
+  // the form stays locked until it lands. Anything settled is cleared for the next visit.
   useEffect(() => {
     showCity();
-    return () => reset();
+    return () => {
+      const { step } = useOrganise.getState();
+      if (step === "idle" || step === "done" || step === "error") reset();
+    };
   }, [showCity, reset]);
 
   const live = fan && fan.expiresAt > Date.now() ? fan : null;
@@ -79,6 +84,8 @@ export function Organise({ config }: { config: AppConfig | undefined }) {
     }
   };
   const panel = useRef<HTMLDivElement>(null);
+  // The card shows from the store's own record; the config row (dates, seats, live board) joins when the
+  // relayer's list catches up.
   const justPublished = created ? (mine.find((e) => e.address === created.address) ?? null) : null;
 
   return (
@@ -93,8 +100,15 @@ export function Organise({ config }: { config: AppConfig | undefined }) {
             relayer tops you up.
           </p>
 
-          {justPublished && config ? (
-            <Published config={config} event={justPublished} hash={hash} onDismiss={reset} />
+          {created && config ? (
+            <Published
+              config={config}
+              created={created}
+              event={justPublished}
+              hash={hash}
+              warning={error?.message ?? null}
+              onDismiss={reset}
+            />
           ) : null}
 
           {mine.length > 0 ? (
@@ -106,7 +120,7 @@ export function Organise({ config }: { config: AppConfig | undefined }) {
                     key={event.address}
                     config={config}
                     event={event}
-                    defaultOpen={justPublished ? event.address === justPublished.address : i === 0}
+                    defaultOpen={created ? event.address === created.address : i === 0}
                   />
                 ))}
               </ul>
@@ -302,12 +316,12 @@ export function Organise({ config }: { config: AppConfig | undefined }) {
                 {issues[0]?.message}
               </div>
             ) : null}
-            {error ? (
+            {error && !created ? (
               <div className="text-xs text-red" data-testid="organise-error">
                 {error.message}
               </div>
             ) : null}
-            {hash && config && !justPublished ? (
+            {hash && config && !created ? (
               <div className="mono text-[11px] text-muted">
                 tx <TxRef config={config} hash={hash} />
               </div>
@@ -332,25 +346,34 @@ function TxRef({ config, hash }: { config: AppConfig; hash: `0x${string}` }) {
 /** The moment after publishing: where the night lives, what to hand the door, and the board to watch. */
 function Published({
   config,
+  created,
   event,
   hash,
+  warning,
   onDismiss,
 }: {
   config: AppConfig;
-  event: EventInfo;
+  created: { address: `0x${string}`; eventId: string; name: string };
+  /** The relayer's row for it, once its event list has caught up. */
+  event: EventInfo | null;
   hash: `0x${string}` | null;
+  /** Something after the creation itself failed (metadata prefix); the event is live regardless. */
+  warning: string | null;
   onDismiss: () => void;
 }) {
   const [copied, setCopied] = useState(false);
-  const doorUrl = `${window.location.origin}/gate/${event.address}`;
+  const doorUrl = `${window.location.origin}/gate/${created.address}`;
   return (
     <div className="mt-5 rounded-2xl border border-green/30 bg-green/10 p-4" data-testid="organise-published">
       <div className="flex items-start justify-between gap-3">
         <div>
           <Kicker className="!text-green">Published</Kicker>
-          <div className="display mt-1 text-2xl">{event.name} is on Monad.</div>
+          <div className="display mt-1 text-2xl">{event?.name ?? created.name} is on Monad.</div>
           <div className="mono mt-1 text-[11px] text-muted">
-            {formatDate(event.startsAt)} · {event.capacity} seats · {shortAddress(event.address, 6)}
+            {event
+              ? `${formatDate(event.startsAt)} · ${event.capacity} seats · `
+              : `event #${created.eventId} · `}
+            {shortAddress(created.address, 6)}
             {hash ? (
               <>
                 {" "}
@@ -372,8 +395,13 @@ function Published({
         Its beacon is lit in the city. Send fans the room; open the door link on the phone or tablet that
         works the gate; the live board below follows the night.
       </p>
+      {warning ? (
+        <p className="mt-2 text-xs text-amber" data-testid="organise-warning">
+          {warning}
+        </p>
+      ) : null}
       <div className="mt-3 flex flex-wrap gap-2">
-        <Link to={`/e/${event.address}`} className="btn btn-primary !min-h-9 px-3 text-xs">
+        <Link to={`/e/${created.address}`} className="btn btn-primary !min-h-9 px-3 text-xs">
           Open the room
         </Link>
         <Button
@@ -387,7 +415,7 @@ function Published({
         >
           {copied ? "Copied" : "Copy door link"}
         </Button>
-        <Link to={`/gate/${event.address}`} className="btn btn-ghost !min-h-9 px-3 text-xs">
+        <Link to={`/gate/${created.address}`} className="btn btn-ghost !min-h-9 px-3 text-xs">
           Open the door here
         </Link>
       </div>
@@ -406,6 +434,10 @@ function OrganiserEvent({
 }) {
   const [copied, setCopied] = useState(false);
   const [open, setOpen] = useState(defaultOpen);
+  // A night that was just published opens its board even if its row mounted a beat before the record did.
+  useEffect(() => {
+    if (defaultOpen) setOpen(true);
+  }, [defaultOpen]);
   const doorUrl = `${window.location.origin}/gate/${event.address}`;
   return (
     <li className="rounded-xl border border-line">

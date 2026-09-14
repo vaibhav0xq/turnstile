@@ -39,14 +39,20 @@ export function City({ config }: { config: AppConfig | undefined }) {
           </p>
           {!tourActive ? (
             <div className="fade-up-late mt-4 flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                className="chip mono border-amber/50 text-amber hover:bg-ink-2"
-                onClick={() => startTour()}
-                data-testid="tour-start"
-              >
-                ▶ Judge mode · 2-minute tour
-              </button>
+              {config?.gateProtected ? (
+                <span className="text-xs text-muted" data-testid="tour-unavailable">
+                  The guided run walks up to the door itself; this deployment's door is an operator's.
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  className="chip mono border-amber/50 text-amber hover:bg-ink-2"
+                  onClick={() => startTour()}
+                  data-testid="tour-start"
+                >
+                  ▶ Judge mode · 2-minute tour
+                </button>
+              )}
             </div>
           ) : null}
         </div>

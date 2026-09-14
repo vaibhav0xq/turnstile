@@ -125,6 +125,13 @@ export function Tour({ config, seatMap }: { config: AppConfig | undefined; seatM
     if (tour) useTour.getState().start({ autoplay: tour === "auto" });
   }, []);
 
+  // The run walks up to the door itself; behind an operator token there is no door for it to reach, so a
+  // tour started by link on such a deployment ends before it can strand at the ticket (the city says why).
+  const gateProtected = config?.gateProtected === true;
+  useEffect(() => {
+    if (active && gateProtected) useTour.getState().exit();
+  }, [active, gateProtected]);
+
   // Route → step. Chain truth (the seat's check-in) is the only way to reach the finale.
   useEffect(() => {
     if (!active || step === "lit") return;

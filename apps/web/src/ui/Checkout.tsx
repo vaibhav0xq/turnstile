@@ -59,13 +59,15 @@ export function Checkout({ config, event, layout, seatMap }: CheckoutProps) {
     if (seatId != null) selectSeat(seatId);
   }, [seatId, selectSeat]);
 
-  // A busy relayer (429) is momentary: retry once on the fan's behalf after a short, visible countdown. The
-  // session is live at that point, so no passkey prompt comes with it; a second 429 waits for a tap.
+  // A busy relayer (429) is momentary: retry once per seat on the fan's behalf after a short, visible
+  // countdown — and only while the session is still live, so the retry can never raise a passkey prompt
+  // nobody asked for. A second 429, or a lapsed session, waits for a tap.
   const throttled = step === "error" && error?.code === "RATE_LIMITED";
+  const retryKey = seatId == null ? null : `${event.address}:${seatId}`;
   const [retryIn, setRetryIn] = useState<number | null>(null);
-  const autoRetried = useRef<number | null>(null);
+  const autoRetried = useRef(new Set<string>());
   useEffect(() => {
-    if (!throttled || autoRetried.current === seatId) {
+    if (!throttled || retryKey === null || autoRetried.current.has(retryKey)) {
       setRetryIn(null);
       return;
     }
@@ -76,13 +78,19 @@ export function Checkout({ config, event, layout, seatMap }: CheckoutProps) {
       setRetryIn(left);
       if (left > 0) return;
       clearInterval(id);
-      autoRetried.current = seatId;
+      autoRetried.current.add(retryKey);
       const c = useCheckout.getState();
+      const same =
+        c.eventAddress === event.address &&
+        c.seatId === seatId &&
+        c.step === "error" &&
+        c.error?.code === "RATE_LIMITED";
+      if (!same || !useIdentity.getState().liveFan()) return;
       if (c.buyHash && c.tokenId != null) void bindOnly(config, event, c.tokenId, queryClient);
       else void run(config, event, queryClient);
     }, 1000);
     return () => clearInterval(id);
-  }, [throttled, seatId, config, event, queryClient, run, bindOnly]);
+  }, [throttled, retryKey, seatId, config, event, queryClient, run, bindOnly]);
 
   if (seatId == null) return null;
   const seat = layout.byId.get(seatId);

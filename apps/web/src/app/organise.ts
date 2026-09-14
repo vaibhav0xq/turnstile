@@ -23,12 +23,17 @@ import { explain } from "./checkout";
 import { buildCreateEventArgs, createEventGas, type EventDraft, metadataBaseURI } from "./event-draft";
 
 export type OrganiseStep = "idle" | "identity" | "funding" | "creating" | "done" | "error";
+export interface OrganiseError {
+  code: string;
+  message: string;
+}
 
 interface OrganiseState {
   step: OrganiseStep;
-  error: { code: string; message: string } | null;
+  error: OrganiseError | null;
   hash: Hex | null;
-  created: { address: Address; eventId: string } | null;
+  /** Set the moment the receipt names the new event — before any follow-up call that could still fail. */
+  created: { address: Address; eventId: string; name: string } | null;
   reset(): void;
   /** Resolves to the new event's address, or null when it failed (the error is in the store). */
   publish(config: AppConfig, draft: EventDraft, queryClient: QueryClient): Promise<Address | null>;
@@ -126,26 +131,43 @@ export const useOrganise = create<OrganiseState>()((set) => ({
       if (!created) throw { code: "NO_EVENT", message: "The factory did not report a new event." };
       const address = created.args.eventAddress;
       const eventId = created.args.eventId;
+      // The event exists from here on, whatever the tidy-up below does: never report it as a failure, or the
+      // organiser publishes it twice.
+      set({ created: { address, eventId: eventId.toString(), name: draft.name.trim() } });
 
       // Someone else published in between: point the metadata prefix at the id we actually got.
+      let warning: OrganiseError | null = null;
       if (eventId !== expectedId) {
-        const fix = await wallet.writeContract({
-          address,
-          abi: turnstileEventAbi,
-          functionName: "setBaseURI",
-          args: [metadataBaseURI(apiOrigin, eventId)],
-          gas: 60_000n,
-        });
-        await client.waitForTransactionReceipt({ hash: fix, timeout: 60_000 });
+        try {
+          const fix = await wallet.writeContract({
+            address,
+            abi: turnstileEventAbi,
+            functionName: "setBaseURI",
+            args: [metadataBaseURI(apiOrigin, eventId)],
+            gas: 60_000n,
+          });
+          await client.waitForTransactionReceipt({ hash: fix, timeout: 60_000 });
+        } catch {
+          warning = {
+            code: "BASE_URI",
+            message:
+              "The event is live, but its metadata prefix could not be set; ticket images will not load until the organiser runs script/SetBaseURI.s.sol.",
+          };
+        }
       }
 
-      // Skip the relayer's 15 s event cache so the new beacon lights up immediately.
-      await queryClient.fetchQuery({
-        queryKey: configQueryKey,
-        queryFn: () => api<AppConfig>("/api/config?fresh=1"),
-        staleTime: 0,
-      });
-      set({ step: "done", created: { address, eventId: eventId.toString() } });
+      // Skip the relayer's 15 s event cache so the new beacon lights up immediately; if that read fails the
+      // regular refetch picks the event up within the cache window.
+      try {
+        await queryClient.fetchQuery({
+          queryKey: configQueryKey,
+          queryFn: () => api<AppConfig>("/api/config?fresh=1"),
+          staleTime: 0,
+        });
+      } catch {
+        void queryClient.invalidateQueries({ queryKey: configQueryKey });
+      }
+      set({ step: "done", error: warning });
       return address;
     } catch (error) {
       set({ step: "error", error: explain(error) });
