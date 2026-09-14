@@ -1,5 +1,5 @@
 import { type RefObject, useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { useNavigate } from "react-router";
 import { useTour } from "../../app/tour";
 import type { AppConfig } from "../../chain/config";
 import { chainName } from "../../chain/config";
@@ -33,7 +33,9 @@ export function Story({
   useEffect(() => {
     const el = overlay.current;
     if (!el) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    // the scroll is measured either way (the header's chip and the phone's pill key off it); under reduced
+    // motion only the camera stays put
+    const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     let tops: number[] = [];
     const update = () => setTarget(flightProgress(el.scrollTop, tops));
     const measure = () => {
@@ -42,7 +44,7 @@ export function Story({
       tops = sections.current.map((s) => (s ? s.getBoundingClientRect().top - base : 0));
       update();
     };
-    setActive(true);
+    if (!still) setActive(true);
     measure();
     el.addEventListener("scroll", update, { passive: true });
     const ro = new ResizeObserver(measure);
@@ -170,12 +172,13 @@ export function Story({
             <Button variant="primary" onClick={enterCity}>
               Enter the city
             </Button>
-            <Link
-              to="#programme"
+            {/* a plain anchor: the browser scrolls the overlay (the scroll container) to the programme */}
+            <a
+              href="#programme"
               className="mono text-[11px] uppercase tracking-[0.16em] text-muted hover:text-paper"
             >
               Programme ↓
-            </Link>
+            </a>
           </div>
         </div>
         <Bill config={config} kicker={null} className="sm:w-80" />

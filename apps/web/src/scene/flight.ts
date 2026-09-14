@@ -40,8 +40,11 @@ export const FLIGHT_KEYS: readonly FlightKey[] = [
 /** Lowest a key may fly: the camera stays above the low roofs (most downtown masses top out under 20). */
 export const FLIGHT_FLOOR = 24;
 
-/** Where the camera is along the flight, written by the rig every frame; the beacon labels read it. */
-export const flightPose = { u: 0 };
+/**
+ * Where the camera is along the flight, written by the rig every frame; `inFlight` while the rig holds the
+ * camera (through the landing on the picker's pose, after the page has let go). The beacon labels read it.
+ */
+export const flightPose = { u: 0, inFlight: false };
 
 /** The picker's labels and leader lines stay off until the flight has nearly landed (they are its UI). */
 export const LABELS_FROM = 3.6;

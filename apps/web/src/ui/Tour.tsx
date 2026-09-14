@@ -23,11 +23,11 @@ const COPY: Record<TourStep, { title: string; line: string }> = {
   },
   checkout: {
     title: "One passkey",
-    line: "The passkey is the account: it signs the purchase, the relayer pays the gas, and a second prompt binds a door key that exists only for tonight.",
+    line: "The passkey is the account: it signs the seat (free seats are relayed; a paid one is sent from your own account), and a second prompt binds a door key derived for tonight's door alone.",
   },
   ticket: {
     title: "Your ticket",
-    line: "The code re-signs itself every 30 seconds with the door key — a screenshot dies with the slot. Walk up to the door.",
+    line: "The code re-signs itself every 30 seconds with the door key, so a copy goes stale within a minute and a seat admits once. Walk up to the door.",
   },
   door: {
     title: "The door",

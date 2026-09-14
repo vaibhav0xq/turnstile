@@ -6,7 +6,7 @@ import type { EventInfo } from "../chain/config";
 import { mulberry } from "../lib/random";
 import { keepOutRects } from "./anchor";
 import { useDirector } from "./director";
-import { flightPose, LABELS_FROM, useFlight } from "./flight";
+import { flightPose, LABELS_FROM } from "./flight";
 import {
   beaconShader,
   CITY_NIGHT,
@@ -655,7 +655,7 @@ function Beacon({
     const rects = keepOutRects();
     let height = -1;
     // in flight the chips are off until the landing: the story's copy speaks for the city there
-    const flying = useFlight.getState().active && flightPose.u < LABELS_FROM;
+    const flying = flightPose.inFlight && flightPose.u < LABELS_FROM;
     for (const h of flying ? [] : CHIP_HEIGHTS) {
       tmpVec.set(x, h, z).project(camera);
       if (tmpVec.z > 1) break;

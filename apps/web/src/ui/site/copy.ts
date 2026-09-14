@@ -27,8 +27,8 @@ export const FRAMES: Frame[] = [
   },
   {
     numeral: "II",
-    title: "One prompt. Your passkey signs.",
-    body: "The seat is minted to an address derived from your passkey — nothing to install, no seed phrase. Free seats and door keys are sponsored by the relayer; a paid seat is paid from your own account.",
+    title: "Your passkey signs. Nothing to install.",
+    body: "The seat is minted to an address derived from your passkey — no wallet, no seed phrase. Free seats and door keys are sponsored by the relayer; a paid seat is paid from your own account.",
     still: { src: "/site/sign.jpg", alt: "The checkout panel: passkey, seat, door key, one button" },
   },
   {

@@ -76,6 +76,12 @@ export function CameraRig({ layout, focusBeacon, diveBeacon }: CameraRigProps) {
   const scene = useThree((s) => s.scene);
   /** Where along the flight the camera is, in key units; eased toward the scroll's target every frame. */
   const flightU = useRef(0);
+  /** The frame loop holds the camera for the flight (controls off, limits open) until it lands. */
+  const flightOwned = useRef(false);
+  /** The flight ended on the city: the camera finishes the path to the picker's pose before handing over. */
+  const landing = useRef(false);
+  /** When the city was last cut to; a flight taking over within a second of it starts where the scroll says. */
+  const cityShownAt = useRef(0);
   const finePointer = useMemo(
     () => typeof window !== "undefined" && window.matchMedia("(pointer: fine)").matches,
     [],
@@ -89,6 +95,7 @@ export function CameraRig({ layout, focusBeacon, diveBeacon }: CameraRigProps) {
     if (!c) return;
     if (useDirector.getState().transition?.kind === "descent") return;
     if (chapter === "city") {
+      cityShownAt.current = performance.now();
       fov.current = DEFAULT_FOV;
       cityLimits(c);
       c.setLookAt(
@@ -204,43 +211,6 @@ export function CameraRig({ layout, focusBeacon, diveBeacon }: CameraRigProps) {
     c.setLookAt(p0.x, p0.y, p0.z, t0.x, t0.y, t0.z, false);
   }, [transition, layout, chapter, diveBeacon]);
 
-  // The landing's flight: while it is on, the frame loop places the camera from the scroll and the user's
-  // orbit is off (the page is the control). Limits open up because the path runs closer and lower than the
-  // picker allows. When it ends without a dive under way, the camera eases to the picker's pose, so
-  // `/` → `/city` is one continuous shot.
-  useEffect(() => {
-    const c = controls.current;
-    if (!c) return;
-    const d = useDirector.getState();
-    if (flightActive) {
-      if (d.chapter !== "city") return;
-      // before the first frame (a fresh load) start where the scroll says; arriving from the picker with
-      // the city already on screen, fly up from its pose instead of cutting
-      flightU.current = d.ready ? FLIGHT_KEYS.length - 1 : useFlight.getState().target;
-      c.enabled = false;
-      c.minDistance = 1;
-      c.maxDistance = 1000;
-      c.minPolarAngle = 0;
-      c.maxPolarAngle = Math.PI;
-      return;
-    }
-    flightPose.u = FLIGHT_KEYS.length - 1;
-    if (scene.fog instanceof THREE.FogExp2) scene.fog.density = CITY_FOG_DENSITY;
-    if (d.transition || d.chapter !== "city") return;
-    cityLimits(c);
-    c.enabled = true;
-    fov.current = DEFAULT_FOV;
-    void c.setLookAt(
-      CITY.position.x,
-      CITY.position.y,
-      CITY.position.z,
-      CITY.target.x,
-      CITY.target.y,
-      CITY.target.z,
-      true,
-    );
-  }, [flightActive, scene]);
-
   // View from a seat ↔ overview.
   useEffect(() => {
     const c = controls.current;
@@ -308,8 +278,43 @@ export function CameraRig({ layout, focusBeacon, diveBeacon }: CameraRigProps) {
       runMove(c, transition, m, endTransition);
       return;
     }
-    if (flightActive && chapter === "city") {
-      const target = useFlight.getState().target;
+    // The landing's flight. While the page drives it, the frame loop places the camera from the scroll and
+    // the user's orbit is off (the page is the control); limits open up because the path runs closer and
+    // lower than the picker allows. Ownership is decided here, every frame, so it survives whatever order
+    // the route, the chapter and the store settle in: a flight that starts before the city is on screen
+    // (back from a room to `/`) simply takes over on the first city frame.
+    const flying = flightActive && chapter === "city";
+    if (flying && !flightOwned.current) {
+      flightOwned.current = true;
+      landing.current = false;
+      flightPose.inFlight = true;
+      // right after a cut start where the scroll says; with the city already on screen (arriving from the
+      // picker) fly up from its pose instead of cutting
+      flightU.current =
+        performance.now() - cityShownAt.current > 1200 ? FLIGHT_KEYS.length - 1 : useFlight.getState().target;
+      c.enabled = false;
+      c.minDistance = 1;
+      c.maxDistance = 1000;
+      c.minPolarAngle = 0;
+      c.maxPolarAngle = Math.PI;
+    } else if (!flying && flightOwned.current && !landing.current) {
+      if (chapter === "city") {
+        // `/` → `/city`: finish the path to the picker's pose, one continuous shot
+        landing.current = true;
+      } else {
+        // a dive or a cut took the camera: the transition and chapter effects own it from here
+        flightOwned.current = false;
+        flightPose.inFlight = false;
+        flightPose.u = FLIGHT_KEYS.length - 1;
+        if (scene.fog instanceof THREE.FogExp2) scene.fog.density = CITY_FOG_DENSITY;
+        if (!transition) c.enabled = true;
+      }
+    }
+    if (flightOwned.current) {
+      // back on `/` before the landing finished: follow the scroll again from wherever the camera is
+      if (flying) landing.current = false;
+      const end = FLIGHT_KEYS.length - 1;
+      const target = landing.current ? end : useFlight.getState().target;
       let u = damp(flightU.current, target, FLIGHT_DAMPING, delta);
       if (Math.abs(u - target) < 0.0005) u = target;
       flightU.current = u;
@@ -320,6 +325,16 @@ export function CameraRig({ layout, focusBeacon, diveBeacon }: CameraRigProps) {
       const [px, py, pz] = sample.position;
       const [tx, ty, tz] = sample.target;
       c.setLookAt(px, py, pz, tx, ty, tz, false);
+      if (landing.current && u === end) {
+        // landed on the picker's pose: the user's orbit is back
+        flightOwned.current = false;
+        landing.current = false;
+        flightPose.inFlight = false;
+        cityLimits(c);
+        c.enabled = true;
+        fov.current = DEFAULT_FOV;
+        return;
+      }
       if (finePointer) {
         // the pose is rebuilt every frame, so the parallax is applied as an absolute lean, not a delta
         const p = parallax.current;
