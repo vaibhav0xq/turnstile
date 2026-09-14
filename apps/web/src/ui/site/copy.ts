@@ -25,7 +25,7 @@ export const FRAMES: Frame[] = [
   {
     numeral: "II",
     title: "Your passkey signs",
-    body: "One prompt. The seat is minted to an address derived from your passkey — nothing to install, no seed phrase, and the relayer pays the gas.",
+    body: "One prompt. The seat is minted to an address derived from your passkey — nothing to install, no seed phrase. Free seats, door keys and listings are sponsored by the relayer; a paid seat costs its face value from your passkey's own account.",
     still: { src: "/site/sign.jpg", alt: "The checkout panel: passkey, seat, door key, one button" },
   },
   {
@@ -52,7 +52,7 @@ export const WHY: Point[] = [
   },
   {
     title: "Only the passkey that holds the seat can produce the code.",
-    body: "The door key is derived from your passkey for that event alone and bound to the seat on-chain. There is nothing to forward and nothing to sell twice: the ticket cannot leave your account except through resale.",
+    body: "The door key is derived from your passkey for that event alone and bound to the seat on-chain. A forwarded code is stale within a minute, and the ticket itself cannot leave your account except through resale — so there is nothing to sell twice.",
   },
   {
     title: "Resale on the organiser's terms.",
@@ -84,7 +84,7 @@ export const FAQ: Faq[] = [
   },
   {
     q: "What if I lose my phone?",
-    a: "Passkeys sync through your platform account (iCloud Keychain, Google Password Manager, a password manager). Sign in on the new device and the same passkey derives the same keys: same account, same seats, same vault. The relayer keeps nothing that only the old phone had.",
+    a: "If your passkey syncs through your platform account (iCloud Keychain, Google Password Manager, a password manager), sign in on the new device and the same passkey derives the same keys: same account, same seats, same vault. A device-bound passkey that never synced is lost with the device, like any key — so use a syncing authenticator for seats you care about. The relayer keeps nothing that only the old phone had.",
   },
   {
     q: "What happens if someone copies my QR?",
@@ -100,6 +100,6 @@ export const FAQ: Faq[] = [
   },
   {
     q: "Does it cost gas?",
-    a: "Not for fans. The relayer sponsors every transaction through an ERC-2771 forwarder, so your passkey signs and the relayer pays. Paid seats cost their face value in MON from your passkey's account; on the testnet a small drip can fund a first purchase.",
+    a: "Mostly not. Free seats and every holder action — binding the door key, listing, delisting, walking in — go through an ERC-2771 forwarder: your passkey signs, the relayer submits and pays the gas. A paid seat is bought from your passkey's own account, so it costs its face value in MON plus that one transaction's gas; on the testnet a small drip funds a first purchase.",
   },
 ];

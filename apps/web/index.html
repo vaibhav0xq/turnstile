@@ -9,9 +9,6 @@
       name="description"
       content="Identity-bound tickets and access on Monad. One passkey buys the seat, opens the door and holds the private passport — nothing to install, nothing to screenshot."
     />
-    <!-- %VITE_SITE_URL% is the public origin (no trailing slash); empty until the domain is live, which keeps
-         the image URLs relative rather than pinning a rehearsal host into the build. The canonical link and
-         og:url are injected by vite.config.ts only when it is set. -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Turnstile" />
     <meta property="og:title" content="Turnstile — access that follows you" />
@@ -19,7 +16,7 @@
       property="og:description"
       content="Identity-bound tickets and access on Monad. One passkey is your account, your door key and your private vault."
     />
-    <meta property="og:image" content="%VITE_SITE_URL%/og.jpg" />
+    <meta property="og:image" content="%SITE_URL%/og.jpg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:image:alt" content="Turnstile: a night city of lit beacons under the headline “Access that follows you.”" />
@@ -29,7 +26,7 @@
       name="twitter:description"
       content="Identity-bound tickets and access on Monad. One passkey is your account, your door key and your private vault."
     />
-    <meta name="twitter:image" content="%VITE_SITE_URL%/og.jpg" />
+    <meta name="twitter:image" content="%SITE_URL%/og.jpg" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />

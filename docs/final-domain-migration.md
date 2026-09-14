@@ -37,6 +37,7 @@ Set through the deployment's environment (the *Publishing* pane, production scop
 | `PUBLIC_ORIGIN` | `https://<final>` (no trailing slash) | metadata `image` / `external_url`, ticket image links; the relayer refuses to trust `X-Forwarded-Host` |
 | `ENVIRONMENT_LABEL` | **remove** | the STAGING chip and the tab-title prefix go away |
 | `CORS_ORIGIN` | leave unset (`*`) — or `https://<final>` if you want it exact | same-origin web needs nothing; set it only if a second front-end origin appears |
+| `VITE_SITE_URL` | `https://<final>` (bare origin) | canonical link, `og:url` and absolute `og:image` / `twitter:image` in the built `index.html`; unset, the image URLs stay relative and link previews stay blank |
 | `VITE_RP_ID` | `<apex>` (e.g. `turnstile.example`, no scheme) | the passkey RP ID; must equal the page hostname or a registrable suffix of it — a wrong value breaks every passkey. The apex lets any future subdomain share credentials. Pair it with the `www` → apex redirect below; on a platform hostname (`*.replit.app`) leave it unset |
 | `CHAIN_ID`, `EXPLORER_URL`, keys, `GATE_TOKEN`, `DATABASE_URL` | unchanged | |
 

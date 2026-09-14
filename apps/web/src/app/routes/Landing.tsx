@@ -65,12 +65,18 @@ export function Landing({ config }: { config: AppConfig | undefined }) {
           </h1>
           <p className="fade-up-late mt-5 max-w-md text-base text-paper/80 sm:text-lg">
             One passkey is your account, your door key and your private vault. Nothing to install, nothing to
-            screenshot — the code on your phone is signed by a key that only exists tonight.
+            screenshot — the code on your phone is signed by a key derived for tonight's door alone.
           </p>
           {!tourActive ? (
             <div className="fade-up-late mt-5 flex flex-wrap items-center gap-2">
-              <Button variant="primary" onClick={enterCity} data-testid="enter-city">
-                Enter the city
+              {/* Nothing to walk into until the bill has loaded; disabled beats a silent no-op. */}
+              <Button
+                variant="primary"
+                onClick={enterCity}
+                disabled={events.length === 0}
+                data-testid="enter-city"
+              >
+                {events.length === 0 && !config ? "Lighting the city…" : "Enter the city"}
               </Button>
               <button
                 type="button"

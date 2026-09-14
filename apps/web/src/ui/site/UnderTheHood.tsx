@@ -35,11 +35,12 @@ export function UnderTheHood({ config }: { config: AppConfig | undefined }) {
         same account in any Mera app), a presence key for the door and a vault key — each under its own salt.
       </Credit>
       <Credit
-        term="Gas-free for fans"
+        term="Sponsored transactions"
         detail={config ? <Addr config={config} address={config.forwarder} label="forwarder" /> : null}
       >
         An ERC-2771 forwarder: your passkey signs the request, the relayer submits it and pays the gas, and
-        the contract still sees your address as the sender.
+        the contract still sees your address as the sender. Free seats, door keys, listings and check-ins go
+        this way; a paid seat is sent from your own account.
       </Credit>
       <Credit
         term="Envio HyperIndex"
@@ -64,8 +65,8 @@ export function UnderTheHood({ config }: { config: AppConfig | undefined }) {
             : "connecting…"
         }
       >
-        The browser reads the chain directly for seat maps and confirmations, polling well under a second, and
-        falls over to the next endpoint on its own when one errors.
+        The browser reads the chain directly — seat maps refresh every few seconds, confirmations are polled
+        several times a second — and falls over to the next endpoint on its own when one errors.
       </Credit>
       <Credit
         term="Contracts & source"
