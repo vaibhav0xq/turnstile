@@ -343,6 +343,15 @@ input:focus-visible {
     width: auto;
     max-height: 62dvh;
   }
+  /* thumbs need real targets: rows keep 1.5rem cells and scroll sideways instead of shrinking */
+  .seat-cells {
+    grid-template-columns: repeat(var(--cols, 12), minmax(1.5rem, 1fr));
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+  .seat-cell {
+    max-width: none;
+  }
 }
 
 .seat-anchor {

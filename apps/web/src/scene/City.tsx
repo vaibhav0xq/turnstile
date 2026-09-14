@@ -114,7 +114,10 @@ interface CityData {
  * point mass (windows, suburbs, street lights) for the low tier; the buildings themselves stay.
  */
 function buildCity(beacons: Array<[number, number]>, detail = 1): CityData {
+  // Two streams: `rnd` shapes the buildings and must be consumed identically at every tier, `drnd` feeds the
+  // point mass that `detail` thins — otherwise a tier change would regenerate a different city.
   const rnd = mulberry(1337);
+  const drnd = mulberry(7331);
   const buildings: Building[] = [];
   const pos: number[] = [];
   const sca: number[] = [];
@@ -127,11 +130,11 @@ function buildCity(beacons: Array<[number, number]>, detail = 1): CityData {
   const half = 12;
   const push = (x: number, y: number, z: number, s: number, w: number) => {
     pos.push(x, y, z);
-    const r = 260 + rnd() * 160;
-    const th = rnd() * Math.PI * 2;
-    const ph = Math.acos(2 * rnd() - 1);
+    const r = 260 + drnd() * 160;
+    const th = drnd() * Math.PI * 2;
+    const ph = Math.acos(2 * drnd() - 1);
     sca.push(r * Math.sin(ph) * Math.cos(th), 60 + r * Math.cos(ph) * 0.6, r * Math.sin(ph) * Math.sin(th));
-    seed.push(rnd());
+    seed.push(drnd());
     size.push(s);
     warm.push(w);
   };
@@ -169,9 +172,9 @@ function buildCity(beacons: Array<[number, number]>, detail = 1): CityData {
           const rows = Math.max(1, Math.floor(h / 3.0));
           for (let c = 0; c < cols; c++) {
             for (let r = 0; r < rows; r++) {
-              if (rnd() > density) continue;
+              if (drnd() > density) continue;
               const u = (c + 0.5) / cols;
-              push(sx + dx * len * u, 1.5 + r * 3.0, sz + dz * len * u, 1.3 + rnd() * 1.3, warmth);
+              push(sx + dx * len * u, 1.5 + r * 3.0, sz + dz * len * u, 1.3 + drnd() * 1.3, warmth);
             }
           }
         }
@@ -194,11 +197,11 @@ function buildCity(beacons: Array<[number, number]>, detail = 1): CityData {
   }
   // suburbs: loose scatter of low lights out to the haze, thinning with distance
   for (let i = 0; i < 26000 * detail; i++) {
-    const r = 250 + rnd() ** 0.6 * 650;
-    const th = rnd() * Math.PI * 2;
-    if (rnd() < (r - 250) / 900) continue;
-    const warmth = rnd() < 0.8 ? 0.7 + rnd() * 0.3 : rnd() * 0.3;
-    push(Math.cos(th) * r, 0.6 + rnd() * rnd() * 14, Math.sin(th) * r, 1.4 + rnd() * 1.6, warmth);
+    const r = 250 + drnd() ** 0.6 * 650;
+    const th = drnd() * Math.PI * 2;
+    if (drnd() < (r - 250) / 900) continue;
+    const warmth = drnd() < 0.8 ? 0.7 + drnd() * 0.3 : drnd() * 0.3;
+    push(Math.cos(th) * r, 0.6 + drnd() * drnd() * 14, Math.sin(th) * r, 1.4 + drnd() * 1.6, warmth);
   }
   // street lights along the grid
   for (let i = -half; i <= half; i++) {

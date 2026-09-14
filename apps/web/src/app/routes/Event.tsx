@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
 import { type AppConfig, findEvent, tierPrice } from "../../chain/config";
 import { mySeats, type SeatMap, seatStatus } from "../../chain/seats";
@@ -29,9 +29,16 @@ export function Event({ config, seatMap }: { config: AppConfig | undefined; seat
   const flat = useDirector((s) => s.flat);
   // The 2D list is the way in without a scene (no WebGL) and for keyboards; it opens itself in flat mode.
   const [listOpen, setListOpen] = useState(flat);
+  const listToggle = useRef<HTMLButtonElement>(null);
+  // Checkout must not open underneath the list (it does on phones); flat mode reopens the list afterwards.
   useEffect(() => {
-    if (flat) setListOpen(true);
-  }, [flat]);
+    if (checkoutSeat != null) setListOpen(false);
+    else if (flat) setListOpen(true);
+  }, [checkoutSeat, flat]);
+  const closeList = () => {
+    setListOpen(false);
+    listToggle.current?.focus();
+  };
   const layout = useMemo(() => (event ? buildLayout(event) : null), [event]);
 
   useEffect(() => {
@@ -127,6 +134,7 @@ export function Event({ config, seatMap }: { config: AppConfig | undefined; seat
             </button>
           ))}
           <button
+            ref={listToggle}
             type="button"
             className={`chip mono hover:bg-ink-2 ${listOpen ? "text-paper" : ""}`}
             aria-pressed={listOpen}
@@ -150,7 +158,7 @@ export function Event({ config, seatMap }: { config: AppConfig | undefined; seat
 
       {listOpen ? (
         <div id="seat-list">
-          <SeatList event={event} layout={layout} seatMap={seatMap} onClose={() => setListOpen(false)} />
+          <SeatList event={event} layout={layout} seatMap={seatMap} onClose={closeList} />
         </div>
       ) : null}
 

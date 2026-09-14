@@ -26,8 +26,10 @@ export function SeatList({ event, layout, seatMap, onClose }: SeatListProps) {
   const panel = useRef<HTMLElement>(null);
   const rows = useMemo(() => groupRows(layout, event.tiers), [layout, event.tiers]);
   const selectedSpec = selected != null ? layout.byId.get(selected) : undefined;
+  // Until the seat map arrives nothing is known to be free, so no cell may offer a purchase.
+  const loading = seatMap === undefined;
 
-  // Opening the list moves focus in (Escape gives it back to the header).
+  // Opening the list moves focus in; the caller returns it to the toggle on close.
   useEffect(() => {
     const first =
       panel.current?.querySelector<HTMLButtonElement>('button[aria-pressed="true"]') ??
@@ -46,7 +48,7 @@ export function SeatList({ event, layout, seatMap, onClose }: SeatListProps) {
         }}
       >
         <div className="flex items-center justify-between gap-3">
-          <Kicker>Seat list</Kicker>
+          <Kicker>{loading ? "Seat list · loading seats…" : "Seat list"}</Kicker>
           <button type="button" className="chip !min-h-7 text-[11px]" onClick={onClose}>
             Close
           </button>
@@ -66,7 +68,9 @@ export function SeatList({ event, layout, seatMap, onClose }: SeatListProps) {
                   <div className="mono pt-0.5 text-[11px] text-muted">Row {row}</div>
                   <fieldset className="seat-cells" aria-label={`Row ${row}`}>
                     {seats.map((seat) => {
-                      const { tone, line } = describeSeat(event, seat, seatMap, mine.has(seat.id));
+                      const described = describeSeat(event, seat, seatMap, mine.has(seat.id));
+                      const tone = loading ? "muted" : described.tone;
+                      const line = loading ? "loading" : described.line;
                       const isSelected = selected === seat.id;
                       return (
                         <button
@@ -74,6 +78,7 @@ export function SeatList({ event, layout, seatMap, onClose }: SeatListProps) {
                           type="button"
                           className="seat-cell"
                           data-tone={tone}
+                          disabled={loading}
                           aria-pressed={isSelected}
                           aria-label={`${seatLabel(seat)} · ${line}`}
                           title={`${seatLabel(seat)} · ${line}`}
@@ -85,7 +90,10 @@ export function SeatList({ event, layout, seatMap, onClose }: SeatListProps) {
                 </div>
               ))}
             </div>
-            {selectedSpec && selectedSpec.tier === section.tier && selectedSpec.section === section.name ? (
+            {!loading &&
+            selectedSpec &&
+            selectedSpec.tier === section.tier &&
+            selectedSpec.section === section.name ? (
               <div className="mt-2 rounded-xl border border-white/10 bg-black/30 p-2.5">
                 <div className="flex items-center justify-between gap-3">
                   <div className="text-sm">{seatLabel(selectedSpec)}</div>
