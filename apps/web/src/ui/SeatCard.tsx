@@ -146,10 +146,13 @@ export function SeatCardLayer({ event, layout, seatMap }: SeatCardLayerProps) {
   // The finale is the followspot on the seat; the card would sit in the beam. It is back the moment the
   // tour ends ("Explore the room") since the seat stays selected.
   const finale = useTour((s) => s.active && s.step === "lit");
+  // Checkout names the seat itself; the floating card would overlap the panel on a seat near the corner.
+  const checkingOut = useCheckout((s) => s.seatId != null);
   const id = selected ?? hovered;
   const seat = id != null ? layout?.byId.get(id) : undefined;
   // The ticket view already is the card for its seat; the spatial one would only cover the panel.
-  if (chapter !== "venue" || !event || !seat || pathname.startsWith("/t/") || finale) return null;
+  if (chapter !== "venue" || !event || !seat || pathname.startsWith("/t/") || finale || checkingOut)
+    return null;
   return (
     <div
       key={seat.id}

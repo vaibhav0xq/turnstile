@@ -88,6 +88,9 @@ const skyFragment = /* glsl */ `
     float toward = 0.5 + 0.5 * dot(normalize(vec2(vWorld.x, vWorld.z)), vec2(0.0, -1.0));
     col += uGlow * pow(band, 3.0) * (0.35 + 0.65 * toward) * smoothstep(-0.02, 0.08, h);
     gl_FragColor = vec4(col, 1.0);
+    // Encode like the built-in materials do, so the horizon band meets the fogged ground plane
+    // in the same colour instead of a hard seam where the plane hits the far clip.
+    #include <colorspace_fragment>
   }
 `;
 

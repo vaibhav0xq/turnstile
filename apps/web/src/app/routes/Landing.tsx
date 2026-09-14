@@ -1,11 +1,12 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router";
 import type { AppConfig, EventInfo } from "../../chain/config";
 import { tierPrice } from "../../chain/config";
 import { formatDate, formatMon } from "../../lib/format";
 import { useDirector } from "../../scene/director";
 import { CityPulse } from "../../ui/live/CityPulse";
-import { Kicker } from "../../ui/primitives";
+import { Button, Kicker } from "../../ui/primitives";
+import { SiteSections } from "../../ui/site/Sections";
 import { useTour } from "../tour";
 import { pickTourEvent } from "../tour-target";
 
@@ -17,20 +18,44 @@ export function Landing({ config }: { config: AppConfig | undefined }) {
   const tourActive = useTour((s) => s.active);
   const targetEvent = useTour((s) => s.targetEvent);
   const navigate = useNavigate();
+  const overlay = useRef<HTMLDivElement>(null);
+  const bill = useRef<HTMLDivElement>(null);
   useEffect(() => {
     showCity();
   }, [showCity]);
 
+  // The wheel over the bare city scrolls the page (the programme lives below the fold), not the camera:
+  // the canvas is under the overlay, so its dolly would otherwise win wherever there is no DOM.
+  useEffect(() => {
+    const onWheel = (e: WheelEvent) => {
+      const el = overlay.current;
+      if (!el || e.ctrlKey || (e.target instanceof Node && el.contains(e.target))) return;
+      e.preventDefault();
+      e.stopPropagation();
+      el.scrollBy({ top: e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY });
+    };
+    window.addEventListener("wheel", onWheel, { capture: true, passive: false });
+    return () => window.removeEventListener("wheel", onWheel, { capture: true });
+  }, []);
+
   const events = config?.events ?? [];
   // The tour takes `?event=` when given, else the newest night with a free door (see tour-target.ts).
   const tourEvent = pickTourEvent(events, targetEvent);
+  const enterCity = () => {
+    // Light the first night on the bill and hand it focus: Enter walks in, the beacon answers in the city.
+    const first = bill.current?.querySelector<HTMLButtonElement>("button");
+    first?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    first?.focus({ preventScroll: true });
+  };
   return (
-    // `mt-auto` rather than `justify-end`: a phone with several nights on the bill overflows the viewport,
-    // and end-aligned flex content would clip the headline off the top with no way to scroll to it.
-    <div className="overlay scrollbar-none flex flex-col overflow-y-auto overscroll-contain">
+    <div ref={overlay} className="overlay flex flex-col overflow-y-auto overscroll-contain">
       <div className="scrim-bottom" aria-hidden />
       <div className="scrim-left" aria-hidden />
-      <div className="relative mt-auto flex flex-col gap-8 p-5 pb-8 pt-20 sm:flex-row sm:items-end sm:justify-between sm:p-8 sm:pt-24">
+      {/* `justify-end` inside a min-height block: the hero sits on the fold and grows past it on a phone with
+          several nights on the bill instead of clipping the headline off the top. `shrink-0` matters: an
+          explicit min-height replaces the flex item's automatic content minimum, and without it a short
+          viewport squeezes the block to one screen and the bill overflows up under the top bar. */}
+      <div className="relative flex min-h-dvh shrink-0 flex-col justify-end gap-8 p-5 pb-8 pt-20 sm:flex-row sm:items-end sm:justify-between sm:p-8 sm:pt-24">
         <div className="max-w-xl">
           <Kicker className="fade-up">Identity-bound tickets · Monad</Kicker>
           <h1 className="display fade-up mt-3 text-[13vw] leading-[0.9] sm:text-7xl md:text-8xl">
@@ -39,11 +64,14 @@ export function Landing({ config }: { config: AppConfig | undefined }) {
             <em className="text-amber">follows you.</em>
           </h1>
           <p className="fade-up-late mt-5 max-w-md text-base text-paper/80 sm:text-lg">
-            One passkey buys the seat, opens the door and keeps your history private. No wallet, no app, no
-            screenshots — the code on your phone is signed by a key that only exists tonight.
+            One passkey is your account, your door key and your private vault. Nothing to install, nothing to
+            screenshot — the code on your phone is signed by a key that only exists tonight.
           </p>
           {!tourActive ? (
             <div className="fade-up-late mt-5 flex flex-wrap items-center gap-2">
+              <Button variant="primary" onClick={enterCity} data-testid="enter-city">
+                Enter the city
+              </Button>
               <button
                 type="button"
                 className="chip mono border-amber/50 text-amber hover:bg-ink-2"
@@ -52,14 +80,17 @@ export function Landing({ config }: { config: AppConfig | undefined }) {
               >
                 ▶ Judge mode · 2-minute tour
               </button>
-              <span className="text-xs text-muted">
-                City → seat → passkey → door → lit seat. Guided, or on autopilot.
-              </span>
+              <a
+                href="#programme"
+                className="mono ml-auto text-[11px] uppercase tracking-[0.16em] text-muted hover:text-paper sm:ml-2"
+              >
+                Programme ↓
+              </a>
             </div>
           ) : null}
         </div>
 
-        <div className="fade-up-late flex w-full flex-col gap-2 sm:w-80">
+        <div ref={bill} className="fade-up-late flex w-full flex-col gap-2 sm:w-80">
           <Kicker>Tonight in the city</Kicker>
           {events.length === 0 ? (
             <div className="glass rounded-2xl p-4 text-sm text-muted">Lighting the beacons…</div>
@@ -83,6 +114,7 @@ export function Landing({ config }: { config: AppConfig | undefined }) {
           </Link>
         </div>
       </div>
+      <SiteSections config={config} />
     </div>
   );
 }
@@ -119,6 +151,12 @@ function EventCard({
         <div className="text-base">{event.name}</div>
         <div className="mono mt-0.5 text-[11px] text-muted">
           {formatDate(event.startsAt)} · {left} of {event.capacity} left
+          {event.checkedIn > 0 ? (
+            <>
+              {" · "}
+              <span className="text-green">{event.checkedIn}</span> inside
+            </>
+          ) : null}
         </div>
       </div>
       <div className="flex flex-col items-end">

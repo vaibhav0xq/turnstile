@@ -579,3 +579,62 @@ input.field::placeholder {
 .scrollbar-none::-webkit-scrollbar {
   display: none;
 }
+
+/* The landing's programme: below the hero the city dims to ink so a run of editorial sections can read. */
+.site {
+  position: relative;
+  margin-top: 4rem;
+  background: linear-gradient(
+    to bottom,
+    rgba(7, 8, 10, 0) 0%,
+    rgba(7, 8, 10, 0.94) 8rem,
+    var(--color-ink) 16rem
+  );
+}
+
+.site-inner {
+  width: 100%;
+  max-width: 72rem;
+  margin: 0 auto;
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+}
+
+@media (min-width: 640px) {
+  .site-inner {
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+}
+
+/* Judge-run stills, 16:10; the numeral sits in the corner like a slate. */
+.still {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+  border: 1px solid var(--color-line);
+  background: var(--color-ink-2);
+  aspect-ratio: 16 / 10;
+}
+
+.still img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.link {
+  color: var(--color-paper);
+  text-decoration: underline;
+  text-decoration-color: rgba(243, 239, 231, 0.3);
+  text-underline-offset: 3px;
+}
+
+.link:hover {
+  text-decoration-color: var(--color-amber);
+}
+
+.faq summary::-webkit-details-marker {
+  display: none;
+}

@@ -1,7 +1,7 @@
 // Shared headless-Chromium launcher for the review scripts (software WebGL, no GPU needed).
 import puppeteer from "puppeteer-core";
 
-export async function launch({ width = 1280, height = 800 } = {}) {
+export async function launch({ width = 1280, height = 800, dpr = 1 } = {}) {
   return puppeteer.launch({
     executablePath: process.env["CHROMIUM"] ?? "/repl/tools/bin/chromium",
     headless: true,
@@ -23,7 +23,7 @@ export async function launch({ width = 1280, height = 800 } = {}) {
       "--js-flags=--max-old-space-size=256",
       `--window-size=${width},${height}`,
     ],
-    defaultViewport: { width, height, deviceScaleFactor: 1 },
+    defaultViewport: { width, height, deviceScaleFactor: dpr },
     protocolTimeout: 120_000,
   });
 }

@@ -23,13 +23,16 @@ const height = Number(opt("--height", "800"));
 const script = opt("--eval", undefined); // JS to run in the page (after --eval-delay ms) before the wait
 const evalDelay = Number(opt("--eval-delay", "2500")); // let the scene mount (window.__director / __world)
 const probe = opt("--print", undefined); // JS expression evaluated after waiting; its result is printed
+const jpeg = opt("--jpeg", undefined); // JPEG quality (1–100) instead of PNG, for stills that ship in public/
+const outDir = opt("--out", undefined); // directory for the file (default: shots/, which is gitignored)
+const dpr = Number(opt("--dpr", "1")); // device scale factor; < 1 renders a wide layout into a small still
 const routes = args.length ? args : ["/"];
 
 const base = process.env["BASE_URL"] ?? "http://127.0.0.1:4174";
-const out = path.resolve(import.meta.dirname, "..", "shots");
+const out = outDir ? path.resolve(outDir) : path.resolve(import.meta.dirname, "..", "shots");
 fs.mkdirSync(out, { recursive: true });
 
-const browser = await launch({ width, height });
+const browser = await launch({ width, height, dpr });
 
 try {
   for (const route of routes) {
@@ -43,8 +46,8 @@ try {
     }
     await new Promise((r) => setTimeout(r, Math.max(0, wait - (script ? evalDelay : 0))));
     const slug = name ?? route.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "");
-    const file = path.join(out, `${slug || "root"}.png`);
-    await page.screenshot({ path: file });
+    const file = path.join(out, `${slug || "root"}.${jpeg ? "jpg" : "png"}`);
+    await page.screenshot(jpeg ? { path: file, type: "jpeg", quality: Number(jpeg) } : { path: file });
     if (probe) console.log("   probe:", JSON.stringify(await page.evaluate(probe)));
     const ms = Math.round(performance.now() - started);
     console.log(`${route} → ${path.relative(process.cwd(), file)} (${ms} ms)`);

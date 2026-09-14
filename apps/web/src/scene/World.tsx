@@ -2,7 +2,7 @@ import { AdaptiveDpr, PerformanceMonitor, Preload } from "@react-three/drei";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { Bloom, EffectComposer, Noise, SMAA, Vignette } from "@react-three/postprocessing";
 import { BlendFunction } from "postprocessing";
-import { Component, type ErrorInfo, type ReactNode, Suspense, useEffect, useMemo } from "react";
+import { Suspense, useEffect, useMemo } from "react";
 import { type AppConfig, findEvent } from "../chain/config";
 import type { SeatMap } from "../chain/seats";
 import { buildLayout } from "../venues/layout";
@@ -31,7 +31,11 @@ function webglAvailable(): boolean {
   }
 }
 
-/** The one canvas that lives under every route; a flat backdrop when the machine cannot draw it. */
+/**
+ * The one canvas that lives under every route; a flat backdrop when the machine cannot draw it.
+ * Loaded lazily by the app (this module pulls in the whole three stack) inside a WorldBoundary, which
+ * also catches R3F throwing synchronously when a context cannot be created.
+ */
 export function World({ config, seatMap, onEnterEvent }: WorldProps) {
   const flat = useDirector((s) => s.flat);
   const goFlat = useDirector((s) => s.goFlat);
@@ -40,12 +44,10 @@ export function World({ config, seatMap, onEnterEvent }: WorldProps) {
     if (!canDraw) goFlat();
   }, [canDraw, goFlat]);
   if (flat || !canDraw) return <div className="world world-flat" aria-hidden />;
-  return (
-    <WorldBoundary onFail={goFlat}>
-      <Scene config={config} seatMap={seatMap} onEnterEvent={onEnterEvent} />
-    </WorldBoundary>
-  );
+  return <Scene config={config} seatMap={seatMap} onEnterEvent={onEnterEvent} />;
 }
+
+export default World;
 
 function Scene({ config, seatMap, onEnterEvent }: WorldProps) {
   const chapter = useDirector((s) => s.chapter);
@@ -144,24 +146,4 @@ function FirstFrame() {
     useDirector.getState().markReady();
   });
   return null;
-}
-
-interface BoundaryProps {
-  onFail: () => void;
-  children: ReactNode;
-}
-
-/** R3F throws synchronously when the context cannot be created; the DOM product carries on without it. */
-class WorldBoundary extends Component<BoundaryProps, { failed: boolean }> {
-  override state = { failed: false };
-  static getDerivedStateFromError() {
-    return { failed: true };
-  }
-  override componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error("world: falling back to the flat product", error, info.componentStack);
-    this.props.onFail();
-  }
-  override render() {
-    return this.state.failed ? <div className="world world-flat" aria-hidden /> : this.props.children;
-  }
 }

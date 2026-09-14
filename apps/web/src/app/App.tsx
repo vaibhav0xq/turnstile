@@ -1,12 +1,12 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useEffect, useMemo } from "react";
+import { lazy, Suspense, useEffect, useMemo } from "react";
 import { BrowserRouter, Route, Routes, useNavigate } from "react-router";
 import { configQueryKey, findEvent, useConfig } from "../chain/config";
 import { useSeatMap } from "../chain/seats";
 import { useIdentity } from "../identity/store";
 import { installTapCounter } from "../lib/telemetry";
+import { WorldBoundary } from "../scene/boundary";
 import { useDirector } from "../scene/director";
-import { World } from "../scene/World";
 import { SeatCardLayer } from "../ui/SeatCard";
 import { ConnectionNotice, Curtain, ErrorToast, Readout, TopBar, Veil } from "../ui/Shell";
 import { Tour } from "../ui/Tour";
@@ -21,6 +21,10 @@ import { NotFound } from "./routes/NotFound";
 import { Organise } from "./routes/Organise";
 import { Ticket } from "./routes/Ticket";
 import { useTour } from "./tour";
+
+// The whole three stack rides in this one chunk; the veil stays down until its first frame, so the
+// shell, fonts and copy paint while it downloads instead of after.
+const World = lazy(() => import("../scene/World"));
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { refetchOnWindowFocus: false, retry: 1 } },
@@ -42,6 +46,7 @@ function Frame() {
   const chapter = useDirector((s) => s.chapter);
   const eventAddress = useDirector((s) => s.eventAddress);
   const ensureFan = useIdentity((s) => s.ensureFan);
+  const goFlat = useDirector((s) => s.goFlat);
   // The taps · seconds readout is a judge-mode instrument: shown once the tour has been started this session.
   const judging = useTour((s) => s.startedAt !== null);
   const event = findEvent(config.data, eventAddress ?? undefined);
@@ -69,11 +74,15 @@ function Frame() {
 
   return (
     <>
-      <World
-        config={config.data}
-        seatMap={seats.data}
-        onEnterEvent={(address) => navigate(`/e/${address}`)}
-      />
+      <WorldBoundary onFail={goFlat}>
+        <Suspense fallback={<div className="world" aria-hidden />}>
+          <World
+            config={config.data}
+            seatMap={seats.data}
+            onEnterEvent={(address) => navigate(`/e/${address}`)}
+          />
+        </Suspense>
+      </WorldBoundary>
       <SeatCardLayer event={event} layout={layout} seatMap={seats.data} />
       <Veil />
       <Curtain />
