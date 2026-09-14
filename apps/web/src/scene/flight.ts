@@ -49,12 +49,12 @@ export const flightPose = { u: 0, inFlight: false };
 /** The picker's labels and leader lines stay off until the flight has nearly landed (they are its UI). */
 export const LABELS_FROM = 3.6;
 
-/** The city's haze; the hero thins it so the far skyline reads from up high, and it is back by frame I. */
-export const CITY_FOG_DENSITY = 0.0021;
-export function fogDensityAt(u: number): number {
-  const k = Math.min(Math.max(u, 0), 1);
-  return 0.0014 + (CITY_FOG_DENSITY - 0.0014) * k;
-}
+/**
+ * The city's haze, one value for the whole night: the far ring sits in it from the street and from the air
+ * alike, and the masses add their own ground haze with distance. (A ramp that thinned it for the hero made
+ * the landing look like a different evening from the picker.)
+ */
+export const CITY_FOG_DENSITY = 0.0019;
 
 /**
  * Portrait keys: a phone's narrow frame needs more distance and a wider lens to hold the same subject, so

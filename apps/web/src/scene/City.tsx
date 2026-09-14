@@ -5,30 +5,21 @@ import * as THREE from "three";
 import type { EventInfo } from "../chain/config";
 import { mulberry } from "../lib/random";
 import { keepOutRects } from "./anchor";
+import { BEACON_SLOTS, type Building, beaconSlot, buildCity } from "./city-gen";
 import { useDirector } from "./director";
 import { flightPose, LABELS_FROM } from "./flight";
+import { Ground } from "./Ground";
 import {
   beaconShader,
   CITY_NIGHT,
   haloShader,
+  type MassUniforms,
   makeMassMaterial,
   poolShader,
   useShaderMaterial,
 } from "./materials";
 
-/** Where each event's beacon stands in the city; the venue itself is rendered at the origin later. */
-export const BEACON_SLOTS: Array<[number, number]> = [
-  [-38, -22],
-  [44, 12],
-  [-12, 52],
-  [22, -58],
-  [-62, 24],
-  [66, -34],
-];
-
-export function beaconSlot(index: number): [number, number] {
-  return BEACON_SLOTS[index % BEACON_SLOTS.length] ?? [0, 0];
-}
+export { BEACON_SLOTS, beaconSlot };
 
 const cityVertex = /* glsl */ `
   attribute vec3 aScatter;
@@ -97,205 +88,19 @@ const skyFragment = /* glsl */ `
   void main() {
     // elevation of the view ray, so the horizon stays where the camera sees it
     float h = normalize(vWorld - cameraPosition).y;
-    float band = 1.0 - smoothstep(0.0, 0.36, abs(h));
+    float band = 1.0 - smoothstep(0.0, 0.26, abs(h));
     vec3 col = mix(uZenith, uHorizon, band);
-    // light pollution over downtown, warmest straight ahead
-    float toward = 0.5 + 0.5 * dot(normalize(vec2(vWorld.x, vWorld.z)), vec2(0.0, -1.0));
-    col += uGlow * pow(band, 3.0) * (0.35 + 0.65 * toward) * smoothstep(-0.02, 0.08, h);
+    // light pollution: warmest over downtown (the origin), wherever the camera stands
+    vec2 dir = normalize(vec2(vWorld.x - cameraPosition.x, vWorld.z - cameraPosition.z));
+    vec2 toTown = -cameraPosition.xz;
+    float toward = length(toTown) < 1.0 ? 1.0 : 0.5 + 0.5 * dot(dir, normalize(toTown));
+    col += uGlow * pow(band, 2.0) * (0.3 + 0.7 * toward) * smoothstep(-0.02, 0.06, h);
     gl_FragColor = vec4(col, 1.0);
     // Encode like the built-in materials do, so the horizon band meets the fogged ground plane
     // in the same colour instead of a hard seam where the plane hits the far clip.
     #include <colorspace_fragment>
   }
 `;
-
-interface Building {
-  x: number;
-  z: number;
-  w: number;
-  d: number;
-  h: number;
-  seed: number;
-}
-
-interface CityData {
-  buildings: Building[];
-  skyline: Building[];
-  positions: Float32Array;
-  scatter: Float32Array;
-  seeds: Float32Array;
-  sizes: Float32Array;
-  warm: Float32Array;
-}
-
-/**
- * The far skyline: clusters of tall slabs out in the haze, so the horizon is a city and not the edge of a
- * plane. Its own stream, so it never shifts the downtown generation.
- */
-function buildSkyline(): Building[] {
-  const rnd = mulberry(4242);
-  const towers: Building[] = [];
-  const clusters = 15;
-  for (let c = 0; c < clusters; c++) {
-    const angle = ((c + rnd() * 0.6) / clusters) * Math.PI * 2;
-    const radius = 300 + rnd() * 180;
-    const tall = rnd() < 0.35;
-    const n = 6 + Math.floor(rnd() * 10);
-    for (let i = 0; i < n; i++) {
-      const spread = 24 + rnd() * 70;
-      const a = angle + (rnd() - 0.5) * 0.28;
-      const r = radius + (rnd() - 0.5) * spread;
-      const w = 10 + rnd() * 18;
-      const d = 10 + rnd() * 18;
-      const h = (tall ? 60 : 28) + rnd() * (tall ? 95 : 50);
-      towers.push({ x: Math.cos(a) * r, z: Math.sin(a) * r, w, d, h, seed: rnd() });
-    }
-  }
-  // a low continuous belt between downtown and the clusters, so the ring never reads as islands
-  for (let i = 0; i < 110; i++) {
-    const a = rnd() * Math.PI * 2;
-    const r = 262 + rnd() * 70;
-    towers.push({
-      x: Math.cos(a) * r,
-      z: Math.sin(a) * r,
-      w: 9 + rnd() * 14,
-      d: 9 + rnd() * 14,
-      h: 14 + rnd() * 34,
-      seed: rnd(),
-    });
-  }
-  return towers;
-}
-
-/**
- * Deterministic downtown: blocks on a grid, towers near the centre, lit windows as points. `detail` scales the
- * point mass (windows, suburbs, street lights) for the low tier; the buildings themselves stay.
- */
-function buildCity(beacons: Array<[number, number]>, detail = 1): CityData {
-  // Two streams: `rnd` shapes the buildings and must be consumed identically at every tier, `drnd` feeds the
-  // point mass that `detail` thins — otherwise a tier change would regenerate a different city.
-  const rnd = mulberry(1337);
-  const drnd = mulberry(7331);
-  const buildings: Building[] = [];
-  const skyline = buildSkyline();
-  const pos: number[] = [];
-  const sca: number[] = [];
-  const seed: number[] = [];
-  const size: number[] = [];
-  const warm: number[] = [];
-  const block = 14;
-  const street = 6;
-  const pitch = block + street;
-  const half = 12;
-  const push = (x: number, y: number, z: number, s: number, w: number) => {
-    pos.push(x, y, z);
-    const r = 260 + drnd() * 160;
-    const th = drnd() * Math.PI * 2;
-    const ph = Math.acos(2 * drnd() - 1);
-    sca.push(r * Math.sin(ph) * Math.cos(th), 60 + r * Math.cos(ph) * 0.6, r * Math.sin(ph) * Math.sin(th));
-    seed.push(drnd());
-    size.push(s);
-    warm.push(w);
-  };
-  for (let bx = -half; bx < half; bx++) {
-    for (let bz = -half; bz < half; bz++) {
-      const cx = bx * pitch + pitch / 2;
-      const cz = bz * pitch + pitch / 2;
-      const beaconDist = Math.min(...beacons.map(([x, z]) => Math.hypot(x - cx, z - cz)));
-      if (beaconDist < 18) continue;
-      const dist = Math.hypot(cx, cz);
-      const downtown = Math.max(0, 1 - dist / 170);
-      // keep the skyline low next to a beacon so the light column always stands clear
-      const cap = beaconDist < 60 ? 22 : 64;
-      // 1–3 buildings per block
-      const n = 1 + Math.floor(rnd() * 3);
-      for (let i = 0; i < n; i++) {
-        const w = 4 + rnd() * (block / n - 1.5);
-        const d = 4 + rnd() * (block - 2);
-        const h = Math.min(cap, 5 + rnd() * 14 + downtown * downtown * (30 + rnd() * 70));
-        const ox = cx - block / 2 + w / 2 + (i * block) / n;
-        const oz = cz - block / 2 + d / 2 + rnd() * Math.max(0, block - d);
-        const warmth = rnd() < 0.7 ? 0.75 + rnd() * 0.25 : rnd() * 0.3;
-        const density = (0.45 + downtown * 0.25) * detail;
-        buildings.push({ x: ox, z: oz, w, d, h, seed: rnd() });
-        // windows on four faces, pushed just off the wall so they never z-fight with it
-        const lift = 0.12;
-        const faces: Array<[number, number, number, number, number]> = [
-          [ox - w / 2, oz - d / 2 - lift, 1, 0, w], // south
-          [ox - w / 2, oz + d / 2 + lift, 1, 0, w], // north
-          [ox - w / 2 - lift, oz - d / 2, 0, 1, d], // west
-          [ox + w / 2 + lift, oz - d / 2, 0, 1, d], // east
-        ];
-        for (const [sx, sz, dx, dz, len] of faces) {
-          const cols = Math.max(1, Math.floor(len / 2.2));
-          const rows = Math.max(1, Math.floor(h / 3.0));
-          for (let c = 0; c < cols; c++) {
-            for (let r = 0; r < rows; r++) {
-              if (drnd() > density) continue;
-              const u = (c + 0.5) / cols;
-              push(sx + dx * len * u, 1.5 + r * 3.0, sz + dz * len * u, 1.3 + drnd() * 1.3, warmth);
-            }
-          }
-        }
-        // roof edge lights on the taller blocks define the skyline
-        if (h > 26) {
-          const step = 2.6;
-          for (let s = -w / 2; s <= w / 2; s += step) {
-            push(ox + s, h + 0.15, oz - d / 2, 1.1, 0.2);
-            push(ox + s, h + 0.15, oz + d / 2, 1.1, 0.2);
-          }
-          for (let s = -d / 2 + step; s < d / 2; s += step) {
-            push(ox - w / 2, h + 0.15, oz + s, 1.1, 0.2);
-            push(ox + w / 2, h + 0.15, oz + s, 1.1, 0.2);
-          }
-        }
-        // aviation light on the tallest towers
-        if (h > 56) push(ox, h + 0.6, oz, 3.4, 2);
-      }
-    }
-  }
-  // suburbs: loose scatter of low lights out to the haze, thinning with distance
-  for (let i = 0; i < 26000 * detail; i++) {
-    const r = 250 + drnd() ** 0.6 * 650;
-    const th = drnd() * Math.PI * 2;
-    if (drnd() < (r - 250) / 900) continue;
-    const warmth = drnd() < 0.8 ? 0.7 + drnd() * 0.3 : drnd() * 0.3;
-    push(Math.cos(th) * r, 0.6 + drnd() * drnd() * 14, Math.sin(th) * r, 1.4 + drnd() * 1.6, warmth);
-  }
-  // street lights along the grid
-  for (let i = -half; i <= half; i++) {
-    for (let t = -half * pitch; t <= half * pitch; t += 9 / detail) {
-      push(i * pitch, 0.4, t, 2.0, 0.95);
-      push(t, 0.4, i * pitch, 2.0, 0.95);
-    }
-  }
-  // the far towers carry a sparse scatter of windows and a red top, so the silhouette reads as inhabited
-  for (const t of skyline) {
-    const n = Math.floor((t.h / 6) * detail);
-    for (let i = 0; i < n; i++) {
-      const side = drnd() < 0.5 ? -1 : 1;
-      const alongX = drnd() < 0.5;
-      const u = drnd() - 0.5;
-      push(
-        t.x + (alongX ? u * t.w : (side * t.w) / 2),
-        2 + drnd() * (t.h - 3),
-        t.z + (alongX ? (side * t.d) / 2 : u * t.d),
-        1.6 + drnd() * 1.2,
-        drnd() < 0.75 ? 0.8 + drnd() * 0.2 : drnd() * 0.3,
-      );
-    }
-    if (t.h > 90) push(t.x, t.h + 0.8, t.z, 3.8, 2);
-  }
-  return {
-    buildings,
-    skyline,
-    positions: new Float32Array(pos),
-    scatter: new Float32Array(sca),
-    seeds: new Float32Array(seed),
-    sizes: new Float32Array(size),
-    warm: new Float32Array(warm),
-  };
-}
 
 /**
  * The square around a beacon: market strings, lanterns and a crowd's worth of phone screens. One small point
@@ -404,15 +209,19 @@ export function City({ events, onEnter }: CityProps) {
   useEffect(() => {
     started.current = performance.now();
   }, [revealStartedAt]);
-  useFrame(({ clock }) => {
-    const time = uniforms["uTime"];
-    if (time) time.value = clock.getElapsedTime();
-    const progress = uniforms["uProgress"];
-    if (progress) progress.value = THREE.MathUtils.clamp((performance.now() - started.current) / 3200, 0, 1);
-  });
-  useEffect(() => () => geometry.dispose(), [geometry]);
   const mass = useMemo(() => makeMassMaterial(), []);
   useEffect(() => () => mass.dispose(), [mass]);
+  useFrame(({ clock }) => {
+    const t = clock.getElapsedTime();
+    const time = uniforms["uTime"];
+    if (time) time.value = t;
+    const progress = uniforms["uProgress"];
+    if (progress) progress.value = THREE.MathUtils.clamp((performance.now() - started.current) / 3200, 0, 1);
+    // the windows' slow changeover: the uniforms exist once the program has compiled
+    const massUniforms = mass.userData["uniforms"] as MassUniforms | undefined;
+    if (massUniforms) massUniforms.uTime.value = t;
+  });
+  useEffect(() => () => geometry.dispose(), [geometry]);
 
   const sky = useShaderMaterial({
     uniforms: {
@@ -431,21 +240,16 @@ export function City({ events, onEnter }: CityProps) {
       <mesh material={sky} renderOrder={-1} frustumCulled={false}>
         <sphereGeometry args={[850, 32, 16]} />
       </mesh>
-      <hemisphereLight args={["#3a4870", "#0a0c14", 1.05]} />
+      <hemisphereLight args={["#2f3c5c", "#0a0c14", 1.0]} />
       {/* the moon: a cool key from behind and to the left, so roofs and far walls separate from the haze */}
-      <directionalLight position={[-220, 260, -160]} color={CITY_NIGHT.moon} intensity={1.8} />
+      <directionalLight position={[-220, 260, -160]} color={CITY_NIGHT.moon} intensity={1.5} />
       {/* the city's own glow bounced back: a low warm fill from the south-east so the faces toward the
           camera's usual side never fall to black */}
-      <directionalLight position={[160, 90, 260]} color="#6b5b4e" intensity={1.2} />
-      <Streets />
+      <directionalLight position={[160, 90, 260]} color="#7a6656" intensity={1.3} />
+      <Ground detail={quality === "high" ? 1 : 0.5} plazas={BEACON_SLOTS} />
       <Buildings buildings={data.buildings} startedAt={started} material={mass} />
       <Skyline towers={data.skyline} material={mass} />
       <points geometry={geometry} material={material} frustumCulled={false} />
-      {/* ground plane catches the hemisphere light faintly and hides the horizon */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.2, 0]}>
-        <planeGeometry args={[6000, 6000]} />
-        <meshBasicMaterial color="#0b0d16" />
-      </mesh>
       {events.map((event, i) => (
         <Beacon
           key={event.address}
@@ -461,37 +265,6 @@ export function City({ events, onEnter }: CityProps) {
 }
 
 const tmpObject = new THREE.Object3D();
-
-/** Faint street grid: gives the ground perspective without competing with the windows. */
-function Streets() {
-  const geometry = useMemo(() => {
-    const half = 12;
-    const pitch = 20;
-    const extent = half * pitch;
-    const verts: number[] = [];
-    for (let i = -half; i <= half; i++) {
-      const a = i * pitch;
-      verts.push(a, 0.05, -extent, a, 0.05, extent);
-      verts.push(-extent, 0.05, a, extent, 0.05, a);
-    }
-    const g = new THREE.BufferGeometry();
-    g.setAttribute("position", new THREE.Float32BufferAttribute(verts, 3));
-    return g;
-  }, []);
-  useEffect(() => () => geometry.dispose(), [geometry]);
-  return (
-    <lineSegments geometry={geometry} frustumCulled={false}>
-      <lineBasicMaterial
-        color="#5a3d24"
-        transparent
-        opacity={0.5}
-        blending={THREE.AdditiveBlending}
-        toneMapped={false}
-        depthWrite={false}
-      />
-    </lineSegments>
-  );
-}
 
 /** Dark building masses the windows sit on; they rise out of the ground during the reveal. */
 function Buildings({
@@ -517,7 +290,8 @@ function Buildings({
       const local = THREE.MathUtils.clamp(progress * 1.35 - b.seed * 0.35, 0, 1);
       const k = 1 - (1 - local) ** 3;
       const h = Math.max(0.01, b.h * k);
-      tmpObject.position.set(b.x, h / 2, b.z);
+      // every mass of a building shares its seed, so the tiers and the roof plant rise with it
+      tmpObject.position.set(b.x, b.y0 * k + h / 2, b.z);
       tmpObject.scale.set(b.w, h, b.d);
       tmpObject.updateMatrix();
       m.setMatrixAt(i, tmpObject.matrix);
@@ -543,7 +317,7 @@ function Skyline({ towers, material }: { towers: Building[]; material: THREE.Mat
     const m = mesh.current;
     if (!m) return;
     towers.forEach((t, i) => {
-      tmpObject.position.set(t.x, t.h / 2, t.z);
+      tmpObject.position.set(t.x, t.y0 + t.h / 2, t.z);
       tmpObject.scale.set(t.w, t.h, t.d);
       tmpObject.updateMatrix();
       m.setMatrixAt(i, tmpObject.matrix);

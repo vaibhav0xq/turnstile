@@ -1,5 +1,5 @@
 import { CameraControls } from "@react-three/drei";
-import { useFrame, useThree } from "@react-three/fiber";
+import { useFrame } from "@react-three/fiber";
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import type { VenueLayout, Waypoint } from "../venues/layout";
@@ -7,14 +7,13 @@ import { seatFocus, seatViewpoint } from "../venues/layout";
 import { beaconSlot } from "./City";
 import { DESCENT_MS, DIVE_MS, type Transition, useDirector } from "./director";
 import {
-  CITY_FOG_DENSITY,
   CITY_POSE,
   damp,
   FLIGHT_DAMPING,
   FLIGHT_KEYS,
+  type FlightKey,
   type FlightSample,
   flightPose,
-  fogDensityAt,
   PORTRAIT_KEYS,
   sampleFlight,
   useFlight,
@@ -30,6 +29,23 @@ interface CameraRigProps {
 
 const CITY = { position: new THREE.Vector3(...CITY_POSE.p), target: new THREE.Vector3(...CITY_POSE.t) };
 const DEFAULT_FOV = CITY_POSE.fov;
+
+/**
+ * Development only: `?pose=x,y,z,tx,ty,tz[,fov]` pins the camera for stills and framing work (the shoot
+ * script and the video). Read once; the production bundle never looks.
+ */
+const STILL_POSE: FlightKey | null = (() => {
+  if (!import.meta.env.DEV || typeof window === "undefined") return null;
+  const raw = new URLSearchParams(window.location.search).get("pose");
+  if (!raw) return null;
+  const v = raw.split(",").map(Number);
+  if (v.length < 6 || v.some((n) => !Number.isFinite(n))) return null;
+  return {
+    p: [v[0] ?? 0, v[1] ?? 0, v[2] ?? 0],
+    t: [v[3] ?? 0, v[4] ?? 0, v[5] ?? 0],
+    fov: v[6] ?? DEFAULT_FOV,
+  };
+})();
 /** Pointer parallax in the city: ±2° of yaw, ±1° of pitch, desktop only. */
 const PARALLAX_YAW = THREE.MathUtils.degToRad(2);
 const PARALLAX_PITCH = THREE.MathUtils.degToRad(1);
@@ -73,7 +89,6 @@ export function CameraRig({ layout, focusBeacon, diveBeacon }: CameraRigProps) {
   const dragging = useRef(false);
   const parallax = useRef({ yaw: 0, pitch: 0 });
   const flightActive = useFlight((s) => s.active);
-  const scene = useThree((s) => s.scene);
   /** Where along the flight the camera is, in key units; eased toward the scroll's target every frame. */
   const flightU = useRef(0);
   /** The frame loop holds the camera for the flight (controls off, limits open) until it lands. */
@@ -273,6 +288,16 @@ export function CameraRig({ layout, focusBeacon, diveBeacon }: CameraRigProps) {
       if (Math.abs(camera.fov - fov.current) < 0.05) camera.fov = fov.current;
       camera.updateProjectionMatrix();
     }
+    if (STILL_POSE) {
+      c.enabled = false;
+      c.minDistance = 0.1;
+      c.maxDistance = 5000;
+      c.minPolarAngle = 0;
+      c.maxPolarAngle = Math.PI;
+      fov.current = STILL_POSE.fov;
+      c.setLookAt(...STILL_POSE.p, ...STILL_POSE.t, false);
+      return;
+    }
     const m = move.current;
     if (transition && m) {
       runMove(c, transition, m, endTransition);
@@ -306,7 +331,6 @@ export function CameraRig({ layout, focusBeacon, diveBeacon }: CameraRigProps) {
         flightOwned.current = false;
         flightPose.inFlight = false;
         flightPose.u = FLIGHT_KEYS.length - 1;
-        if (scene.fog instanceof THREE.FogExp2) scene.fog.density = CITY_FOG_DENSITY;
         if (!transition) c.enabled = true;
       }
     }
@@ -319,7 +343,6 @@ export function CameraRig({ layout, focusBeacon, diveBeacon }: CameraRigProps) {
       if (Math.abs(u - target) < 0.0005) u = target;
       flightU.current = u;
       flightPose.u = u;
-      if (scene.fog instanceof THREE.FogExp2) scene.fog.density = fogDensityAt(u);
       const sample = sampleFlight(size.width < size.height ? PORTRAIT_KEYS : FLIGHT_KEYS, u, flightSample);
       fov.current = sample.fov;
       const [px, py, pz] = sample.position;

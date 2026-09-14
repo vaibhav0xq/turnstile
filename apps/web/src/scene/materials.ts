@@ -398,58 +398,97 @@ export const hazeShader = {
 
 /** The city's night palette, shared by the sky dome, the fog and the building masses so they meet in one haze. */
 export const CITY_NIGHT = {
-  zenith: "#05060a",
-  horizon: "#1a2338",
-  glow: "#4a2c16",
-  fog: "#161d32",
+  zenith: "#070a14",
+  /** the same colour as the fog, so the far ground and the sky meet without a band */
+  horizon: "#141a2c",
+  /** light pollution over downtown: a faint warm lift at the horizon, never a dusk band */
+  glow: "#3b2a1a",
+  fog: "#141a2c",
   moon: "#7389cf",
   street: "#ff8a3d",
+  /** the two window temperatures: homes and hotels warm, offices cool */
+  warm: "#ffb46a",
+  cool: "#c4d6ff",
 } as const;
 
+/** The mass material's live uniforms, for the frame loop (set once the program has compiled). */
+export interface MassUniforms {
+  uTime: { value: number };
+}
+
 /**
- * Building masses. Standard-lit so the moon and the hemisphere shape them, plus three things the lights alone
- * cannot give a box city at night: a warm street uplight on the lower walls, a moon-coloured rim on every
- * silhouette so neighbouring masses separate, and a cool roof tint. Ground haze mixes in before the fog.
+ * Building masses. Standard-lit so the moon and the hemisphere shape them, plus what the lights alone cannot
+ * give a box city at night: a procedural window grid on every wall (cells in metres from the instance scale,
+ * a per-building lit fraction and temperature, offices lit by the floor, homes by the window, a lit lobby band
+ * on some ground floors), a warm street uplight on the lower walls, a moon-coloured rim so neighbouring masses
+ * separate, and a cool roof tint. Ground haze mixes in with distance, before the fog.
  */
 export function makeMassMaterial(): THREE.MeshStandardMaterial {
   const material = new THREE.MeshStandardMaterial({
     // a real albedo: the lights do the modelling (a near-black colour left every face at the same black,
     // whatever the light), and the night comes from how little light there is
-    color: "#6f7a9a",
+    color: "#5a6070",
     emissive: "#05070d",
     emissiveIntensity: 1,
     roughness: 0.8,
     metalness: 0.05,
   });
   material.onBeforeCompile = (shader) => {
+    shader.uniforms["uTime"] = { value: 0 };
     shader.uniforms["uHaze"] = { value: new THREE.Color(CITY_NIGHT.fog) };
     shader.uniforms["uHazeHeight"] = { value: 30 };
-    shader.uniforms["uHazeAmount"] = { value: 0.5 };
+    shader.uniforms["uHazeAmount"] = { value: 0.45 };
     shader.uniforms["uStreet"] = { value: new THREE.Color(CITY_NIGHT.street) };
     shader.uniforms["uStreetHeight"] = { value: 22 };
-    shader.uniforms["uStreetAmount"] = { value: 0.3 };
+    shader.uniforms["uStreetAmount"] = { value: 0.22 };
     shader.uniforms["uRim"] = { value: new THREE.Color(CITY_NIGHT.moon) };
-    shader.uniforms["uRimAmount"] = { value: 0.35 };
+    shader.uniforms["uRimAmount"] = { value: 0.3 };
     shader.uniforms["uRoof"] = { value: new THREE.Color("#3a4666") };
+    shader.uniforms["uWarm"] = { value: new THREE.Color(CITY_NIGHT.warm) };
+    shader.uniforms["uCool"] = { value: new THREE.Color(CITY_NIGHT.cool) };
+    shader.uniforms["uGlass"] = { value: new THREE.Color("#1a2236") };
+    shader.uniforms["uWindow"] = { value: 1.0 };
+    material.userData["uniforms"] = shader.uniforms as unknown as MassUniforms;
     shader.vertexShader = shader.vertexShader
       .replace(
         "#include <common>",
         `#include <common>
-        varying float vHazeY;`,
+        varying float vHazeY;
+        varying vec3 vLocal;
+        flat varying vec3 vLocalN;
+        flat varying vec3 vScale;
+        flat varying float vSeed;
+        float seedHash(vec2 p) {
+          vec3 q = fract(vec3(p.xyx) * vec3(0.1031, 0.1030, 0.0973));
+          q += dot(q, q.yzx + 33.33);
+          return fract((q.x + q.y) * q.z);
+        }`,
+      )
+      .replace(
+        "#include <beginnormal_vertex>",
+        `#include <beginnormal_vertex>
+        vLocalN = objectNormal;`,
       )
       .replace(
         "#include <project_vertex>",
         `#include <project_vertex>
+        vLocal = transformed;
         #ifdef USE_INSTANCING
         vHazeY = (modelMatrix * instanceMatrix * vec4(transformed, 1.0)).y;
+        vScale = vec3(length(instanceMatrix[0].xyz), length(instanceMatrix[1].xyz), length(instanceMatrix[2].xyz));
+        // one seed per footprint: the tiers of a set-back tower share it, so they share a tenant
+        vSeed = seedHash(floor(instanceMatrix[3].xz * 2.0) + 512.0);
         #else
         vHazeY = (modelMatrix * vec4(transformed, 1.0)).y;
+        vScale = vec3(1.0);
+        vSeed = 0.5;
         #endif`,
       );
     shader.fragmentShader = shader.fragmentShader
       .replace(
         "#include <common>",
         `#include <common>
+        uniform float uTime;
         uniform vec3 uHaze;
         uniform float uHazeHeight;
         uniform float uHazeAmount;
@@ -459,7 +498,98 @@ export function makeMassMaterial(): THREE.MeshStandardMaterial {
         uniform vec3 uRim;
         uniform float uRimAmount;
         uniform vec3 uRoof;
-        varying float vHazeY;`,
+        uniform vec3 uWarm;
+        uniform vec3 uCool;
+        uniform vec3 uGlass;
+        uniform float uWindow;
+        varying float vHazeY;
+        varying vec3 vLocal;
+        flat varying vec3 vLocalN;
+        flat varying vec3 vScale;
+        flat varying float vSeed;
+        // integer-friendly hash (no sine: a sine hash turns any last-bit jitter in its input into noise)
+        float hash21(vec2 p) {
+          vec3 q = fract(vec3(p.xyx) * vec3(0.1031, 0.1030, 0.0973));
+          q += dot(q, q.yzx + 33.33);
+          return fract((q.x + q.y) * q.z);
+        }
+        // anti-aliased window pane inside a cell: 1 on the glass, 0 on the mullions and spandrel
+        float pane(vec2 f, vec2 lo, vec2 hi, vec2 aa) {
+          vec2 k = smoothstep(lo - aa, lo + aa, f) * (1.0 - smoothstep(hi - aa, hi + aa, f));
+          return k.x * k.y;
+        }`,
+      )
+      .replace(
+        "#include <map_fragment>",
+        `#include <map_fragment>
+        // The window grid. Everything below is in metres on the wall: the box is a unit cube scaled per
+        // instance, so local coordinates times the instance scale give the position on the façade.
+        float winGlass = 0.0;   // glass coverage (unlit panes darken the wall)
+        vec3 winLight = vec3(0.0); // emitted light
+        {
+          vec3 an = abs(vLocalN);
+          bool wall = an.y < 0.5;
+          vec2 extent = an.x > 0.5 ? vec2(vScale.z, vScale.y) : vec2(vScale.x, vScale.y);
+          if (wall && vScale.y > 5.0 && extent.x > 2.6) {
+            vec2 metres = an.x > 0.5 ? vec2(vLocal.z * vScale.z, vLocal.y * vScale.y) : vec2(vLocal.x * vScale.x, vLocal.y * vScale.y);
+            metres += extent * 0.5; // origin at the bottom-left corner of the wall
+            float seed = floor(vSeed * 4096.0);
+            float faceSeed = seed + an.x * 7.0 + step(0.0, vLocalN.x + vLocalN.z) * 3.0;
+            // the tenant: offices (cool, lit by the floor, glass walls) more likely the taller the building
+            float office = step(0.62 - 0.25 * smoothstep(20.0, 60.0, vScale.y), hash21(vec2(seed, 2.0)));
+            float litFraction = mix(0.12, 0.42, hash21(vec2(seed, 1.0)));
+            vec3 tint = mix(uWarm, uCool, office);
+            vec2 cellSize = vec2(2.4, 3.2);
+            vec2 cc = metres / cellSize;
+            vec2 aa = fwidth(cc);
+            // cells smaller than a pixel or two: the pattern gives way to its own average
+            float lod = smoothstep(0.3, 0.9, max(aa.x, aa.y));
+            vec2 cell = floor(cc);
+            vec2 f = fract(cc);
+            // punched windows in the homes, a curtain wall with thin mullions on the offices
+            vec2 lo = mix(vec2(0.15, 0.2), vec2(0.05, 0.1), office);
+            vec2 hi = mix(vec2(0.85, 0.84), vec2(0.95, 0.9), office);
+            float glass = pane(f, lo, hi, aa);
+            // margins: a solid corner pier each side and a parapet at the top
+            float margin = step(1.0, metres.x) * step(metres.x, extent.x - 1.0) * step(metres.y, extent.y - 1.4);
+            float h = hash21(cell + faceSeed);
+            float floorH = hash21(vec2(cell.y, faceSeed + 5.0));
+            // offices light up floor by floor, homes window by window; a few switch over the evening
+            float threshold = litFraction * mix(1.0, 2.4 * floorH, office);
+            float epoch = floor(uTime * 0.11 + h * 6.0);
+            float flip = step(0.965, hash21(cell + faceSeed + epoch));
+            float lit = abs(step(h, threshold) - flip);
+            float bright = 0.3 + 0.7 * pow(hash21(cell + faceSeed + 9.0), 1.6);
+            // what a lit window shows: a ceiling-lit room, brighter at the top; homes draw a curtain across
+            // one side of some windows, offices show the whole bay
+            float room = mix(0.55, 1.0, smoothstep(0.0, 1.0, (f.y - lo.y) / (hi.y - lo.y)));
+            room = mix(room, 0.85 + 0.15 * room, office);
+            float curtainK = step(0.6, hash21(cell + faceSeed + 4.0)) * (1.0 - office);
+            float curtainSide = step(0.5, hash21(cell + faceSeed + 6.0)) * 2.0 - 1.0;
+            float curtain = mix(1.0, 0.3 + 0.7 * smoothstep(0.35, 0.65, 0.5 + curtainSide * (f.x - 0.5)), curtainK);
+            float upper = step(4.4, metres.y);
+            float grid = glass * margin * upper;
+            // the ground floor: a lit shopfront or lobby band on most buildings, a dark base on the rest
+            float lobbyK = step(0.3, hash21(vec2(seed, 3.0)));
+            float lobby = lobbyK * step(metres.y, 4.2) * step(0.7, metres.y) * step(0.8, metres.x) * step(metres.x, extent.x - 0.8);
+            float mullion = 1.0 - smoothstep(0.03, 0.03 + aa.x * 2.0, abs(fract(metres.x / 3.9) - 0.5) - 0.44);
+            lobby *= mullion;
+            float lobbyBright = 0.45 + 0.5 * hash21(vec2(seed, 4.0));
+            float avg = 0.36 * litFraction * 0.72;
+            winGlass = mix(grid + lobby, 0.36 * upper + lobby, lod);
+            winLight = mix(grid * lit * bright * room * curtain, avg * upper, lod) * tint * uWindow + lobby * uWarm * lobbyBright;
+          }
+        }`,
+      )
+      .replace(
+        "#include <color_fragment>",
+        `#include <color_fragment>
+        diffuseColor.rgb = mix(diffuseColor.rgb, uGlass, winGlass);`,
+      )
+      .replace(
+        "#include <emissivemap_fragment>",
+        `#include <emissivemap_fragment>
+        totalEmissiveRadiance += winLight;`,
       )
       .replace(
         "#include <fog_fragment>",
@@ -473,12 +603,13 @@ export function makeMassMaterial(): THREE.MeshStandardMaterial {
           float fres = pow(1.0 - max(dot(nrm, normalize(vViewPosition)), 0.0), 3.0);
           gl_FragColor.rgb += uRim * (uRimAmount * fres);
         }
-        float hazeK = uHazeAmount * (1.0 - smoothstep(0.0, uHazeHeight, vHazeY));
+        // ground haze is a distance effect: a wall next to the lens stays crisp, one across town sinks
+        float hazeK = uHazeAmount * (1.0 - smoothstep(0.0, uHazeHeight, vHazeY)) * smoothstep(30.0, 220.0, length(vViewPosition));
         gl_FragColor.rgb = mix(gl_FragColor.rgb, uHaze, hazeK);
         #include <fog_fragment>`,
       );
   };
-  material.customProgramCacheKey = () => "turnstile-mass-3";
+  material.customProgramCacheKey = () => "turnstile-mass-7";
   return material;
 }
 
