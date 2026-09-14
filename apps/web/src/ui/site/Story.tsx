@@ -100,14 +100,12 @@ export function Story({
             <Button variant="primary" onClick={enterCity} data-testid="enter-city">
               Enter the city
             </Button>
-            <button
-              type="button"
-              className="chip mono border-amber/50 text-amber hover:bg-ink-2"
-              onClick={watchTour}
-              data-testid="tour-watch"
-            >
-              ▶ Watch the 2-minute tour
-            </button>
+            <Button variant="ghost" onClick={watchTour} data-testid="tour-watch">
+              <span aria-hidden="true" className="text-amber">
+                ▶
+              </span>
+              Watch the tour · 2 min
+            </Button>
           </div>
         </div>
         <div className="mono pointer-events-none absolute inset-x-5 bottom-6 flex items-end justify-between text-[11px] uppercase tracking-[0.16em] text-muted sm:inset-x-8">

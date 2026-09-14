@@ -247,11 +247,17 @@ export const beaconShader = {
     varying vec2 vUv;
     varying vec3 vNormalW;
     varying vec3 vViewDir;
+    varying float vNear;
     void main() {
       vUv = uv;
       vec4 world = modelMatrix * vec4(position, 1.0);
       vNormalW = normalize(mat3(modelMatrix) * normal);
       vViewDir = normalize(cameraPosition - world.xyz);
+      // a thread of light from the plaza itself, where the column would otherwise fill the frame; the
+      // skyline's beam from further off
+      vec3 foot = (modelMatrix * vec4(0.0, -45.0, 0.0, 1.0)).xyz;
+      // (the glow passes are composited in linear light, so a small alpha still reads: keep the floor tiny)
+      vNear = mix(0.03, 1.0, smoothstep(30.0, 110.0, distance(cameraPosition.xz, foot.xz)));
       gl_Position = projectionMatrix * viewMatrix * world;
     }
   `,
@@ -262,11 +268,14 @@ export const beaconShader = {
     varying vec2 vUv;
     varying vec3 vNormalW;
     varying vec3 vViewDir;
+    varying float vNear;
     void main() {
-      float fresnel = pow(1.0 - abs(dot(normalize(vNormalW), normalize(vViewDir))), 1.6);
+      // a beam, not a tube: bright down the middle, gone at the silhouette
+      float across = abs(dot(normalize(vNormalW), normalize(vViewDir)));
+      float core = pow(across, 1.8);
       float fall = pow(1.0 - vUv.y, 1.8);
       float pulse = 0.85 + 0.15 * sin(uTime * 1.4 + vUv.y * 6.0);
-      float a = fall * (0.26 + 0.6 * fresnel) * pulse * (1.0 + uBoost * 1.6);
+      float a = fall * (0.04 + 0.7 * core) * pulse * (1.0 + uBoost * 1.6) * vNear;
       gl_FragColor = vec4(uColor * (1.45 + uBoost), a);
     }
   `,
@@ -281,12 +290,15 @@ export const haloShader = {
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
+    varying float vNear;
     void main() {
       vUv = uv;
       vec3 centre = (modelMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
       vec3 toCam = cameraPosition - centre;
       toCam.y = 0.0;
       float len = length(toCam);
+      // a glow this wide belongs to the skyline, not to a frame shot from the plaza
+      vNear = smoothstep(25.0, 90.0, len);
       vec3 fwd = len > 1e-3 ? toCam / len : vec3(0.0, 0.0, 1.0);
       vec3 right = vec3(fwd.z, 0.0, -fwd.x);
       vec3 world = centre + right * position.x + vec3(0.0, position.y, 0.0);
@@ -298,13 +310,14 @@ export const haloShader = {
     uniform float uTime;
     uniform float uBoost;
     varying vec2 vUv;
+    varying float vNear;
     void main() {
       // wider at the foot, a thread at the top
       float x = abs(vUv.x * 2.0 - 1.0) * (0.75 + 0.9 * vUv.y);
       float core = pow(max(0.0, 1.0 - x), 2.4);
       float tall = pow(1.0 - vUv.y, 1.4);
       float breath = 0.92 + 0.08 * sin(uTime * 1.7 + vUv.y * 4.0);
-      float a = core * tall * (0.2 + 0.45 * uBoost) * breath;
+      float a = core * tall * (0.2 + 0.45 * uBoost) * breath * vNear;
       gl_FragColor = vec4(uColor * 1.15, a);
     }
   `,
@@ -425,9 +438,9 @@ export interface MassUniforms {
  */
 export function makeMassMaterial(): THREE.MeshStandardMaterial {
   const material = new THREE.MeshStandardMaterial({
-    // a real albedo: the lights do the modelling (a near-black colour left every face at the same black,
-    // whatever the light), and the night comes from how little light there is
-    color: "#5a6070",
+    // a real albedo per instance (see `MASS_ALBEDOS`): the lights do the modelling (a near-black colour left
+    // every face at the same black, whatever the light), and the night comes from how little light there is
+    color: "#ffffff",
     emissive: "#05070d",
     emissiveIntensity: 1,
     roughness: 0.8,
@@ -439,8 +452,8 @@ export function makeMassMaterial(): THREE.MeshStandardMaterial {
     shader.uniforms["uHazeHeight"] = { value: 30 };
     shader.uniforms["uHazeAmount"] = { value: 0.45 };
     shader.uniforms["uStreet"] = { value: new THREE.Color(CITY_NIGHT.street) };
-    shader.uniforms["uStreetHeight"] = { value: 22 };
-    shader.uniforms["uStreetAmount"] = { value: 0.22 };
+    shader.uniforms["uStreetHeight"] = { value: 16 };
+    shader.uniforms["uStreetAmount"] = { value: 0.16 };
     shader.uniforms["uRim"] = { value: new THREE.Color(CITY_NIGHT.moon) };
     shader.uniforms["uRimAmount"] = { value: 0.3 };
     shader.uniforms["uRoof"] = { value: new THREE.Color("#3a4666") };
@@ -526,6 +539,7 @@ export function makeMassMaterial(): THREE.MeshStandardMaterial {
         // instance, so local coordinates times the instance scale give the position on the façade.
         float winGlass = 0.0;   // glass coverage (unlit panes darken the wall)
         vec3 winLight = vec3(0.0); // emitted light
+        float streetPool = 1.0; // how much of the street lamps' light reaches this bit of wall
         {
           vec3 an = abs(vLocalN);
           bool wall = an.y < 0.5;
@@ -569,15 +583,20 @@ export function makeMassMaterial(): THREE.MeshStandardMaterial {
             float curtain = mix(1.0, 0.3 + 0.7 * smoothstep(0.35, 0.65, 0.5 + curtainSide * (f.x - 0.5)), curtainK);
             float upper = step(4.4, metres.y);
             float grid = glass * margin * upper;
-            // the ground floor: a lit shopfront or lobby band on most buildings, a dark base on the rest
-            float lobbyK = step(0.3, hash21(vec2(seed, 3.0)));
+            // the ground floor: a lit shopfront or lobby band on most buildings (nearly all of the low ones,
+            // which line the plazas), a dark base on the rest; a few shops are lit cool white
+            float lobbyK = step(mix(0.3, 0.12, step(vScale.y, 14.0)), hash21(vec2(seed, 3.0)));
             float lobby = lobbyK * step(metres.y, 4.2) * step(0.7, metres.y) * step(0.8, metres.x) * step(metres.x, extent.x - 0.8);
             float mullion = 1.0 - smoothstep(0.03, 0.03 + aa.x * 2.0, abs(fract(metres.x / 3.9) - 0.5) - 0.44);
             lobby *= mullion;
-            float lobbyBright = 0.45 + 0.5 * hash21(vec2(seed, 4.0));
+            float lobbyBright = 0.22 + 0.3 * hash21(vec2(seed, 4.0));
+            vec3 lobbyTint = mix(uWarm, vec3(0.62, 0.68, 0.78), step(0.85, hash21(vec2(seed, 5.0))));
             float avg = 0.36 * litFraction * 0.72;
             winGlass = mix(grid + lobby, 0.36 * upper + lobby, lod);
-            winLight = mix(grid * lit * bright * room * curtain, avg * upper, lod) * tint * uWindow + lobby * uWarm * lobbyBright;
+            winLight = mix(grid * lit * bright * room * curtain, avg * upper, lod) * tint * uWindow + lobby * lobbyTint * lobbyBright;
+            // the street lamps stand every 12 m along the kerb: pools of light on the wall between dimmer bays
+            float alongLamp = (fract(metres.x / 12.0 + 0.5) - 0.5) * 12.0;
+            streetPool = 0.35 + 0.65 * exp(-alongLamp * alongLamp / 9.0);
           }
         }`,
       )
@@ -598,7 +617,7 @@ export function makeMassMaterial(): THREE.MeshStandardMaterial {
           // world up in view space is the view matrix's second column
           float roofK = smoothstep(0.6, 0.95, dot(nrm, viewMatrix[1].xyz));
           gl_FragColor.rgb = mix(gl_FragColor.rgb, uRoof, roofK * 0.2);
-          float streetK = uStreetAmount * (1.0 - smoothstep(0.0, uStreetHeight, vHazeY)) * (1.0 - roofK);
+          float streetK = uStreetAmount * streetPool * (1.0 - smoothstep(0.0, uStreetHeight, vHazeY)) * (1.0 - roofK);
           gl_FragColor.rgb += uStreet * streetK;
           float fres = pow(1.0 - max(dot(nrm, normalize(vViewPosition)), 0.0), 3.0);
           gl_FragColor.rgb += uRim * (uRimAmount * fres);
@@ -609,8 +628,23 @@ export function makeMassMaterial(): THREE.MeshStandardMaterial {
         #include <fog_fragment>`,
       );
   };
-  material.customProgramCacheKey = () => "turnstile-mass-7";
+  material.customProgramCacheKey = () => "turnstile-mass-8";
   return material;
+}
+
+/** Wall albedos a building is dealt by its seed: grey render, warm stone, brick, pale render, dark glass, green-grey. */
+const MASS_ALBEDOS: readonly [THREE.Color, ...THREE.Color[]] = [
+  new THREE.Color("#5a6070"),
+  new THREE.Color("#6b6256"),
+  new THREE.Color("#6a4d44"),
+  new THREE.Color("#787c84"),
+  new THREE.Color("#3e4656"),
+  new THREE.Color("#56605c"),
+];
+/** The albedo for a building's seed (tiers of one tower share the seed, so they share the wall). */
+export function massAlbedo(seed: number): THREE.Color {
+  const i = Math.min(MASS_ALBEDOS.length - 1, Math.max(0, Math.floor(seed * MASS_ALBEDOS.length)));
+  return MASS_ALBEDOS[i] ?? MASS_ALBEDOS[0];
 }
 
 /**

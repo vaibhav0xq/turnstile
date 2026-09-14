@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { beaconSlot, plazaToWorld } from "./city-gen.ts";
 
 /**
  * The landing's night flight: a camera path over the city that the page scroll drives. Each key belongs to
@@ -23,22 +24,33 @@ export interface FlightKey {
 /** The picker's pose: where `/city` sits and where the flight lands. */
 export const CITY_POSE: FlightKey = { p: [0, 78, 236], t: [0, 18, 0], fov: 42 };
 
+/** A point in a beacon's plaza (see `plazaToWorld`), by the event's slot index. */
+const at = (slot: number, local: readonly [number, number, number]): Vec3 =>
+  plazaToWorld(beaconSlot(slot), local);
+
 /**
- * Landscape keys: the hero high and wide over the west of downtown → I: the first beacon's plaza from the
- * air → II: low beside the same column → III: across town to the second beacon → the city pose.
- * Heights clear the roofs where each key stands (downtown masses fall off with distance from the centre and
- * are capped at 22 within 60 of a beacon).
+ * Landscape keys — the door, then the city. The hero stands at the first venue's turnstile line at eye
+ * level, looking through the gates at the pavilion, its column and the towers behind → I: a step to the
+ * side, still on the plaza → II: up over the same plaza, the ring on the roof and the streets around it →
+ * III: across town, over the second venue → the city pose. The plaza keys are given in each plaza's local
+ * metres (x across the gate line, z toward the doors), so moving a beacon moves its shots with it.
  */
 export const FLIGHT_KEYS: readonly FlightKey[] = [
-  { p: [-110, 125, 310], t: [10, 30, -30], fov: 38 },
-  { p: [-130, 62, 180], t: [-38, 16, -22], fov: 38 },
-  { p: [-96, 46, 40], t: [-38, 16, -22], fov: 42 },
-  { p: [16, 52, 96], t: [44, 18, 12], fov: 40 },
+  { p: at(0, [-1, 2.6, 26]), t: at(0, [-2.5, 3.2, 6]), fov: 36 },
+  { p: at(0, [-14, 4.2, 30]), t: at(0, [1, 3, 6]), fov: 40 },
+  { p: at(0, [-26, 46, 44]), t: at(0, [-4, 6, 4]), fov: 40 },
+  { p: at(1, [24, 30, 42]), t: at(1, [4, 5, 4]), fov: 40 },
   CITY_POSE,
 ];
 
-/** Lowest a key may fly: the camera stays above the low roofs (most downtown masses top out under 20). */
-export const FLIGHT_FLOOR = 24;
+/**
+ * The keys on a plaza stand at eye level; from II on the flight is airborne. Nothing on a plaza is taller
+ * than the pavilion (7) except the column, and the masses around a beacon top out at 22.
+ */
+export const FLIGHT_FLOOR_PLAZA = 1.5;
+export const FLIGHT_FLOOR_AIR = 24;
+/** The first airborne key; the path is above the roofs from here to the landing. */
+export const FIRST_AIR_KEY = 2;
 
 /**
  * Where the camera is along the flight, written by the rig every frame; `inFlight` while the rig holds the
@@ -57,23 +69,26 @@ export const LABELS_FROM = 3.6;
 export const CITY_FOG_DENSITY = 0.0019;
 
 /**
- * Portrait keys: a phone's narrow frame needs more distance and a wider lens to hold the same subject, so
- * the position backs off from the target by a quarter. The last key stays the city pose (the picker's own
- * portrait handling takes over there).
+ * Portrait keys: a phone's narrow frame needs a wider lens to hold the same subject. The hero steps back to
+ * the end of the forecourt and squares up, so the whole marquee fits the narrow frame above the copy; the
+ * other plaza key keeps its footing (backing off would put it inside the block behind) and aims a little
+ * higher, since the copy sits at the foot of the screen; in the air the keys back off from the target by a
+ * quarter. The last key stays the city pose (the picker's own portrait handling takes over there).
  */
-export const PORTRAIT_KEYS: readonly FlightKey[] = FLIGHT_KEYS.map((k, i) =>
-  i === FLIGHT_KEYS.length - 1
-    ? k
-    : {
-        p: [
-          k.t[0] + (k.p[0] - k.t[0]) * 1.25,
-          Math.max(FLIGHT_FLOOR, k.t[1] + (k.p[1] - k.t[1]) * 1.25),
-          k.t[2] + (k.p[2] - k.t[2]) * 1.25,
-        ],
-        t: k.t,
-        fov: 48,
-      },
-);
+export const PORTRAIT_KEYS: readonly FlightKey[] = FLIGHT_KEYS.map((k, i) => {
+  if (i === FLIGHT_KEYS.length - 1) return k;
+  if (i === 0) return { p: at(0, [0, 2.8, 35]), t: at(0, [0, 1.2, 4]), fov: 48 };
+  if (i < FIRST_AIR_KEY) return { p: k.p, t: [k.t[0], k.t[1] + 2.2, k.t[2]], fov: 48 };
+  return {
+    p: [
+      k.t[0] + (k.p[0] - k.t[0]) * 1.25,
+      Math.max(FLIGHT_FLOOR_AIR, k.t[1] + (k.p[1] - k.t[1]) * 1.25),
+      k.t[2] + (k.p[2] - k.t[2]) * 1.25,
+    ],
+    t: k.t,
+    fov: 48,
+  };
+});
 
 /** How fast the camera follows the scroll (per second, exponential): a flick settles in about half a second. */
 export const FLIGHT_DAMPING = 6;

@@ -15,8 +15,8 @@ export const HALF_BLOCKS = 12;
 export const TOWN_EXTENT = HALF_BLOCKS * PITCH;
 
 /**
- * Where each event's beacon stands: on a street intersection, so the four blocks around it make one square
- * plaza (see `PLAZA_HALF`). The venue itself is rendered at the origin later.
+ * Where each event's beacon stands: on a street intersection, so the blocks around it make one plaza (see
+ * `plazaRect`). The venue itself is rendered at the slot.
  */
 export const BEACON_SLOTS: Array<[number, number]> = [
   [-40, -20],
@@ -33,6 +33,75 @@ export function beaconSlot(index: number): [number, number] {
 
 /** Half the side of a plaza: the four blocks around the intersection plus the street between them. */
 export const PLAZA_HALF = BLOCK + STREET / 2;
+
+/** The venue's pavilion on its plaza, in the plaza's local metres: its width along the gate line, its height, its depth. */
+export const PAVILION = { w: 20, h: 5.6, d: 12 } as const;
+/** Where the turnstile line stands, local z, out in the forecourt; the lanes are `GATE_PITCH` apart. */
+export const GATE_LINE_Z = 16;
+export const GATE_PITCH = 1.7;
+export const GATE_LANES = 4;
+/** Lamp posts down both sides of a plaza, local x either side and local z: behind the pavilion, either side of the gate line, at the forecourt's end. */
+export const PLAZA_LAMP_X = PLAZA_HALF - 4;
+export const PLAZA_LAMP_Z: readonly [number, number, number, number] = [
+  -(PLAZA_HALF - 4),
+  GATE_LINE_Z - 5,
+  GATE_LINE_Z + 5,
+  PLAZA_HALF + PITCH - 4,
+];
+
+/**
+ * A plaza's local frame. The pavilion faces along a street axis, away from downtown (local +z), so a camera
+ * in the forecourt looks back through the gate line at the pavilion, the column and the towers behind.
+ * `yaw` is the group's rotation about Y; `forward` is local +z in world XZ.
+ */
+export interface PlazaFrame {
+  yaw: number;
+  forward: [number, number];
+}
+
+export function plazaFrame(slot: readonly [number, number]): PlazaFrame {
+  const [x, z] = slot;
+  // the street axis that leads furthest from the origin; a beacon at the origin itself faces south
+  const forward: [number, number] =
+    Math.abs(x) >= Math.abs(z) && x !== 0 ? [Math.sign(x), 0] : [0, z === 0 ? 1 : Math.sign(z)];
+  // rotation.y = yaw maps local (0, 0, 1) to world (sin yaw, 0, cos yaw)
+  return { yaw: Math.atan2(forward[0], forward[1]), forward };
+}
+
+/** A point given in a plaza's local metres (x across the gate line, y up, z toward the doors), in world space. */
+export function plazaToWorld(
+  slot: readonly [number, number],
+  local: readonly [number, number, number],
+): [number, number, number] {
+  const { forward } = plazaFrame(slot);
+  // local +x is forward turned a quarter clockwise seen from above: (fz, -fx)
+  const right: [number, number] = [forward[1], -forward[0]];
+  return [
+    slot[0] + right[0] * local[0] + forward[0] * local[2],
+    local[1],
+    slot[1] + right[1] * local[0] + forward[1] * local[2],
+  ];
+}
+
+export interface Rect {
+  min: [number, number];
+  max: [number, number];
+}
+
+/**
+ * The paved ground of a plaza: the four blocks around the beacon's intersection, plus the two in front of the
+ * doors as a forecourt — six blocks, kerb to kerb.
+ */
+export function plazaRect(slot: readonly [number, number]): Rect {
+  const { forward } = plazaFrame(slot);
+  const min: [number, number] = [slot[0] - PLAZA_HALF, slot[1] - PLAZA_HALF];
+  const max: [number, number] = [slot[0] + PLAZA_HALF, slot[1] + PLAZA_HALF];
+  for (const axis of [0, 1] as const) {
+    if (forward[axis] > 0) max[axis] += PITCH;
+    if (forward[axis] < 0) min[axis] -= PITCH;
+  }
+  return { min, max };
+}
 
 export interface Building {
   x: number;
@@ -177,9 +246,29 @@ export function buildSkyline(): Building[] {
   return towers;
 }
 
-/** Is this block one of the four around a beacon's intersection? */
+/** Does the block with this centre face a plaza across a street (sharing an edge, not just a corner)? */
+export function besidePlaza(
+  cx: number,
+  cz: number,
+  beacons: ReadonlyArray<readonly [number, number]>,
+): boolean {
+  const reach = PITCH;
+  return beacons.some((slot) => {
+    const { min, max } = plazaRect(slot);
+    const alongX = cx > min[0] && cx < max[0];
+    const alongZ = cz > min[1] && cz < max[1];
+    const nearX = cx > min[0] - reach && cx < max[0] + reach;
+    const nearZ = cz > min[1] - reach && cz < max[1] + reach;
+    return (alongX && nearZ) || (alongZ && nearX);
+  });
+}
+
+/** Is the block with this centre part of a beacon's plaza (see `plazaRect`)? */
 export function inPlaza(cx: number, cz: number, beacons: ReadonlyArray<readonly [number, number]>): boolean {
-  return beacons.some(([px, pz]) => Math.abs(cx - px) <= BLOCK && Math.abs(cz - pz) <= BLOCK);
+  return beacons.some((slot) => {
+    const { min, max } = plazaRect(slot);
+    return cx > min[0] && cx < max[0] && cz > min[1] && cz < max[1];
+  });
 }
 
 /**
@@ -215,11 +304,11 @@ export function buildCity(beacons: ReadonlyArray<readonly [number, number]>, det
       const cx = bx * PITCH + PITCH / 2;
       const cz = bz * PITCH + PITCH / 2;
       if (inPlaza(cx, cz, beacons)) continue;
-      const beaconDist = Math.min(...beacons.map(([x, z]) => Math.hypot(x - cx, z - cz)));
       const dist = Math.hypot(cx, cz);
       const downtown = Math.max(0, 1 - dist / 170);
-      // keep the skyline low next to a beacon so the light column always stands clear
-      const cap = beaconDist < 60 ? 22 : 64;
+      // the blocks that line a plaza stay low (shops, a hotel), so from the forecourt the towers behind
+      // show over them; downtown proper rises from the next ring, under the light columns' height
+      const cap = besidePlaza(cx, cz, beacons) ? 11 : 64;
       // 1–3 buildings per block
       const n = 1 + Math.floor(rnd() * 3);
       for (let i = 0; i < n; i++) {

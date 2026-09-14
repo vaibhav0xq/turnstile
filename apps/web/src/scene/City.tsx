@@ -5,7 +5,7 @@ import * as THREE from "three";
 import type { EventInfo } from "../chain/config";
 import { mulberry } from "../lib/random";
 import { keepOutRects } from "./anchor";
-import { BEACON_SLOTS, type Building, beaconSlot, buildCity } from "./city-gen";
+import { BEACON_SLOTS, type Building, beaconSlot, buildCity, PAVILION } from "./city-gen";
 import { useDirector } from "./director";
 import { flightPose, LABELS_FROM } from "./flight";
 import { Ground } from "./Ground";
@@ -15,9 +15,11 @@ import {
   haloShader,
   type MassUniforms,
   makeMassMaterial,
+  massAlbedo,
   poolShader,
   useShaderMaterial,
 } from "./materials";
+import { Pavilion } from "./Pavilion";
 
 export { BEACON_SLOTS, beaconSlot };
 
@@ -242,10 +244,10 @@ export function City({ events, onEnter }: CityProps) {
       </mesh>
       <hemisphereLight args={["#2f3c5c", "#0a0c14", 1.0]} />
       {/* the moon: a cool key from behind and to the left, so roofs and far walls separate from the haze */}
-      <directionalLight position={[-220, 260, -160]} color={CITY_NIGHT.moon} intensity={1.5} />
+      <directionalLight position={[-220, 260, -160]} color={CITY_NIGHT.moon} intensity={1.2} />
       {/* the city's own glow bounced back: a low warm fill from the south-east so the faces toward the
           camera's usual side never fall to black */}
-      <directionalLight position={[160, 90, 260]} color="#7a6656" intensity={1.3} />
+      <directionalLight position={[160, 90, 260]} color="#7a6656" intensity={1.0} />
       <Ground detail={quality === "high" ? 1 : 0.5} plazas={BEACON_SLOTS} />
       <Buildings buildings={data.buildings} startedAt={started} material={mass} />
       <Skyline towers={data.skyline} material={mass} />
@@ -278,6 +280,14 @@ function Buildings({
 }) {
   const mesh = useRef<THREE.InstancedMesh>(null);
   const lastProgress = useRef(-1);
+  useEffect(() => {
+    const m = mesh.current;
+    if (!m) return;
+    buildings.forEach((b, i) => {
+      m.setColorAt(i, massAlbedo(b.seed));
+    });
+    if (m.instanceColor) m.instanceColor.needsUpdate = true;
+  }, [buildings]);
   useFrame(() => {
     const m = mesh.current;
     if (!m) return;
@@ -321,8 +331,10 @@ function Skyline({ towers, material }: { towers: Building[]; material: THREE.Mat
       tmpObject.scale.set(t.w, t.h, t.d);
       tmpObject.updateMatrix();
       m.setMatrixAt(i, tmpObject.matrix);
+      m.setColorAt(i, massAlbedo(t.seed));
     });
     m.instanceMatrix.needsUpdate = true;
+    if (m.instanceColor) m.instanceColor.needsUpdate = true;
   }, [towers]);
   return (
     <instancedMesh
@@ -372,8 +384,8 @@ function Beacon({
   const [x, z] = position;
   const plaza = useMemo(() => plazaGeometry([x, z], detail), [x, z, detail]);
   useEffect(() => () => plaza.dispose(), [plaza]);
-  // The halo plane stands on the ground (y 0 → 64); its shader turns it toward the camera.
-  const haloGeometry = useMemo(() => new THREE.PlaneGeometry(18, 64).translate(0, 32, 0), []);
+  // The halo plane stands on the pavilion's roof; its shader turns it toward the camera.
+  const haloGeometry = useMemo(() => new THREE.PlaneGeometry(12, 60).translate(0, PAVILION.h + 30, 0), []);
   useEffect(() => () => haloGeometry.dispose(), [haloGeometry]);
   const leader = useMemo(() => {
     const g = new THREE.BufferGeometry().setFromPoints([
@@ -418,7 +430,7 @@ function Beacon({
       ring.current.scale.setScalar(s * (lit ? 1.25 : 1));
     }
     if (light.current) {
-      light.current.intensity = THREE.MathUtils.lerp(light.current.intensity, lit ? 70 : 34, 0.1);
+      light.current.intensity = THREE.MathUtils.lerp(light.current.intensity, lit ? 30 : 14, 0.1);
     }
     // The chip climbs the column to stay clear of the page's copy (the hero, the bill on a phone) and hides
     // if no height clears it or the point is behind the camera; the leader line follows. The canvas fills
@@ -468,12 +480,14 @@ function Beacon({
   });
   return (
     <group position={[x, 0, z]}>
-      <mesh position={[0, 45, 0]} material={material}>
-        <cylinderGeometry args={[1.4, 2.2, 90, 24, 1, true]} />
+      <Pavilion event={event} slot={position} />
+      {/* the column rises from the pavilion's roof; the ring sits on the roof around its foot */}
+      <mesh position={[0, PAVILION.h + 45, 0]} material={material}>
+        <cylinderGeometry args={[1.2, 1.9, 90, 24, 1, true]} />
       </mesh>
       <mesh geometry={haloGeometry} material={halo} frustumCulled={false} />
-      <mesh ref={ring} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.05, 0]}>
-        <ringGeometry args={[4.2, 4.8, 64]} />
+      <mesh ref={ring} rotation={[-Math.PI / 2, 0, 0]} position={[0, PAVILION.h + 0.06, 0]}>
+        <ringGeometry args={[3.6, 4.2, 64]} />
         <meshBasicMaterial
           color="#ffb457"
           toneMapped={false}
@@ -487,7 +501,14 @@ function Beacon({
       </mesh>
       <points geometry={plaza} material={points} frustumCulled={false} />
       <primitive object={leader} />
-      <pointLight ref={light} position={[0, 6, 0]} intensity={34} distance={70} color="#ffb457" decay={1.5} />
+      <pointLight
+        ref={light}
+        position={[0, PAVILION.h + 6, 0]}
+        intensity={14}
+        distance={60}
+        color="#ffb457"
+        decay={1.5}
+      />
       {/* generous hit target */}
       <mesh
         position={[0, 20, 0]}

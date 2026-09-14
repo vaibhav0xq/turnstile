@@ -2,7 +2,16 @@ import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo } from "react";
 import * as THREE from "three";
 import { mulberry } from "../lib/random";
-import { HALF_BLOCKS, PITCH, PLAZA_HALF, STREET, TOWN_EXTENT } from "./city-gen";
+import {
+  HALF_BLOCKS,
+  PITCH,
+  PLAZA_LAMP_X,
+  PLAZA_LAMP_Z,
+  plazaFrame,
+  plazaRect,
+  STREET,
+  TOWN_EXTENT,
+} from "./city-gen";
 import { CITY_NIGHT, useShaderMaterial } from "./materials";
 
 /**
@@ -33,9 +42,13 @@ const groundFragment = /* glsl */ `
   uniform float uPitch;
   uniform float uStreetHalf;
   uniform float uExtent;
-  uniform float uPlazaHalf;
-  uniform vec2 uPlazas[PLAZAS];
+  // each plaza as (min x, min z, max x, max z), kerb to kerb
+  uniform vec4 uPlazas[PLAZAS];
+  // and its frame: (slot x, slot z, forward x, forward z), for the lamp posts in plaza-local metres
+  uniform vec4 uPlazaFrames[PLAZAS];
   uniform int uPlazaCount;
+  uniform float uPlazaLampX;
+  uniform vec4 uPlazaLampZ;
   varying vec3 vWorld;
   float gridDist(float v, float pitch) { return abs(fract(v / pitch + 0.5) - 0.5) * pitch; }
   // a lamp pool every 12 m along a street, staggered on the two sides
@@ -47,12 +60,28 @@ const groundFragment = /* glsl */ `
             + exp(-b * b / 4.5) * exp(-pow(across + side, 2.0) / 3.5);
     return p * step(abs(across), uStreetHalf + 2.0);
   }
-  // signed distance to the nearest plaza square (negative inside)
+  // the pools under a plaza's eight lamp posts, in its local frame
+  float plazaPools(vec2 p) {
+    float sum = 0.0;
+    for (int i = 0; i < PLAZAS; i++) {
+      if (i >= uPlazaCount) break;
+      vec4 f = uPlazaFrames[i];
+      vec2 d = p - f.xy;
+      vec2 local = vec2(dot(d, vec2(f.w, -f.z)), dot(d, f.zw));
+      float across = abs(local.x) - uPlazaLampX;
+      vec4 along = local.y - uPlazaLampZ;
+      vec4 e = exp(-along * along / 5.0);
+      sum += exp(-across * across / 5.0) * (e.x + e.y + e.z + e.w);
+    }
+    return sum;
+  }
+  // signed distance to the nearest plaza rectangle (negative inside)
   float plazaDist(vec2 p) {
     float best = 1e9;
     for (int i = 0; i < PLAZAS; i++) {
       if (i >= uPlazaCount) break;
-      vec2 q = abs(p - uPlazas[i]) - uPlazaHalf;
+      vec4 r = uPlazas[i];
+      vec2 q = abs(p - (r.xy + r.zw) * 0.5) - (r.zw - r.xy) * 0.5;
       best = min(best, max(q.x, q.y));
     }
     return best;
@@ -89,6 +118,7 @@ const groundFragment = /* glsl */ `
     vec3 paved = uPaving * (1.0 - 0.35 * joint * (1.0 - smoothstep(0.02, 0.15, aa)));
     float plazaKerb = 1.0 - smoothstep(0.3, 0.3 + paa, abs(pd));
     paved = mix(paved, uKerb, plazaKerb * 0.7);
+    paved += uLamp * plazaPools(p) * 0.3;
     col = mix(col, paved, plaza);
     col = mix(uBlock * 0.7, col, town);
     gl_FragColor = vec4(col, 1.0);
@@ -153,9 +183,18 @@ function buildTraffic(
   const origin: number[] = [];
   const dir: number[] = [];
   const params: number[] = [];
-  // streets that run through a plaza are the pedestrians' (the beacons stand on those intersections)
-  const closedX = new Set(avoid.map(([x]) => Math.round(x / PITCH)));
-  const closedZ = new Set(avoid.map(([, z]) => Math.round(z / PITCH)));
+  // streets that run through a plaza are the pedestrians': every street line strictly inside a plaza's
+  // rectangle is closed along its length
+  const closedX = new Set<number>();
+  const closedZ = new Set<number>();
+  for (const slot of avoid) {
+    const { min, max } = plazaRect(slot);
+    for (let line = -HALF_BLOCKS; line <= HALF_BLOCKS; line++) {
+      const c = line * PITCH;
+      if (c > min[0] && c < max[0]) closedX.add(line);
+      if (c > min[1] && c < max[1]) closedZ.add(line);
+    }
+  }
   let made = 0;
   while (made < count) {
     const alongX = rnd() < 0.5;
@@ -206,10 +245,24 @@ export function Ground({ detail, plazas }: GroundProps) {
       uPitch: { value: PITCH },
       uStreetHalf: { value: STREET / 2 },
       uExtent: { value: TOWN_EXTENT + STREET / 2 },
-      uPlazaHalf: { value: PLAZA_HALF },
       uPlazas: {
-        value: Array.from({ length: MAX_PLAZAS }, (_, i) => new THREE.Vector2(...(plazas[i] ?? [1e6, 1e6]))),
+        value: Array.from({ length: MAX_PLAZAS }, (_, i) => {
+          const slot = plazas[i];
+          if (!slot) return new THREE.Vector4(1e6, 1e6, 1e6 + 1, 1e6 + 1);
+          const { min, max } = plazaRect(slot);
+          return new THREE.Vector4(min[0], min[1], max[0], max[1]);
+        }),
       },
+      uPlazaFrames: {
+        value: Array.from({ length: MAX_PLAZAS }, (_, i) => {
+          const slot = plazas[i];
+          if (!slot) return new THREE.Vector4(1e6, 1e6, 0, 1);
+          const { forward } = plazaFrame(slot);
+          return new THREE.Vector4(slot[0], slot[1], forward[0], forward[1]);
+        }),
+      },
+      uPlazaLampX: { value: PLAZA_LAMP_X },
+      uPlazaLampZ: { value: new THREE.Vector4(...PLAZA_LAMP_Z) },
       uPlazaCount: { value: Math.min(plazas.length, MAX_PLAZAS) },
     },
     vertexShader: groundVertex,

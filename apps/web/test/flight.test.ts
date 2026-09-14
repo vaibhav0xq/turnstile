@@ -3,7 +3,9 @@ import { test } from "node:test";
 import {
   CITY_POSE,
   damp,
-  FLIGHT_FLOOR,
+  FIRST_AIR_KEY,
+  FLIGHT_FLOOR_AIR,
+  FLIGHT_FLOOR_PLAZA,
   FLIGHT_KEYS,
   type FlightSample,
   flightProgress,
@@ -30,18 +32,20 @@ test("the flight starts on the hero key and lands exactly on the city pose", () 
   }
 });
 
-test("the path passes through every key and never dips under the roofs", () => {
+test("the path passes through every key, stands on the plaza first and stays over the roofs once airborne", () => {
   for (const keys of [FLIGHT_KEYS, PORTRAIT_KEYS]) {
     keys.forEach((k, i) => {
       const s = sampleFlight(keys, i, blank());
       assert.ok(dist(s.position, k.p) < 1e-6, `key ${i} position`);
       assert.ok(dist(s.target, k.t) < 1e-6, `key ${i} target`);
       assert.equal(s.fov, k.fov);
-      assert.ok(k.p[1] >= FLIGHT_FLOOR, `key ${i} flies at ${k.p[1]}`);
+      const floor = i < FIRST_AIR_KEY ? FLIGHT_FLOOR_PLAZA : FLIGHT_FLOOR_AIR;
+      assert.ok(k.p[1] >= floor, `key ${i} flies at ${k.p[1]}`);
     });
     for (let u = 0; u <= keys.length - 1; u += 0.01) {
       const s = sampleFlight(keys, u, blank());
-      assert.ok(s.position[1] >= FLIGHT_FLOOR - 1, `dipped to ${s.position[1]} at u=${u.toFixed(2)}`);
+      const floor = u < FIRST_AIR_KEY ? FLIGHT_FLOOR_PLAZA : FLIGHT_FLOOR_AIR;
+      assert.ok(s.position[1] >= floor - 1, `dipped to ${s.position[1]} at u=${u.toFixed(2)}`);
     }
   }
 });
@@ -61,16 +65,26 @@ test("sampling is continuous: no jump larger than a few units between fine steps
   }
 });
 
-test("portrait keys back off from the same targets with a wider lens", () => {
+test("portrait keys widen the lens; on the plaza they keep their footing, in the air they back off", () => {
   PORTRAIT_KEYS.forEach((k, i) => {
     const l = FLIGHT_KEYS[i] as (typeof FLIGHT_KEYS)[number];
-    assert.deepEqual(k.t, l.t);
     if (i === PORTRAIT_KEYS.length - 1) {
       assert.deepEqual(k, CITY_POSE);
       return;
     }
-    assert.ok(dist(k.p, k.t) > dist(l.p, l.t), `key ${i} is further out`);
     assert.equal(k.fov, 48);
+    if (i === 0) {
+      assert.ok(k.p[1] >= FLIGHT_FLOOR_PLAZA, "the portrait hero stays on the plaza");
+      assert.ok(k.p[2] > l.p[2] - 1e-9 || k.p[0] < l.p[0], "the portrait hero steps back");
+      return;
+    }
+    if (i < FIRST_AIR_KEY) {
+      assert.deepEqual(k.p, l.p, `key ${i} stands where the landscape key stands`);
+      assert.ok(k.t[1] > l.t[1], `key ${i} aims higher`);
+      return;
+    }
+    assert.deepEqual(k.t, l.t);
+    assert.ok(dist(k.p, k.t) > dist(l.p, l.t), `key ${i} is further out`);
   });
 });
 
