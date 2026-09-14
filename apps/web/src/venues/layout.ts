@@ -226,7 +226,9 @@ function clubLayout(event: EventInfo): VenueLayout {
     });
   });
   return finish("club", sections, stage, center, 30, {
-    overview: { position: { x: 0, y: 15, z: 24 }, target: { x: 0, y: 0.8, z: -5 } },
+    // Close enough that the booths sit on the bottom edge and the wall fills the top: the room, not the
+    // empty floor in front of it.
+    overview: { position: { x: 0, y: 13.2, z: 18 }, target: { x: 0, y: 1.1, z: -6.5 } },
     // The door opens onto the mezzanine: eye height on the slab, looking down over the floor.
     entrance: { position: { x: 0, y: 6.2, z: 9.4 }, target: { x: 0, y: 0.6, z: -8 } },
     stageFocus: { x: 0, y: 2.2, z: stage.z - 1.5 },

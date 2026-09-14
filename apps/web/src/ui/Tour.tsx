@@ -253,9 +253,13 @@ function TourBar({ config, devIdentity }: { config: AppConfig | undefined; devId
     useDirector.getState().viewOverview();
   };
 
+  // The door's scanner owns the right edge of the gate view (its "Go in." lands there), so the card moves
+  // to the free bottom-left corner on that route; phones keep the single top slot and fold instead.
+  const atDoor = location.pathname.startsWith("/gate/");
+  const slot = atDoor ? "sm:bottom-6 sm:left-6 sm:right-auto sm:top-auto" : "sm:right-6";
   return (
     <aside
-      className="glass fade-up fixed right-4 top-[4.5rem] z-30 w-[min(22rem,calc(100vw-2rem))] rounded-2xl p-4 sm:right-6"
+      className={`glass fade-up fixed right-4 top-[4.5rem] z-30 w-[min(22rem,calc(100vw-2rem))] rounded-2xl p-4 ${slot}`}
       aria-label="Judge mode"
       data-testid="tour-bar"
       data-step={step}

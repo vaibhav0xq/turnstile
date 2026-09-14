@@ -1,0 +1,122 @@
+# Envio hosted indexer — handoff checklist
+
+`packages/indexer` is a complete HyperIndex indexer for the testnet factory; it has never been deployed
+because Envio Cloud needs a GitHub-linked account, which only you can create. This is what exists, what to
+click, what to check, and what to wire up afterwards so the bounty's "actually driving a feature" line is met.
+
+## What exists
+
+| Piece | Where | State |
+|-------|-------|-------|
+| Chains + contracts | `packages/indexer/config.yaml` | Monad testnet `10143`, factory `0x5C6e…42B2`, start block `62312572` (generated from `deployments/10143.json` by `pnpm sync-config`; `TurnstileEvent` clones register dynamically from `EventCreated`) |
+| Schema | `schema.graphql` | `Event`, `Ticket`, `Fan`, `Activity` (+ `ActivityKind`: MINT · BIND · UNBIND · LIST · DELIST · RESALE · CHECKIN) |
+| Handlers | `src/handlers/turnstile.ts` | every event the contracts emit; `DoorKeyCleared` inside a resale updates the seat without a feed row |
+| Tests | `test/handlers.test.ts` | 5 in-process tests (`createTestIndexer`), no Docker; run by `pnpm verify` |
+| Runtime | `package.json` | `envio ^3.5.0` (lock resolves 3.10.0), Node ≥ 24, pnpm 10 — all inside Envio Cloud's requirements (≥ 2.21.5, not 2.29.x, pnpm 10.32-compatible) |
+| Repo size | | ~0.6 MB packed; the 100 MB limit is not a concern |
+
+Nothing consumes the GraphQL endpoint yet. The root `.env.example` reserves `VITE_ENVIO_GRAPHQL_URL`; the web
+and the relayer read chain state over RPC today.
+
+## 1. Account and first deployment (you)
+
+Source: <https://docs.envio.dev/docs/HyperIndex/hosted-service-deployment>.
+
+- [ ] <https://envio.dev/app/login> → *Log in with GitHub* (the `vaibhav0xq` account that owns the repo).
+- [ ] Select the personal organisation; install the **Envio Deployments GitHub App** with access to
+      `vaibhav0xq/turnstile` (that repo only is fine).
+- [ ] *Add Indexer*:
+      - repository `vaibhav0xq/turnstile`
+      - **root directory** `packages/indexer`
+      - **config file** `config.yaml` (relative to the root directory)
+      - **deployment branch** `main`
+      - name `turnstile`
+- [ ] Save; the first build starts from the current `main`. Watch the build log to the end once — the
+      likely trip-wire is the install step: `packages/indexer` is a pnpm workspace member, so `pnpm install`
+      from that folder walks up to `pnpm-workspace.yaml` and installs the whole workspace. That works in CI
+      here (esbuild and `@parcel/watcher` build scripts are already ignored in the workspace file). If the
+      hosted build still fails on install, tell me the log line; the fallback is a dedicated deployment
+      branch where `packages/indexer` carries its own lockfile (`pnpm install --ignore-workspace` in that
+      folder, committed there only) and the indexer's *deployment branch* points at it.
+- [ ] Sync: the factory has a handful of events since block 62 312 572, so HyperSync is done in minutes.
+      The dashboard shows *synced* and the GraphQL URL (`https://indexer.dev.hyperindex.xyz/<id>/v1/graphql`).
+
+Development-plan rules that matter for the timeline (submission 22 Sep–14 Oct, judging after):
+
+- 3 indexers per organisation, 3 deployments per indexer (delete old ones in the dashboard to free a slot).
+- **Deployments older than 30 days are deleted.** Every push to `main` creates a new deployment (full
+  re-index from the start block, previous one keeps serving until the new one is synced) and restarts that
+  clock — a normal cadence of commits keeps it alive; if `main` goes quiet, push a no-op before day 30.
+- Soft limits: 100 000 events, 5 GB, or **no requests for 7 days** → 7-day grace, then read-only, then
+  deletion. Once the web app queries it (§3) ordinary traffic covers this; until then run a query yourself
+  once a week or set an uptime pinger on a `{ Event { id } }` POST.
+
+## 2. Verify the endpoint
+
+Point a GraphQL client (the playground the dashboard links to, or `curl`) at the URL and run these.
+Expected values follow the chain: the club (`0x79a3e41cbb8acd8c9a1a61a929bdba302d3121b5`, eventId 1) has the
+smoke-test seats plus one per judge run; the theatre (`0x9c4b…3029`, eventId 2) may still be at zero.
+
+```graphql
+# both seed events, with the counters the organiser page shows
+{ Event(order_by: { eventId: asc }) {
+    id eventId name organiser startsAt sold comps checkedIn listed resales primaryVolume resaleVolume resaleFees } }
+
+# every seat on the club, newest first
+{ Ticket(where: { event_id: { _eq: "0x79a3e41cbb8acd8c9a1a61a929bdba302d3121b5" } }, order_by: { tokenId: desc }) {
+    id tokenId tier faceValue comp doorKey listedPrice checkedInAt mintedAt handovers holder { id } } }
+
+# the attendance record behind the passport
+{ Fan(order_by: { checkIns: desc }, limit: 10) { id tickets bought checkIns firstSeenAt lastSeenAt } }
+
+# the live feed
+{ Activity(order_by: { timestamp: desc }, limit: 20) {
+    id kind actor counterparty amount timestamp txHash event { eventId } ticket { tokenId } } }
+```
+
+Checks:
+
+- [ ] `Event.sold` / `checkedIn` for the club equal the club entry's `sold` / `checkedIn` in
+      `https://<origin>/api/events` (the relayer reads the contract directly).
+- [ ] The judge-run seat shows `checkedInAt` set and a `CHECKIN` row whose `counterparty` is the gate wallet
+      (`0x6FA9…F9CF`) and whose `txHash` is the admit hash on the summary card.
+- [ ] The smoke test's resale shows as `LIST` → `RESALE` rows, `handovers: 1` on that seat, `doorKey: null`
+      after the resale until the buyer rebinds.
+- [ ] Id casing: Hasura ids are lower-case hex strings — query with lower-case addresses.
+- [ ] Note the endpoint URL and the deployment id in `research/notes.md`.
+
+## 3. Wire it into the app (me, once the URL exists)
+
+The bounty wants Envio "powering real on-chain data driving a core feature", not installed. Two places
+where the indexer does something the RPC path cannot, in the order worth doing them:
+
+1. **Door feed and organiser feed from `Activity`.** Today the gate's *Tonight* list is this browser's own
+   admissions and the organiser page shows `sold / inside` counters from the contract. With the indexer both
+   become the venue's live feed across every device: `CHECKIN` rows on the gate page (`Seat 15 · General
+   Admission · admitted · 1.2 s` for everyone, not just this scanner), the full `MINT · BIND · LIST · RESALE
+   · CHECKIN` stream on `/organise`, with explorer links from `txHash`. Poll every ~4 s — simpler than
+   subscriptions and plenty for the volume.
+2. **Passport history from `Fan`.** `checkIns`, `bought`, `firstSeenAt` under the passkey's address on `/me`:
+   "3 nights · since 14 Sep" is the attendance record the passport promises and it is pure chain history.
+
+Mechanics:
+
+- Env: `VITE_ENVIO_GRAPHQL_URL=https://indexer.dev.hyperindex.xyz/<id>/v1/graphql` in the production
+  environment (build-time for Vite, so it needs a republish), plus the root `.env` for local dev. When unset
+  the app keeps today's behaviour — the feed panels simply do not render; no silent fake data.
+- The browser POSTs straight to Hasura (`{"query": "..."}`, no auth on the dev plan). If CORS turns out to
+  be blocked from the origin, proxy through the relayer (`/api/feed/<event>` → indexer) instead; the relayer
+  already has an outbound HTTP path.
+- Tanstack Query hooks next to the existing seat-map hook; the `Activity` id is a stable cursor for
+  "new since last poll".
+- Tests: a fixture of the four queries' JSON shapes; the handler tests already pin the entity fields.
+- README: "Indexer: deployed on Envio Cloud — `<url>`; the door feed, organiser stream and passport history
+  read from it" and the bounty line; `docs/README.md` index; `.env.example` comment loses "later:".
+
+## 4. Bounty checklist (Best Use of Envio)
+
+- [x] Public repo with `config.yaml`, `schema.graphql`, handlers — `packages/indexer`.
+- [ ] Deployed indexer (Envio Cloud URL in the README) — §1.
+- [ ] A feature that runs on it, visible in the demo — §3 (the door feed in scene 6 / the organiser feed as
+      B-roll; a line in the voice-over: "the door feed comes from an Envio indexer, not from an RPC").
+- [ ] Alive through judging — the 30-day and 7-day rules in §1.

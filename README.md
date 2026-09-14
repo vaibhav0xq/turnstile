@@ -31,7 +31,7 @@ packages/identity        passkey ceremonies, KDFs, EIP-712 Entry + BindDoorKey, 
 packages/contracts       TurnstileFactory / TurnstileEvent (Foundry)   — ✅ 62 tests, live on Monad testnet
 packages/indexer         Envio HyperIndex: events, seats, fans, door feed — ✅ handlers + 5 tests, hosted deploy pending
 spike/                   Mera 0.2.0 spike (17 vectors, device pages)   — frozen evidence
-docs/                    spike report, device matrix, device reports
+docs/                    runbooks (testnet deploy, final domain, Envio), storyboard, spike report, device matrix
 research/                hackathon report, build plan, notes, sources
 ```
 
@@ -127,8 +127,9 @@ stay open until 13 Nov 2026. Web + relayer on a staging origin (above) with pass
 passport sync and token metadata verified there. Staging republished 14 Sep with the judge run, `TS3:` codes,
 the ticket image and the staging chip: `pnpm --filter @turnstile/web run judge -- --base <origin>` against it
 lands on a lit seat in 38 s / 6 taps / 2 passkey prompts with three testnet transactions; both seed events'
-`tokenURI` resolve to metadata whose `image.svg` renders. Next: final domain (then re-point `baseURI` and
-`PUBLIC_ORIGIN`), indexer → Envio hosted service, demo video (`docs/demo-video-storyboard.md`).
+`tokenURI` resolve to metadata whose `image.svg` renders. Next: final domain (`docs/final-domain-migration.md`
+— `PUBLIC_ORIGIN`, republish, smoke + judge run, then re-point `baseURI`), indexer → Envio Cloud
+(`docs/envio-hosted-handoff.md`), demo video (`docs/demo-video-storyboard.md`).
 
 ## License
 
