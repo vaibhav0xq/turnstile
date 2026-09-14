@@ -73,14 +73,21 @@ export function Event({ config, seatMap }: { config: AppConfig | undefined; seat
 
   const pickNext = (tierIndex: number) => {
     const tier = event.tiers[tierIndex];
-    if (!tier) return;
-    // Front-most available seat in that tier (ids are laid out front to back).
+    if (!tier || !seatMap) return; // before the map arrives every seat would look open
+    // Front-most row with an open seat (ids run front to back), then the open seat nearest the centre
+    // line of that row: the best seat left, and a hero shot with the stage in the middle.
+    let best: { id: number; off: number } | null = null;
+    let row: string | undefined;
     for (let id = tier.firstSeat; id < tier.firstSeat + tier.seatCount; id++) {
-      if (seatStatus(seatMap?.get(id)) === "available") {
-        selectSeat(id);
-        return;
-      }
+      if (seatStatus(seatMap.get(id)) !== "available") continue;
+      const spec = layout.byId.get(id);
+      if (!spec) continue;
+      if (row === undefined) row = spec.row;
+      if (spec.row !== row) break;
+      const off = Math.abs(spec.x - layout.center.x);
+      if (!best || off < best.off) best = { id, off };
     }
+    if (best) selectSeat(best.id);
   };
 
   return (
@@ -98,9 +105,9 @@ export function Event({ config, seatMap }: { config: AppConfig | undefined; seat
               type="button"
               key={tier.index}
               className="chip mono hover:bg-ink-2 disabled:opacity-50"
-              disabled={free === 0}
+              disabled={!seatMap || free === 0}
               onClick={() => pickNext(tier.index)}
-              data-tour={tier.index === tourTier ? "pick" : undefined}
+              data-tour={seatMap && tier.index === tourTier ? "pick" : undefined}
               title="Pick the next available seat in this tier"
             >
               {tier.name} · {formatMon(tierPrice(tier))} · {free} left

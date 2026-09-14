@@ -45,6 +45,8 @@ interface Target {
   dwell: number;
   /** A real passkey prompt is behind this control; autopilot never presses those. */
   touch: boolean;
+  /** Press again after this long if the step has not moved on — only for controls that are safe to repeat. */
+  retryAfter?: number;
 }
 
 const q = (sel: string): HTMLElement | null => {
@@ -70,8 +72,10 @@ function nextTarget(step: TourStep, devIdentity: boolean): Target | null {
     case "pick": {
       const take = q('[data-tour="pick-take"]');
       if (take) return { key: "pick-take", el: take, dwell: 1400, touch: false };
+      // The chip picks the front-most open seat from the live map; pressing it again is harmless, and it is
+      // the one control that can need a second go (a seat can sell between the press and the card).
       const chip = q('[data-tour="pick"]');
-      return chip ? { key: "pick", el: chip, dwell: 2200, touch: false } : null;
+      return chip ? { key: "pick", el: chip, dwell: 2200, touch: false, retryAfter: 4000 } : null;
     }
     case "checkout": {
       const open = q('[data-tour="checkout-open"]');
@@ -161,7 +165,7 @@ export function Tour({ config, seatMap }: { config: AppConfig | undefined; seatM
   }, [active, step, eventAddress, tokenId, navigate]);
 
   // Autopilot: press the highlighted control once it has been on screen for its dwell time.
-  const armed = useRef<{ key: string; at: number } | null>(null);
+  const armed = useRef<{ key: string; at: number; firedAt: number | null } | null>(null);
   useEffect(() => {
     if (!active || !autoplay) {
       armed.current = null;
@@ -180,9 +184,16 @@ export function Tour({ config, seatMap }: { config: AppConfig | undefined; seatM
         return;
       }
       const now = performance.now();
-      if (armed.current?.key !== target.key) armed.current = { key: target.key, at: now };
-      if (now - armed.current.at < target.dwell) return;
-      armed.current = { key: target.key, at: Number.POSITIVE_INFINITY }; // fire once per target
+      if (armed.current?.key !== target.key) armed.current = { key: target.key, at: now, firedAt: null };
+      const a = armed.current;
+      if (a.firedAt !== null) {
+        if (target.retryAfter === undefined || now - a.firedAt < target.retryAfter) return; // fired once
+        a.at = now;
+        a.firedAt = null;
+        return;
+      }
+      if (now - a.at < target.dwell) return;
+      a.firedAt = now;
       press(target);
     }, 300);
     return () => clearInterval(id);
@@ -213,6 +224,9 @@ function TourBar({ config, devIdentity }: { config: AppConfig | undefined; devId
   const elapsed = startedAt === null ? 0 : (finishedAt ?? performance.now()) - startedAt;
   const copy = COPY[step];
   const canPress = step !== "lit";
+  // On a phone the bar sits over the ticket, so it starts folded: dots, title, the one button that matters.
+  const [expanded, setExpanded] = useState(() => !window.matchMedia("(max-width: 639px)").matches);
+  const compact = !expanded && step !== "lit";
 
   const pressNow = () => {
     const target = nextTarget(step, devIdentity);
@@ -244,6 +258,9 @@ function TourBar({ config, devIdentity }: { config: AppConfig | undefined; devId
       className="glass fade-up fixed right-4 top-[4.5rem] z-30 w-[min(22rem,calc(100vw-2rem))] rounded-2xl p-4 sm:right-6"
       aria-label="Judge mode"
       data-testid="tour-bar"
+      data-step={step}
+      data-waiting={waiting && autoplay ? "1" : "0"}
+      data-elapsed={formatMs(elapsed)}
     >
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-1.5" aria-hidden>
@@ -264,9 +281,11 @@ function TourBar({ config, devIdentity }: { config: AppConfig | undefined; devId
         <Kicker>Judge mode</Kicker>
         <span className="display text-xl">{copy.title}</span>
       </div>
-      <p className="mt-1 text-xs leading-relaxed text-paper/80" aria-live="polite">
-        {copy.line}
-      </p>
+      {compact ? null : (
+        <p className="mt-1 text-xs leading-relaxed text-paper/80" aria-live="polite">
+          {copy.line}
+        </p>
+      )}
 
       {step === "checkout" && (receipt.buyMs !== null || receipt.bindMs !== null) ? (
         <div className="mono mt-2 flex gap-3 text-[11px]">
@@ -322,11 +341,29 @@ function TourBar({ config, devIdentity }: { config: AppConfig | undefined; devId
             >
               autoplay {autoplay ? "on" : "off"}
             </button>
-            <button type="button" className="chip mono hover:bg-ink-2" onClick={restart}>
-              restart
-            </button>
-            <button type="button" className="chip mono hover:bg-ink-2" onClick={exit} data-testid="tour-exit">
-              exit
+            {compact ? null : (
+              <>
+                <button type="button" className="chip mono hover:bg-ink-2" onClick={restart}>
+                  restart
+                </button>
+                <button
+                  type="button"
+                  className="chip mono hover:bg-ink-2"
+                  onClick={exit}
+                  data-testid="tour-exit"
+                >
+                  exit
+                </button>
+              </>
+            )}
+            <button
+              type="button"
+              className="chip mono ml-auto hover:bg-ink-2 sm:hidden"
+              onClick={() => setExpanded((v) => !v)}
+              aria-expanded={!compact}
+              data-testid="tour-fold"
+            >
+              {compact ? "more" : "less"}
             </button>
           </>
         )}

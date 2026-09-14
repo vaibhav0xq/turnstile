@@ -6,7 +6,7 @@
 //   BASE_URL=http://127.0.0.1:4174 CHROMIUM=/path/to/chromium node scripts/shoot.mjs / /me
 import fs from "node:fs";
 import path from "node:path";
-import puppeteer from "puppeteer-core";
+import { launch, watch } from "./browser.mjs";
 
 const args = process.argv.slice(2);
 const opt = (flag, fallback) => {
@@ -29,38 +29,12 @@ const base = process.env["BASE_URL"] ?? "http://127.0.0.1:4174";
 const out = path.resolve(import.meta.dirname, "..", "shots");
 fs.mkdirSync(out, { recursive: true });
 
-const browser = await puppeteer.launch({
-  executablePath: process.env["CHROMIUM"] ?? "/repl/tools/bin/chromium",
-  headless: true,
-  args: [
-    "--no-sandbox",
-    "--disable-dev-shm-usage",
-    "--no-zygote",
-    "--single-process",
-    "--in-process-gpu",
-    "--disable-features=site-per-process,IsolateOrigins,AudioServiceOutOfProcess",
-    "--renderer-process-limit=1",
-    "--mute-audio",
-    "--use-gl=angle",
-    "--use-angle=swiftshader",
-    "--enable-unsafe-swiftshader",
-    "--ignore-gpu-blocklist",
-    "--disable-extensions",
-    "--disable-background-networking",
-    "--js-flags=--max-old-space-size=256",
-    `--window-size=${width},${height}`,
-  ],
-  defaultViewport: { width, height, deviceScaleFactor: 1 },
-  protocolTimeout: 120_000,
-});
+const browser = await launch({ width, height });
 
 try {
   for (const route of routes) {
     const page = await browser.newPage();
-    const logs = [];
-    page.on("console", (m) => logs.push(`[${m.type()}] ${m.text()}`));
-    page.on("pageerror", (e) => logs.push(`[pageerror] ${e.message}`));
-    page.on("requestfailed", (r) => logs.push(`[requestfailed] ${r.url()} ${r.failure()?.errorText ?? ""}`));
+    const watcher = watch(page);
     const started = performance.now();
     await page.goto(base + route, { waitUntil: "load", timeout: 90_000 });
     if (script) {
@@ -74,8 +48,7 @@ try {
     if (probe) console.log("   probe:", JSON.stringify(await page.evaluate(probe)));
     const ms = Math.round(performance.now() - started);
     console.log(`${route} → ${path.relative(process.cwd(), file)} (${ms} ms)`);
-    for (const line of logs.filter((l) => !/\[(log|debug|info)\]/.test(l)).slice(0, 25))
-      console.log("   ", line);
+    watcher.flush();
     await page.close();
   }
 } finally {

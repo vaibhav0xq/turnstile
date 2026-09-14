@@ -14,7 +14,8 @@
     "build:lite": "node scripts/build-lite.mjs",
     "preview": "vite preview --host 127.0.0.1 --port 4173",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --test --test-reporter=spec \"test/**/*.test.ts\""
+    "test": "node --test --test-reporter=spec \"test/**/*.test.ts\"",
+    "judge": "node scripts/judge-run.mjs"
   },
   "dependencies": {
     "@fontsource-variable/geist": "^5.3.0",

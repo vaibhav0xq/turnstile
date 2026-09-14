@@ -87,6 +87,14 @@ exposes `window.__world` (the R3F root state), `window.__director` (scene store)
 (identity store), so a shot can drive the app: `--eval "window.__director.getState().selectSeat(48)"` or
 `--eval "window.__identity.getState().ensureFan()"`. Under SwiftShader a full-page shot takes 15–30 s.
 
+`scripts/judge-run.mjs` (also `pnpm --filter @turnstile/web run judge`) plays judge mode end to end and
+times it from the tour bar's own `data-step` / `data-waiting` / `data-elapsed` hooks, so it works against any
+build, including a deployed origin: `--base <origin>` (or `BASE_URL`), `--seed x` for the dev identity on dev
+builds (autopilot presses everything), no seed for the real path (a CDP virtual platform authenticator answers
+both passkey prompts and the script "taps" the two controls the autopilot leaves to a human). One frame per
+step lands in `shots/judge-<n>-<step>.png` plus `judge-final.png` after the hero shot; exit code 1 on timeout.
+`scripts/browser.mjs` holds the shared launcher (`launch`, `watch`, `addVirtualPasskey`) both scripts use.
+
 ## Tests
 
 `pnpm --filter @turnstile/web test` runs `test/**/*.test.ts` with the Node test runner (no bundler): venue
