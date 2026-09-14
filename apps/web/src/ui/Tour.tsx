@@ -255,7 +255,8 @@ function TourBar({ config, devIdentity }: { config: AppConfig | undefined; devId
 
   // The door's scanner owns the right edge of the gate view (its "Go in." lands there), so the card moves
   // to the free bottom-left corner on that route; phones keep the single top slot and fold instead.
-  const atDoor = location.pathname.startsWith("/gate/");
+  const { pathname } = useLocation();
+  const atDoor = pathname.startsWith("/gate/");
   const slot = atDoor ? "sm:bottom-6 sm:left-6 sm:right-auto sm:top-auto" : "sm:right-6";
   return (
     <aside

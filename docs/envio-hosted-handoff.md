@@ -10,7 +10,7 @@ click, what to check, and what to wire up afterwards so the bounty's "actually d
 |-------|-------|-------|
 | Chains + contracts | `packages/indexer/config.yaml` | Monad testnet `10143`, factory `0x5C6e…42B2`, start block `62312572` (generated from `deployments/10143.json` by `pnpm sync-config`; `TurnstileEvent` clones register dynamically from `EventCreated`) |
 | Schema | `schema.graphql` | `Event`, `Ticket`, `Fan`, `Activity` (+ `ActivityKind`: MINT · BIND · UNBIND · LIST · DELIST · RESALE · CHECKIN) |
-| Handlers | `src/handlers/turnstile.ts` | every event the contracts emit; `DoorKeyCleared` inside a resale updates the seat without a feed row |
+| Handlers | `src/handlers/turnstile.ts` | `EventCreated` plus every seat-lifecycle event (`TicketMinted`, `DoorKeyBound`, `DoorKeyCleared`, `Listed`, `Delisted`, `ListingFilled`, `CheckedIn`); the admin settings events `SalesEndUpdated` / `BaseURIUpdated` are deliberately not indexed. `DoorKeyCleared` inside a resale updates the seat without a feed row |
 | Tests | `test/handlers.test.ts` | 5 in-process tests (`createTestIndexer`), no Docker; run by `pnpm verify` |
 | Runtime | `package.json` | `envio ^3.5.0` (lock resolves 3.10.0), Node ≥ 24, pnpm 10 — all inside Envio Cloud's requirements (≥ 2.21.5, not 2.29.x, pnpm 10.32-compatible) |
 | Repo size | | ~0.6 MB packed; the 100 MB limit is not a concern |

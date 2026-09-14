@@ -42,7 +42,8 @@ Set through the deployment's environment (the *Publishing* pane, production scop
 
 - [ ] `curl -s https://<final>/api/health` → `ok: true`, `chainId: 10143`.
 - [ ] `curl -s https://<final>/api/config | jq '.environmentLabel, .explorer'` → `null`, the explorer URL.
-- [ ] `https://<final>/` loads the city; no STAGING chip; tab title is plain `Turnstile`.
+- [ ] `https://<final>/` loads the city; no STAGING chip; the tab title is `Turnstile — access that follows
+      you` with no `[staging]` prefix.
 - [ ] Metadata already answers on the new origin (nothing on-chain points here yet, that is fine):
       `curl -s https://<final>/api/events/1/tickets/1 | jq '.image, .external_url'` → both on `https://<final>`.
       Spoof check: `curl -s -H 'X-Forwarded-Host: evil.example' https://<final>/api/events/1/tickets/1 | jq .image`

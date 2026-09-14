@@ -61,7 +61,7 @@ handle it, pick one before recording:
 | 5 | 0:46–1:02 | 0:30–0:38 + B-roll | The ticket: 41×41 QR, slot countdown ring beside it, `TS3:` code under it. Cutaway: one 30-second rollover (time-lapse B-roll, the code visibly changes), then the rendered ticket image from the metadata. | "The code re-signs itself every thirty seconds with that door key. A screenshot dies with the slot; a forward can't sign the next one." |
 | 6 | 1:02–1:16 | 0:38–0:47 | `Walk up to the door` → gate view from the entrance; the bar moves to the bottom-left so the scanner owns the right edge. Code lands, *ready to admit*, **Admit**, the scanner turns green: `Go in. · Seat n · checked in 1.2 s`. Third hash. | "At the door, the gate recovers the signer from the code, checks it against the key bound on-chain, and submits the check-in from its own wallet." |
 | 7 | 1:16–1:32 | 0:47–0:56 | Finale: cut back to the room, camera drops behind the seat, the **followspot** finds it and the floor ring rolls out — nothing else in the beam. Summary card: time, taps, two prompts, three hashes. | "Seat lit from chain state. One identity, two prompts, three transactions — well under a minute." |
-| 8 | 1:32–1:48 | B-roll | Click the seat → its card returns → *View from here* (the stage from the seat). Then the theatre event: stacked tiers, mezzanine rail, `from 0.006 MON`. | "Tiers, resale rules and door keys all come from the same contract — the theatre is the same code with a different room." |
+| 8 | 1:32–1:48 | B-roll | `Explore the room` ends the tour; the lit seat stays selected and its card returns → *View from here* (the stage from the seat). Then the theatre event: stacked tiers, mezzanine rail, `from 0.006 MON`. | "Tiers, resale rules and door keys all come from the same contract — the theatre is the same code with a different room." |
 | 9 | 1:48–2:00 | still | Closing card: repo URL, factory address, `Built on Monad · Mera passkeys`. | "Turnstile. Access that follows you." |
 
 ## B-roll list
@@ -74,7 +74,7 @@ Record these separately on the same origin, same window size, before or after th
 | Mint tx page, 5 s | explorer link from the summary card (`EXPLORER_URL/tx/<hash>`) — the *from* is the relayer, the event is `TicketMinted` | 4 |
 | QR rollover, 35 s → 7 s | stay on `/t/<event>/<seat>`; start ~5 s before the ring empties; speed ×5 in the edit | 5 |
 | Ticket image, 4 s | `/api/events/1/tickets/<seat>/image.svg` in a fresh tab (the same SVG wallets and marketplaces show) | 5 |
-| View from here, 8 s | after the finale click the lit seat → *View from here*; hold on the wall | 8 |
+| View from here, 8 s | after the finale press `Explore the room` (not the seat — clicking a selected seat deselects it), then *View from here* on the returned card; hold on the wall | 8 |
 | Theatre flyover, 10 s | `/e/<theatre event>`; overview, then `View from here` on a mezzanine seat | 8 |
 | Closing card | `apps/web/shots/judge-final.png` or the README hero with text over it | 9 |
 
