@@ -64,6 +64,17 @@ interface DirectorState {
   endTransition(): void;
 }
 
+const TIERS: readonly Quality[] = ["high", "low", "min"];
+
+/**
+ * `?tier=high|low|min` pins the tier for the page's life: a recording or a review still must not step
+ * down mid-take because one frame stuttered. Read once, when the director is created; nothing else uses it.
+ */
+export function pinnedQuality(search: string): Quality | null {
+  const tier = new URLSearchParams(search).get("tier");
+  return TIERS.find((t) => t === tier) ?? null;
+}
+
 /** Starting tier: phones and small-core machines begin low; the PerformanceMonitor only steps it down. */
 export function initialQuality(): Quality {
   if (typeof window === "undefined") return "high";
@@ -71,6 +82,8 @@ export function initialQuality(): Quality {
   const cores = navigator.hardwareConcurrency ?? 8;
   return (coarse && window.innerWidth < 900) || cores <= 4 ? "low" : "high";
 }
+
+const PINNED = typeof window === "undefined" ? null : pinnedQuality(window.location.search);
 
 /**
  * House-lights level, 0.3 → 1. Down over 400 ms once a followspot is on (the beat before it snaps on),
@@ -176,7 +189,7 @@ export const useDirector = create<DirectorState>()((set, get) => {
     transition: null,
     revealStartedAt: performance.now(),
     hoveredBeacon: null,
-    quality: initialQuality(),
+    quality: PINNED ?? initialQuality(),
     ready: false,
     flat: false,
     litAt: null,
@@ -206,6 +219,7 @@ export const useDirector = create<DirectorState>()((set, get) => {
       if (get().hoveredBeacon !== address) set({ hoveredBeacon: address });
     },
     setQuality: (quality) => {
+      if (PINNED) return;
       if (get().quality !== quality) set({ quality });
     },
     markReady: () => {

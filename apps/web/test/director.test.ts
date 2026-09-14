@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { beforeEach, mock, test } from "node:test";
-import { DESCENT_MS, DIVE_MS, useDirector } from "../src/scene/director.ts";
+import { DESCENT_MS, DIVE_MS, pinnedQuality, useDirector } from "../src/scene/director.ts";
 
 const CLUB = "0xa83d5293e0904e17E5058fEF7EFC41dC4beD159D";
 
@@ -130,4 +130,11 @@ test("the door and the way back to the city are curtain cuts, and returning earl
   assert.equal(useDirector.getState().curtain, true);
   mock.timers.tick(520);
   assert.equal(useDirector.getState().chapter, "city");
+});
+
+test("?tier pins a known tier and ignores anything else", () => {
+  assert.equal(pinnedQuality("?tier=high"), "high");
+  assert.equal(pinnedQuality("?dev=1&tier=min"), "min");
+  assert.equal(pinnedQuality("?tier=ultra"), null);
+  assert.equal(pinnedQuality(""), null);
 });
