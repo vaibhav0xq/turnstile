@@ -4,6 +4,7 @@ import * as THREE from "three";
 import { mulberry } from "../lib/random";
 import {
   HALF_BLOCKS,
+  PAVILION,
   PITCH,
   PLAZA_LAMP_X,
   PLAZA_LAMP_Z,
@@ -49,6 +50,8 @@ const groundFragment = /* glsl */ `
   uniform int uPlazaCount;
   uniform float uPlazaLampX;
   uniform vec4 uPlazaLampZ;
+  // the pavilion's half width and half depth: its glazed front is at local z = uPavilion.y
+  uniform vec2 uPavilion;
   varying vec3 vWorld;
   float gridDist(float v, float pitch) { return abs(fract(v / pitch + 0.5) - 0.5) * pitch; }
   // a lamp pool every 12 m along a street, staggered on the two sides
@@ -60,8 +63,9 @@ const groundFragment = /* glsl */ `
             + exp(-b * b / 4.5) * exp(-pow(across + side, 2.0) / 3.5);
     return p * step(abs(across), uStreetHalf + 2.0);
   }
-  // the pools under a plaza's eight lamp posts, in its local frame
-  float plazaPools(vec2 p) {
+  // the light on a plaza's paving, in its local frame: the pools under its eight lamp posts, the festoon
+  // strings between them, and the lobby glass and marquee spilling over the forecourt in front of the doors
+  float plazaLight(vec2 p) {
     float sum = 0.0;
     for (int i = 0; i < PLAZAS; i++) {
       if (i >= uPlazaCount) break;
@@ -72,6 +76,11 @@ const groundFragment = /* glsl */ `
       vec4 along = local.y - uPlazaLampZ;
       vec4 e = exp(-along * along / 5.0);
       sum += exp(-across * across / 5.0) * (e.x + e.y + e.z + e.w);
+      float span = step(uPlazaLampZ.x, local.y) * step(local.y, uPlazaLampZ.w);
+      sum += 0.16 * exp(-across * across / 1.2) * span;
+      float front = local.y - uPavilion.y;
+      float spill = exp(-max(front, 0.0) / 5.0) * step(0.0, front) * (1.0 - smoothstep(uPavilion.x, uPavilion.x + 4.0, abs(local.x)));
+      sum += 0.55 * spill;
     }
     return sum;
   }
@@ -118,7 +127,7 @@ const groundFragment = /* glsl */ `
     vec3 paved = uPaving * (1.0 - 0.35 * joint * (1.0 - smoothstep(0.02, 0.15, aa)));
     float plazaKerb = 1.0 - smoothstep(0.3, 0.3 + paa, abs(pd));
     paved = mix(paved, uKerb, plazaKerb * 0.7);
-    paved += uLamp * plazaPools(p) * 0.3;
+    paved += uLamp * plazaLight(p) * 0.3;
     col = mix(col, paved, plaza);
     col = mix(uBlock * 0.7, col, town);
     gl_FragColor = vec4(col, 1.0);
@@ -241,7 +250,7 @@ export function Ground({ detail, plazas }: GroundProps) {
       uKerb: { value: new THREE.Color("#1c2130") },
       uLamp: { value: new THREE.Color(CITY_NIGHT.street) },
       uLane: { value: new THREE.Color("#8a7a5a") },
-      uPaving: { value: new THREE.Color("#171a25") },
+      uPaving: { value: new THREE.Color("#1c1e28") },
       uPitch: { value: PITCH },
       uStreetHalf: { value: STREET / 2 },
       uExtent: { value: TOWN_EXTENT + STREET / 2 },
@@ -263,6 +272,7 @@ export function Ground({ detail, plazas }: GroundProps) {
       },
       uPlazaLampX: { value: PLAZA_LAMP_X },
       uPlazaLampZ: { value: new THREE.Vector4(...PLAZA_LAMP_Z) },
+      uPavilion: { value: new THREE.Vector2(PAVILION.w / 2, PAVILION.d / 2) },
       uPlazaCount: { value: Math.min(plazas.length, MAX_PLAZAS) },
     },
     vertexShader: groundVertex,

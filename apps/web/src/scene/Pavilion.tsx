@@ -19,6 +19,8 @@ import { codePanelTexture, lobbyTexture, marqueeTexture } from "./signage";
  */
 
 const body = new THREE.MeshStandardMaterial({ color: "#2b2f3a", roughness: 0.9, metalness: 0.05 });
+// the roof deck: a pale membrane, so from the air the pavilion is a roof with plant on it, not a hole
+const deck = new THREE.MeshStandardMaterial({ color: "#5a5d66", roughness: 0.95, metalness: 0.0 });
 const trim = new THREE.MeshStandardMaterial({ color: "#1a1c24", roughness: 0.7, metalness: 0.3 });
 const metal = new THREE.MeshStandardMaterial({ color: "#1b1e26", roughness: 0.35, metalness: 0.7 });
 const amber = new THREE.MeshBasicMaterial({ color: "#ffb457", toneMapped: false });
@@ -146,7 +148,8 @@ export function Pavilion({ event, slot }: { event: EventInfo; slot: readonly [nu
   return (
     <group rotation-y={yaw}>
       {/* the pavilion: a dark mass with a glazed ground floor, a canopy and the marquee over the doors */}
-      <mesh geometry={unit} material={body} position={[0, H / 2 + 0.3, 0]} scale={[W, H - 0.3, D]} />
+      <mesh geometry={unit} material={body} position={[0, H / 2 + 0.15, 0]} scale={[W, H - 0.3, D]} />
+      <mesh geometry={unit} material={deck} position={[0, H - 0.02, 0]} scale={[W - 0.5, 0.1, D - 0.5]} />
       <mesh geometry={unit} material={trim} position={[0, 0.15, 0]} scale={[W + 0.4, 0.3, D + 0.4]} />
       <mesh geometry={plane} material={lobby} position={[0, 1.95, FACE + 0.02]} scale={[W - 2, 3.1, 1]} />
       <mesh geometry={unit} material={trim} position={[0, 3.62, FACE + 1.1]} scale={[W - 4, 0.2, 2.4]} />

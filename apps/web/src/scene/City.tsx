@@ -537,17 +537,21 @@ function Beacon({
       </mesh>
       <mesh geometry={haloGeometry} material={halo} frustumCulled={false} />
       <mesh ref={ring} rotation={[-Math.PI / 2, 0, 0]} position={[0, PAVILION.h + 0.06, 0]}>
-        <ringGeometry args={[3.6, 4.2, 64]} />
+        <ringGeometry args={[3.6, 4.0, 64]} />
         <meshBasicMaterial
           color="#ffb457"
           toneMapped={false}
           transparent
-          opacity={0.9}
+          opacity={0.55}
           side={THREE.DoubleSide}
         />
       </mesh>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]} material={pool}>
         <circleGeometry args={[20, 48]} />
+      </mesh>
+      {/* the beam lights its own roof: a smaller pool at its foot, inside the parapet */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, PAVILION.h + 0.05, 0]} material={pool}>
+        <circleGeometry args={[5.5, 40]} />
       </mesh>
       <points geometry={plaza} material={points} frustumCulled={false} />
       <primitive object={leader} />
