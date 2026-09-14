@@ -65,9 +65,12 @@ pnpm smoke                              # optional: buy → bind → resale roun
 ```
 
 **Judge mode** — the button on the landing page (or `/?tour=auto`) walks the whole thing in about two
-minutes: city → seat → checkout → ticket → door → your seat lit green, with the mint / bind / admit
-transaction hashes on the last card. The tour only advances when the chain says the seat is checked in;
-it presses the buttons for you except the one that opens the passkey prompt, which is yours.
+minutes: city → seat → checkout → ticket → door → your seat lit green under a followspot, with the mint /
+bind / admit transaction hashes on the last card. The tour only advances when the chain says the seat is
+checked in; it presses the buttons for you except the one that opens the passkey prompt, which is yours.
+`pnpm --filter @turnstile/web run judge -- --base <origin>` runs that path headless (a virtual platform
+authenticator answers the prompts; `--seed x` uses a dev identity on dev builds) and prints the per-step
+timings; frames land in `apps/web/shots/`. The demo video follows it: `docs/demo-video-storyboard.md`.
 
 On a small machine (≤ 2 GB) build the web app with `pnpm --filter @turnstile/web build:lite` and let the
 relayer serve it (`STATIC_DIR=../web/dist-lite`); `apps/web/README.md` has the details and the headless
@@ -86,7 +89,12 @@ the web app — read it, do not copy addresses around. Runbook and gas figures: 
 **Staging** (web + relayer on Monad testnet, not the final domain): <https://turnstile-michellecox8789.replit.app>
 — `/api/health` for the relayer, `pnpm smoke -- --relayer <origin> --rpc https://testnet-rpc.monad.xyz` runs
 the full buy → bind → resale → check-in path against it. Both seed events' `baseURI` point at this origin
-(`<origin>/api/events/<id>/tickets/`); `script/SetBaseURI.s.sol` re-points them when the host moves.
+(`<origin>/api/events/<id>/tickets/`); `script/SetBaseURI.s.sol` re-points them when the host moves. The
+relayer labels a non-final origin with `ENVIRONMENT_LABEL=staging` (an amber chip in the header and a tab-title
+prefix; any `*.replit.app` host is labelled even without it) — passkeys created there are bound to that origin
+and will not carry over to the final domain. Token metadata carries an `image` (`…/tickets/<id>/image.svg`,
+a rendered card of the seat in its tier, amber until check-in, green after) and an `external_url`; both are
+built from `PUBLIC_ORIGIN` when set, else from the request's forwarded host.
 
 The spike is standalone: `cd spike && npm ci && npm run build && npm run verify` (headless Chromium, 17 checks).
 
@@ -111,8 +119,9 @@ event from a passkey (tiers, venue, resale rules; the deployment's gate key is g
 watch sold / inside; the new room lights up in the city at once.
 Envio indexer written and tested in-process (events, seats, fans, live feed; the factory address is synced
 from `deployments/`); it goes live on Envio's hosted service once the testnet factory exists.
-Judge mode (guided two-minute run, finale on chain truth) and SPEC v1.3's compact `TS2:` entry code (the
-ticket QR drops from 57 to 49 modules; `TS1|` still decodes). Venue tiers are now derived from the seat rows.
+Judge mode (guided two-minute run, finale on chain truth) and SPEC v1.3/v1.4's denser entry codes (`TS2:`
+QR-alphanumeric, then `TS3:` with an RFC 9285 base45 blob: the ticket QR drops from 57 to 49 to 41 modules;
+`TS1|` and `TS2:` still decode). Venue tiers are now derived from the seat rows.
 Deployed to Monad testnet (`deployments/10143.json`, verified on MonadVision) with the two seed events; sales
 stay open until 13 Nov 2026. Web + relayer on a staging origin (above) with passports in Postgres; smoke,
 passport sync and token metadata verified there. Next: final domain, indexer → Envio hosted service, demo video.

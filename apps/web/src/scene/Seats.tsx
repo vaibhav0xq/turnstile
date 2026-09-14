@@ -7,6 +7,7 @@ import { seatAnchor } from "./anchor";
 import { useDirector } from "./director";
 import { geometryFor } from "./geometry";
 import { makeGlowMaterial } from "./materials";
+import { SeatBeam } from "./SeatBeam";
 
 const COLORS = {
   cyan: new THREE.Color("#7ee7ff"),
@@ -28,6 +29,11 @@ export function Seats({ layout, seatMap, interactive }: SeatsProps) {
   const selected = useDirector((s) => s.selectedSeat);
   const cardSeat = selected ?? hovered;
   const spec = cardSeat != null ? layout.byId.get(cardSeat) : undefined;
+  // A selected seat whose holder is inside gets the followspot — the chain state the tour ends on.
+  const lit =
+    selected != null && seatStatus(seatMap?.get(selected)) === "checkedIn"
+      ? layout.byId.get(selected)
+      : undefined;
   return (
     <group>
       {layout.sections.map((section) => (
@@ -41,6 +47,14 @@ export function Seats({ layout, seatMap, interactive }: SeatsProps) {
       ))}
       {spec ? (
         <CardAnchor x={spec.x} y={spec.y + (section(layout, spec).shape === "spot" ? 0.4 : 1.1)} z={spec.z} />
+      ) : null}
+      {lit ? (
+        <SeatBeam
+          key={lit.id}
+          seat={lit}
+          color="#59f2a1"
+          footprint={section(layout, lit).shape === "booth" ? 0.7 : 0.34}
+        />
       ) : null}
     </group>
   );

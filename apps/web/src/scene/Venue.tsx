@@ -243,6 +243,19 @@ function Mezzanine({ layout }: { layout: VenueLayout }) {
           opacity={0.8}
         />
       </mesh>
+      {/* Rail posts at both ends, so the lip and the rail finish on something instead of stopping mid-air. */}
+      {[start, start + theta].map((angle) => (
+        <group key={angle} position={[(inner + 0.05) * Math.sin(angle), 0, (inner + 0.05) * Math.cos(angle)]}>
+          <mesh position={[0, 3.1, 0]}>
+            <cylinderGeometry args={[0.05, 0.05, 1.0, 12]} />
+            <meshStandardMaterial color="#2a2d3a" roughness={0.4} metalness={0.8} />
+          </mesh>
+          <mesh position={[0, 3.62, 0]}>
+            <sphereGeometry args={[0.09, 12, 12]} />
+            <meshBasicMaterial color="#ff7a9e" toneMapped={false} />
+          </mesh>
+        </group>
+      ))}
     </group>
   );
 }

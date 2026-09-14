@@ -27,6 +27,23 @@ export function Decks({ layout, lips }: { layout: VenueLayout; lips: boolean }) 
               <meshStandardMaterial color={tone} roughness={0.65} metalness={0.25} side={THREE.DoubleSide} />
             </mesh>
           ) : null}
+          {/* Radial end walls close the hollow under the floor, so the tier ends read as built, not as a
+              wedge cut into the ring. A box along local x, turned by θ − π/2, lies along the radius at θ. */}
+          {a.riser > 0.04
+            ? [a.thetaStart, a.thetaStart + a.thetaLength].map((theta) => {
+                const rm = (a.inner + a.outer) / 2;
+                return (
+                  <mesh
+                    key={theta}
+                    position={[rm * Math.sin(theta), a.y - 0.02 - a.riser / 2, rm * Math.cos(theta)]}
+                    rotation={[0, theta - Math.PI / 2, 0]}
+                  >
+                    <boxGeometry args={[a.outer - a.inner, a.riser, 0.04]} />
+                    <meshStandardMaterial color={tone} roughness={0.65} metalness={0.25} />
+                  </mesh>
+                );
+              })
+            : null}
           {lips && a.lip ? (
             <mesh position={[0, a.y + 0.06, 0]}>
               <cylinderGeometry

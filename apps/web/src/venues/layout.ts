@@ -404,13 +404,14 @@ export function seatFocus(layout: VenueLayout, seat: SeatSpec): Waypoint {
   const dx = Math.sin(seat.rotY);
   const dz = Math.cos(seat.rotY);
   const spot = layout.kind === "club" && seat.tier === 0;
-  const back = spot ? 4.5 : 5;
-  const up = spot ? 2.4 : 2.8;
-  // Aim past the seat so it sits in the lower third with the stage in the middle of the frame.
-  const ahead = spot ? 3 : 3.5;
+  const back = spot ? 6.5 : 7;
+  const up = spot ? 3.2 : 3.6;
+  // Aim past and a little above the seat: it sits in the lower third, the followspot has room to rise
+  // through the frame, and the stage stays in the middle.
+  const ahead = spot ? 2.5 : 3;
   return {
     position: { x: seat.x - dx * back, y: seat.y + up, z: seat.z - dz * back },
-    target: { x: seat.x + dx * ahead, y: seat.y + (spot ? 0.3 : 0.6), z: seat.z + dz * ahead },
+    target: { x: seat.x + dx * ahead, y: seat.y + (spot ? 1.1 : 1.4), z: seat.z + dz * ahead },
   };
 }
 
