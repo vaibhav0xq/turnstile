@@ -67,7 +67,9 @@ canvas {
 .scrim-bottom,
 .scrim-left,
 .scrim-top {
-  position: absolute;
+  /* Fixed, not absolute: an overlay that scrolls on a phone (the landing with many nights) must not carry
+     its scrims away with the content. */
+  position: fixed;
   inset: 0;
   pointer-events: none;
 }

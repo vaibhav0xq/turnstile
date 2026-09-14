@@ -10,6 +10,7 @@ import { type DoorKeySession, toEventRef, useIdentity } from "../identity/store"
 import { formatDate, formatMon, shortAddress } from "../lib/format";
 import { useDirector } from "../scene/director";
 import { seatLabel, type VenueLayout } from "../venues/layout";
+import { Provenance } from "./live/Provenance";
 import { Button, Dot, Kicker, Panel, Spinner } from "./primitives";
 import { ResaleControls, resaleOpen } from "./Resale";
 
@@ -252,6 +253,9 @@ export function TicketPanel({
           </span>
         ) : null}
       </div>
+      {state ? (
+        <Provenance config={config} event={event} tokenId={tokenId} viewer={fan?.address ?? null} />
+      ) : null}
     </Panel>
   );
 }

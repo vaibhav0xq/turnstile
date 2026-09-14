@@ -6,6 +6,7 @@ import { fetchSeatMap, mySeats, seatMapQueryKey } from "../../chain/seats";
 import { useIdentity } from "../../identity/store";
 import { formatCountdown, formatMon, shortAddress } from "../../lib/format";
 import { useDirector } from "../../scene/director";
+import { PassportHistory } from "../../ui/live/PassportHistory";
 import { Button, Dot, Kicker, Panel, Spinner } from "../../ui/primitives";
 import { buildLayout, seatLabel } from "../../venues/layout";
 import { usePassport } from "../passport";
@@ -273,6 +274,8 @@ export function Me({ config }: { config: AppConfig | undefined }) {
             </div>
           ) : null}
         </div>
+
+        <PassportHistory config={config} address={address ?? null} />
       </Panel>
     </div>
   );

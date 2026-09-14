@@ -15,8 +15,10 @@ click, what to check, and what to wire up afterwards so the bounty's "actually d
 | Runtime | `package.json` | `envio ^3.5.0` (lock resolves 3.10.0), Node ≥ 24, pnpm 10 — all inside Envio Cloud's requirements (≥ 2.21.5, not 2.29.x, pnpm 10.32-compatible) |
 | Repo size | | ~0.6 MB packed; the 100 MB limit is not a concern |
 
-Nothing consumes the GraphQL endpoint yet. The root `.env.example` reserves `VITE_ENVIO_GRAPHQL_URL`; the web
-and the relayer read chain state over RPC today.
+The web app's Live layer (`apps/web/src/live/`, 14 Sep 2026) consumes the GraphQL endpoint when
+`VITE_ENVIO_GRAPHQL_URL` is set: organiser live board, city pulse, attendance record, seat provenance, each
+with the freshness chip. Until the hosted deploy exists the variable stays unset and those surfaces say
+"unavailable"; the relayer and the seat map still read chain state over RPC.
 
 The current generated chains block contains Monad testnet only. Once a Monad mainnet deployment exists,
 `sync-config` can add chain `143` beside `10143`; chain-qualified entity ids let both networks share one
@@ -109,7 +111,10 @@ Mechanics:
 
 - Env: `VITE_ENVIO_GRAPHQL_URL=https://indexer.dev.hyperindex.xyz/<id>/v1/graphql` in the production
   environment (build-time for Vite, so it needs a republish), plus the root `.env` for local dev. When unset
-  the app keeps today's behaviour — the feed panels simply do not render; no silent fake data.
+  the Live surfaces render an explicit "unavailable" line (the landing's city pulse simply stays hidden);
+  no silent fake data. Done 14 Sep: `apps/web/src/live/` (client, queries, hooks, pure model + tests) and
+  `apps/web/src/ui/live/` (LiveBoard, CityPulse, PassportHistory, Provenance, LiveChip); the queries below
+  are the ones the client sends, `tokenId` travels as a string for the `numeric` column.
 - The browser POSTs straight to Hasura (`{"query": "..."}`, no auth on the dev plan). If CORS turns out to
   be blocked from the origin, proxy through the relayer (`/api/feed/<event>` → indexer) instead; the relayer
   already has an outbound HTTP path.
@@ -251,7 +256,7 @@ query CityPulse($chainId: Int!, $addresses: [String!]!) {
 #### Ticket provenance
 
 ```graphql
-query TicketProvenance($chainId: Int!, $eventAddress: String!, $tokenId: bigint!) {
+query TicketProvenance($chainId: Int!, $eventAddress: String!, $tokenId: numeric!) {
   Activity(
     where: {
       chainId: { _eq: $chainId }

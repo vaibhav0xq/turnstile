@@ -8,6 +8,7 @@ import { type AppConfig, type EventInfo, explorerTx } from "../../chain/config";
 import { useIdentity } from "../../identity/store";
 import { formatDate, shortAddress } from "../../lib/format";
 import { useDirector } from "../../scene/director";
+import { LiveBoard } from "../../ui/live/LiveBoard";
 import { Button, Kicker, Panel, Spinner } from "../../ui/primitives";
 import {
   createEventGas,
@@ -88,8 +89,8 @@ export function Organise({ config }: { config: AppConfig | undefined }) {
             <div className="mt-5" data-testid="organiser-events">
               <Kicker>Your events</Kicker>
               <ul className="mt-2 flex flex-col gap-2">
-                {mine.map((event) => (
-                  <OrganiserEvent key={event.address} event={event} />
+                {mine.map((event, i) => (
+                  <OrganiserEvent key={event.address} config={config} event={event} defaultOpen={i === 0} />
                 ))}
               </ul>
             </div>
@@ -313,35 +314,60 @@ export function Organise({ config }: { config: AppConfig | undefined }) {
   );
 }
 
-function OrganiserEvent({ event }: { event: EventInfo }) {
+function OrganiserEvent({
+  config,
+  event,
+  defaultOpen,
+}: {
+  config: AppConfig | undefined;
+  event: EventInfo;
+  defaultOpen: boolean;
+}) {
   const [copied, setCopied] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const doorUrl = `${window.location.origin}/gate/${event.address}`;
   return (
-    <li className="flex items-center justify-between gap-3 rounded-xl border border-line px-3 py-2">
-      <div className="min-w-0">
-        <div className="truncate text-sm">{event.name}</div>
-        <div className="mono text-[11px] text-muted">
-          {formatDate(event.startsAt)} · {event.sold}/{event.capacity} sold ·{" "}
-          <span className="text-green">{event.checkedIn} inside</span>
+    <li className="rounded-xl border border-line">
+      <div className="flex flex-col gap-2 px-3 py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+        <div className="min-w-0">
+          <div className="truncate text-sm">{event.name}</div>
+          <div className="mono text-[11px] text-muted">
+            {formatDate(event.startsAt)} · {event.sold}/{event.capacity} sold ·{" "}
+            <span className="text-green">{event.checkedIn} inside</span>
+          </div>
+        </div>
+        <div className="flex shrink-0 flex-wrap gap-1.5">
+          <Link to={`/e/${event.address}`} className="chip mono hover:bg-ink-2">
+            Room
+          </Link>
+          <button
+            type="button"
+            className="chip mono hover:bg-ink-2"
+            title={doorUrl}
+            onClick={() => {
+              void navigator.clipboard?.writeText(doorUrl);
+              setCopied(true);
+              setTimeout(() => setCopied(false), 1500);
+            }}
+          >
+            {copied ? "Copied" : "Door link"}
+          </button>
+          <button
+            type="button"
+            className={`chip mono hover:bg-ink-2 ${open ? "border-amber/50 text-amber" : ""}`}
+            onClick={() => setOpen((v) => !v)}
+            aria-expanded={open}
+            data-testid="organiser-live-toggle"
+          >
+            Live
+          </button>
         </div>
       </div>
-      <div className="flex shrink-0 gap-1.5">
-        <Link to={`/e/${event.address}`} className="chip mono hover:bg-ink-2">
-          Room
-        </Link>
-        <button
-          type="button"
-          className="chip mono hover:bg-ink-2"
-          title={doorUrl}
-          onClick={() => {
-            void navigator.clipboard?.writeText(doorUrl);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 1500);
-          }}
-        >
-          {copied ? "Copied" : "Door link"}
-        </button>
-      </div>
+      {open ? (
+        <div className="border-line border-t px-3 py-3">
+          {config ? <LiveBoard config={config} event={event} /> : <Spinner />}
+        </div>
+      ) : null}
     </li>
   );
 }

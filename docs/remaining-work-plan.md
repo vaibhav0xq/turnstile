@@ -306,7 +306,7 @@ prompt counts, timings and the JSON from the device page.
 | # | Work | Effort | Target |
 |---|---|---|---|
 | 1 | Domain + hosting: buy `turnstile.show`, link apex + `www`, Alchemy keys, `VITE_RP_ID`, Reserved VM, migration §8 steps 1–4 (not `baseURI` yet). Code side done 14 Sep: `www` → apex redirect middleware (`REDIRECT_HOSTS`), viem `fallback` transports in relayer and browser (`RPC_FALLBACK_URLS`, `PUBLIC_RPC_FALLBACK_URLS`), `/api/health` `rpc` block and `/api/config.rpcProvider` | 1.5 days + DNS wait | 16 Sep |
-| 2 | Envio: deploy indexer, schema additions (`Stats`, `EventMinute`, `Handover`), client + four surfaces, freshness chip | 3 days | 20 Sep |
+| 2 | Envio: deploy indexer, schema additions (`Stats`, `EventMinute`, `Handover`), client + four surfaces, freshness chip. Code side done 14 Sep: schema additions, `apps/web/src/live/` client + hooks, organiser live board, city pulse, attendance record, seat provenance, freshness chip against `/api/health`, `scripts/mock-indexer.mjs` for UI work. Left: the hosted deploy and `VITE_ENVIO_GRAPHQL_URL` in production | 3 days | 20 Sep |
 | 3 | App surface fixes (§5) — done 14 Sep: judge-only stopwatch, mobile header, scrims, 404 / loading / unknown-seat states, non-owner and unsold ticket copy, checkout failure copy, gate operator token, tour target (newest free event + `?event=`) | 2 days | 22 Sep |
 | 3b | Portal gate: submission fields open — read requirements, enter repo, re-confirm track + bounties, adjust this plan | 0.5 day | 22–23 Sep |
 | 4 | 3D fixes on the judge path (§4.1, 4.4, 4.5, 4.6, 4.8): loader + fallback, theatre reframe, followspot wash, finale beat, mobile tier | 3 days | 25 Sep |

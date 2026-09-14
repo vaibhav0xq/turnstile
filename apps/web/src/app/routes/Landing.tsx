@@ -4,6 +4,7 @@ import type { AppConfig, EventInfo } from "../../chain/config";
 import { tierPrice } from "../../chain/config";
 import { formatDate, formatMon } from "../../lib/format";
 import { useDirector } from "../../scene/director";
+import { CityPulse } from "../../ui/live/CityPulse";
 import { Kicker } from "../../ui/primitives";
 import { useTour } from "../tour";
 import { pickTourEvent } from "../tour-target";
@@ -24,10 +25,12 @@ export function Landing({ config }: { config: AppConfig | undefined }) {
   // The tour takes `?event=` when given, else the newest night with a free door (see tour-target.ts).
   const tourEvent = pickTourEvent(events, targetEvent);
   return (
-    <div className="overlay flex flex-col justify-end">
+    // `mt-auto` rather than `justify-end`: a phone with several nights on the bill overflows the viewport,
+    // and end-aligned flex content would clip the headline off the top with no way to scroll to it.
+    <div className="overlay scrollbar-none flex flex-col overflow-y-auto overscroll-contain">
       <div className="scrim-bottom" aria-hidden />
       <div className="scrim-left" aria-hidden />
-      <div className="relative flex flex-col gap-8 p-5 pb-8 sm:flex-row sm:items-end sm:justify-between sm:p-8">
+      <div className="relative mt-auto flex flex-col gap-8 p-5 pb-8 pt-20 sm:flex-row sm:items-end sm:justify-between sm:p-8 sm:pt-24">
         <div className="max-w-xl">
           <Kicker className="fade-up">Identity-bound tickets · Monad</Kicker>
           <h1 className="display fade-up mt-3 text-[13vw] leading-[0.9] sm:text-7xl md:text-8xl">
@@ -71,6 +74,7 @@ export function Landing({ config }: { config: AppConfig | undefined }) {
               onEnter={() => navigate(`/e/${event.address}`)}
             />
           ))}
+          <CityPulse config={config} />
           <Link
             to="/organise"
             className="mono mt-1 self-end text-[11px] uppercase tracking-[0.16em] text-muted hover:text-paper"
