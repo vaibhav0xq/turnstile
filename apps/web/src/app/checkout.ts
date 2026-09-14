@@ -74,6 +74,8 @@ export function explain(error: unknown): { code: string; message: string } {
     const e = error as { code: string; message?: string };
     return { code: e.code, message: friendly(e.code, e.message ?? e.code) };
   }
+  // `fetch` rejects with a bare TypeError when the relayer is unreachable.
+  if (error instanceof TypeError) return { code: "NETWORK", message: friendly("NETWORK", error.message) };
   const message = error instanceof Error ? error.message : String(error);
   return { code: "UNKNOWN", message: friendly("UNKNOWN", message) };
 }
@@ -116,6 +118,23 @@ function friendly(code: string, fallback: string): string {
       return "The tiers were rejected on-chain: every tier needs seats and they must not overlap.";
     case "INSUFFICIENT_FUNDS_CREATE":
       return "Your account needs a little MON to publish an event (the testnet drip is off here).";
+    // Relayer / network failures. Nothing is charged until the transaction lands, so "try again" is safe.
+    case "NETWORK":
+    case "TypeError":
+    case "HttpRequestError":
+      return "Couldn't reach the relayer. Check your connection and try again — nothing was charged.";
+    case "RATE_LIMITED":
+      return "The relayer is busy right now. Wait a few seconds and try again.";
+    case "INTERNAL_ERROR":
+      return "The relayer hit an error. Try again in a moment; if it keeps happening the chain may be congested.";
+    case "WaitForTransactionReceiptTimeoutError":
+    case "TimeoutError":
+      return "The chain is slow to confirm. Your seat may still land — give it a moment before retrying.";
+    case "BAD_FORWARD_REQUEST":
+    case "BAD_DEADLINE":
+      return "The signed request went stale before it was relayed. Try again.";
+    case "UNKNOWN_EVENT":
+      return "The relayer doesn't know this event yet. Refresh in a moment.";
     default:
       return fallback;
   }

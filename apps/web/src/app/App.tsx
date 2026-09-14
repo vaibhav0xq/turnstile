@@ -17,6 +17,7 @@ import { Event } from "./routes/Event";
 import { Gate } from "./routes/Gate";
 import { Landing } from "./routes/Landing";
 import { Me } from "./routes/Me";
+import { NotFound } from "./routes/NotFound";
 import { Organise } from "./routes/Organise";
 import { Ticket } from "./routes/Ticket";
 import { useTour } from "./tour";
@@ -41,6 +42,8 @@ function Frame() {
   const chapter = useDirector((s) => s.chapter);
   const eventAddress = useDirector((s) => s.eventAddress);
   const ensureFan = useIdentity((s) => s.ensureFan);
+  // The taps · seconds readout is a judge-mode instrument: shown once the tour has been started this session.
+  const judging = useTour((s) => s.startedAt !== null);
   const event = findEvent(config.data, eventAddress ?? undefined);
   const seats = useSeatMap(config.data, event, chapter !== "city");
   const layout = useMemo(() => (event ? buildLayout(event) : undefined), [event]);
@@ -81,8 +84,9 @@ function Frame() {
         <Route path="/gate/:address" element={<Gate config={config.data} seatMap={seats.data} />} />
         <Route path="/me" element={<Me config={config.data} />} />
         <Route path="/organise" element={<Organise config={config.data} />} />
+        <Route path="*" element={<NotFound />} />
       </Routes>
-      <Readout config={config.data} />
+      {judging ? <Readout config={config.data} /> : null}
       <Tour config={config.data} seatMap={seats.data} />
       <ErrorToast />
       <ConnectionNotice error={config.error} />

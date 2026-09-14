@@ -60,15 +60,35 @@ canvas {
 
 /* Editorial scrims so copy stays legible over a bright scene; they never intercept the pointer, so the
    children rule below excludes them (both selectors have the same specificity; this one comes last). */
-.overlay > :not(.scrim-bottom, .scrim-left) {
+.overlay > :not(.scrim-bottom, .scrim-left, .scrim-top) {
   pointer-events: auto;
 }
 
 .scrim-bottom,
-.scrim-left {
+.scrim-left,
+.scrim-top {
   position: absolute;
   inset: 0;
   pointer-events: none;
+}
+
+/* Behind the route headers (event name, tier chips, gate stats): the LED wall and the followspot sit right
+   there on a phone. */
+.scrim-top {
+  background: radial-gradient(70% 46% at 22% 12%, rgba(7, 8, 10, 0.72) 0%, rgba(7, 8, 10, 0) 100%);
+}
+
+@media (max-width: 640px) {
+  /* Portrait phones: the wall fills the top third, so the header needs a straight fade, not a pool. */
+  .scrim-top {
+    background: linear-gradient(
+      to bottom,
+      rgba(7, 8, 10, 0.9) 0%,
+      rgba(7, 8, 10, 0.72) 26%,
+      rgba(7, 8, 10, 0.3) 38%,
+      rgba(7, 8, 10, 0) 48%
+    );
+  }
 }
 
 .scrim-bottom {
@@ -309,6 +329,14 @@ input:focus-visible {
   border-radius: 22px;
   overflow: hidden;
   background: #000;
+}
+
+@media (max-width: 640px) {
+  /* A square frame plus the manual-entry row overflows a phone viewport; the QR is small anyway. */
+  .scan-frame {
+    aspect-ratio: 4 / 3;
+    max-height: 36dvh;
+  }
 }
 
 .scan-frame video {

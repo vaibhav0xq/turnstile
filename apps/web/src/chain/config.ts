@@ -30,6 +30,10 @@ export interface EventInfo {
 export interface AppConfig {
   chainId: number;
   rpcUrl: string;
+  /** Read-only fallbacks the browser tries when `rpcUrl` errors (relayer `PUBLIC_RPC_FALLBACK_URLS`). */
+  rpcFallbackUrls: string[];
+  /** Provider label derived from `rpcUrl`'s hostname (`alchemy`, `monad`, `local`), for the "under the hood" copy. */
+  rpcProvider: string;
   explorer: string | null;
   /** Deployment label from the relayer (`ENVIRONMENT_LABEL`, e.g. `staging`); null on the real thing. */
   environmentLabel: string | null;
@@ -38,6 +42,8 @@ export interface AppConfig {
   implementation: Address;
   relayer: Address;
   gate: Address;
+  /** Check-in requires the operator token (relayer `GATE_TOKEN`); the door asks for it before scanning. */
+  gateProtected: boolean;
   gas: { buy: number; buyListing: number; bindDoorKey: number; list: number; delist: number };
   drip: { enabled: boolean; amountWei: string };
   events: EventInfo[];

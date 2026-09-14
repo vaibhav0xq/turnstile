@@ -6,6 +6,7 @@ import { formatDate, formatMon } from "../../lib/format";
 import { useDirector } from "../../scene/director";
 import { Kicker } from "../../ui/primitives";
 import { useTour } from "../tour";
+import { pickTourEvent } from "../tour-target";
 
 export function Landing({ config }: { config: AppConfig | undefined }) {
   const showCity = useDirector((s) => s.showCity);
@@ -13,14 +14,15 @@ export function Landing({ config }: { config: AppConfig | undefined }) {
   const hovered = useDirector((s) => s.hoveredBeacon);
   const startTour = useTour((s) => s.start);
   const tourActive = useTour((s) => s.active);
+  const targetEvent = useTour((s) => s.targetEvent);
   const navigate = useNavigate();
   useEffect(() => {
     showCity();
   }, [showCity]);
 
   const events = config?.events ?? [];
-  // The tour takes the cheapest door in town: a free tier if any event has one.
-  const tourEvent = events.find((e) => e.tiers.some((t) => tierPrice(t) === 0n)) ?? events[0];
+  // The tour takes `?event=` when given, else the newest night with a free door (see tour-target.ts).
+  const tourEvent = pickTourEvent(events, targetEvent);
   return (
     <div className="overlay flex flex-col justify-end">
       <div className="scrim-bottom" aria-hidden />

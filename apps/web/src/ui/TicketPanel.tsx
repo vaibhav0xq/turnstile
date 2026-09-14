@@ -4,10 +4,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router";
 import { usePassport } from "../app/passport";
 import { noteKey } from "../app/passport-model";
-import { type AppConfig, type EventInfo, tierForSeat } from "../chain/config";
+import { type AppConfig, type EventInfo, tierForSeat, tierPrice } from "../chain/config";
 import type { SeatState } from "../chain/seats";
 import { type DoorKeySession, toEventRef, useIdentity } from "../identity/store";
-import { formatDate, shortAddress } from "../lib/format";
+import { formatDate, formatMon, shortAddress } from "../lib/format";
 import { useDirector } from "../scene/director";
 import { seatLabel, type VenueLayout } from "../venues/layout";
 import { Button, Dot, Kicker, Panel, Spinner } from "./primitives";
@@ -19,6 +19,8 @@ interface TicketPanelProps {
   layout: VenueLayout;
   tokenId: number;
   state: SeatState | undefined;
+  /** False while the seat map is still loading — an undefined `state` then means "unknown", not "unsold". */
+  loaded: boolean;
   onBind: () => void;
   binding: boolean;
 }
@@ -66,8 +68,18 @@ export function useEntryCode(event: EventInfo, tokenId: number, door: DoorKeySes
   return { code, qr, slotEndsAt };
 }
 
-export function TicketPanel({ config, event, layout, tokenId, state, onBind, binding }: TicketPanelProps) {
+export function TicketPanel({
+  config,
+  event,
+  layout,
+  tokenId,
+  state,
+  loaded,
+  onBind,
+  binding,
+}: TicketPanelProps) {
   const fan = useIdentity((s) => s.fan);
+  const ensureFan = useIdentity((s) => s.ensureFan);
   const ensureDoor = useIdentity((s) => s.ensureDoor);
   const liveDoor = useIdentity((s) => s.liveDoor);
   const busy = useIdentity((s) => s.busy);
@@ -123,15 +135,55 @@ export function TicketPanel({ config, event, layout, tokenId, state, onBind, bin
               checked in at {new Date(state.checkedInAt * 1000).toLocaleTimeString()}
             </div>
           </div>
-        ) : !state ? (
+        ) : !state && !loaded ? (
           <div className="flex items-center gap-3 py-6 text-sm text-muted">
             <Spinner /> reading the ticket…
           </div>
+        ) : !state ? (
+          <div className="rounded-2xl border border-line p-4 text-sm">
+            <div>Seat {tokenId} hasn't been taken yet.</div>
+            <div className="mt-1 text-xs text-muted">
+              {tier ? `${tier.name} · ${formatMon(tierPrice(tier))} — ` : ""}pick it in the room to make it
+              yours.
+            </div>
+            <Link
+              to={`/e/${event.address}`}
+              state={{ seat: tokenId }}
+              className="btn btn-amber mt-3"
+              data-testid="ticket-unsold-room"
+            >
+              Take this seat
+            </Link>
+          </div>
         ) : !mineLive ? (
-          <div className="rounded-2xl border border-line p-4 text-sm text-muted">
-            {fan
-              ? `This ticket belongs to ${shortAddress(state.holder)}. Sign in with the passkey that bought it.`
-              : "Sign in with the passkey that bought this seat to show its entry code."}
+          <div className="rounded-2xl border border-line p-4 text-sm">
+            <div>
+              Seat {tokenId} is held by <span className="mono">{shortAddress(state.holder)}</span>
+              {checkedIn
+                ? " and has been used at the door."
+                : state.listed
+                  ? " and is listed for resale."
+                  : "."}
+            </div>
+            <div className="mt-1 text-xs text-muted">
+              {fan
+                ? "Entry codes only appear for the passkey that holds the seat. If this is your ticket, sign in with the passkey that bought it."
+                : "Entry codes only appear for the passkey that holds the seat. Sign in to show yours."}
+            </div>
+            {!fan ? (
+              <Button
+                className="mt-3"
+                onClick={() => void ensureFan().catch(() => undefined)}
+                disabled={busy !== null}
+              >
+                {busy ? "…" : "Sign in"}
+              </Button>
+            ) : null}
+            {state.listed && !checkedIn ? (
+              <div className="mono mt-2 text-[11px] text-muted">
+                Pick it from the room to buy it — the listing is filled from the seat map.
+              </div>
+            ) : null}
           </div>
         ) : !bound ? (
           <div className="rounded-2xl border border-amber/30 bg-amber/10 p-4">

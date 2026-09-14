@@ -10,6 +10,11 @@ interface GateScannerProps {
   event: EventInfo;
   /** A code carried over from the ticket view (one-device demo): looked up on arrival, camera stays off. */
   initialCode?: string | undefined;
+  /** Operator bearer token for a protected door; null = none set. */
+  token?: string | null;
+  /** The relayer requires a token for check-in (`/api/config.gateProtected`). */
+  tokenRequired?: boolean;
+  onToken?: (token: string | null) => void;
   onAdmitted?: (result: GateResult) => void;
 }
 
@@ -26,7 +31,14 @@ interface Recent {
 }
 
 /** Camera → QR → relayer. Works with a pasted code too, which is also what the e2e test drives. */
-export function GateScanner({ event, initialCode, onAdmitted }: GateScannerProps) {
+export function GateScanner({
+  event,
+  initialCode,
+  token = null,
+  tokenRequired = false,
+  onToken,
+  onAdmitted,
+}: GateScannerProps) {
   const video = useRef<HTMLVideoElement>(null);
   const [wantCamera, setWantCamera] = useState(!initialCode);
   const [camera, setCamera] = useState<"idle" | "on" | "denied" | "unsupported" | "off">(
@@ -38,6 +50,9 @@ export function GateScanner({ event, initialCode, onAdmitted }: GateScannerProps
   const [preview, setPreview] = useState<GateResult | null>(null);
   const lastCode = useRef<string | null>(null);
   const autoAdmit = useRef(true);
+  const [tokenDraft, setTokenDraft] = useState("");
+  const [unauthorised, setUnauthorised] = useState(false);
+  const needsToken = (tokenRequired || unauthorised) && !token;
 
   const submit = useCallback(
     async (code: string) => {
@@ -46,7 +61,7 @@ export function GateScanner({ event, initialCode, onAdmitted }: GateScannerProps
       const started = performance.now();
       let result: GateResult;
       try {
-        result = await gateCheckIn(code);
+        result = await gateCheckIn(code, token ?? undefined);
       } catch (error) {
         result =
           error instanceof ApiError
@@ -54,6 +69,11 @@ export function GateScanner({ event, initialCode, onAdmitted }: GateScannerProps
             : { ok: false, code: "NETWORK", message: error instanceof Error ? error.message : String(error) };
       }
       const ms = result.ms ?? Math.round(performance.now() - started);
+      if (result.code === "UNAUTHORIZED") {
+        // Wrong or missing operator token: forget it and ask for one instead of retrying with it.
+        setUnauthorised(true);
+        onToken?.(null);
+      }
       setPhase({ kind: "result", result: { ...result, ms }, code, at: Date.now() });
       setRecent((r) =>
         [
@@ -77,7 +97,7 @@ export function GateScanner({ event, initialCode, onAdmitted }: GateScannerProps
         result.ok ? 2600 : 3600,
       );
     },
-    [phase.kind, onAdmitted],
+    [phase.kind, onAdmitted, onToken, token],
   );
 
   // Camera + detector loop.
@@ -195,6 +215,46 @@ export function GateScanner({ event, initialCode, onAdmitted }: GateScannerProps
           <Dot tone={camera === "on" ? "green" : "muted"} />
         </div>
       </Panel>
+
+      {needsToken ? (
+        <Panel className="p-4">
+          <Kicker>Operator token</Kicker>
+          <p className="mt-1 text-xs text-muted">
+            {unauthorised
+              ? "The relayer rejected the last token. Enter the door's operator token to admit fans."
+              : "This door is protected: enter the operator token before admitting fans."}
+          </p>
+          <div className="mt-2 flex gap-2">
+            <input
+              className="field mono text-xs"
+              type="password"
+              placeholder="Operator token"
+              value={tokenDraft}
+              onChange={(e) => setTokenDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && tokenDraft.trim()) {
+                  onToken?.(tokenDraft.trim());
+                  setUnauthorised(false);
+                  setTokenDraft("");
+                }
+              }}
+              aria-label="Operator token"
+              autoComplete="off"
+            />
+            <Button
+              className="whitespace-nowrap"
+              disabled={!tokenDraft.trim()}
+              onClick={() => {
+                onToken?.(tokenDraft.trim());
+                setUnauthorised(false);
+                setTokenDraft("");
+              }}
+            >
+              Use token
+            </Button>
+          </div>
+        </Panel>
+      ) : null}
 
       <Panel className="p-4">
         <div className="flex gap-2">

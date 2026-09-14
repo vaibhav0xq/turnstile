@@ -6,6 +6,8 @@ import { type SeatMap, seatMapQueryKey } from "../../chain/seats";
 import { useDirector } from "../../scene/director";
 import { GateScanner } from "../../ui/GateScanner";
 import { Kicker, Stat } from "../../ui/primitives";
+import { RouteLoading, UnknownRoute, unknownEvent } from "../../ui/RouteState";
+import { consumeGateFragment, storeGateToken } from "../gate-token";
 import { useTour } from "../tour";
 
 export function Gate({ config, seatMap }: { config: AppConfig | undefined; seatMap: SeatMap | undefined }) {
@@ -13,21 +15,20 @@ export function Gate({ config, seatMap }: { config: AppConfig | undefined; seatM
   const event = findEvent(config, address);
   const showGate = useDirector((s) => s.showGate);
   const queryClient = useQueryClient();
-  // `/gate/<event>#code=…` is the ticket's "walk up to the door" link: read once, then drop it from the URL so a
-  // refresh or a share does not carry a (short-lived) entry code around.
-  const [handed] = useState(() => {
-    const code = new URLSearchParams(window.location.hash.slice(1)).get("code");
-    if (code) window.history.replaceState(null, "", window.location.pathname + window.location.search);
-    return code ?? undefined;
-  });
+  // `/gate/<event>#code=…` is the ticket's "walk up to the door" link and `#token=…` hands a protected door its
+  // operator token: both are read once, then dropped from the URL so a refresh or a share carries neither.
+  const [handed] = useState(() => consumeGateFragment());
+  const [token, setToken] = useState<string | null>(handed.token);
   useEffect(() => {
     if (address) showGate(address);
   }, [address, showGate]);
-  if (!config || !event) return null;
+  if (!config) return <RouteLoading label="Finding the door…" />;
+  if (!event) return <UnknownRoute {...unknownEvent} />;
   const inside = seatMap ? [...seatMap.values()].filter((s) => s.checkedInAt > 0).length : event.checkedIn;
   const sold = seatMap ? seatMap.size : event.sold;
   return (
     <div className="overlay">
+      <div className="scrim-top" aria-hidden />
       <div className="absolute left-4 top-20 sm:left-6 sm:top-24">
         <Kicker className="fade-up">Gate</Kicker>
         <h1 className="display fade-up mt-1 text-4xl sm:text-5xl">{event.name}</h1>
@@ -44,7 +45,13 @@ export function Gate({ config, seatMap }: { config: AppConfig | undefined; seatM
       <div className="absolute inset-x-4 bottom-4 flex justify-end sm:inset-x-6 sm:bottom-6">
         <GateScanner
           event={event}
-          initialCode={handed}
+          initialCode={handed.code}
+          token={token}
+          tokenRequired={config.gateProtected}
+          onToken={(value) => {
+            storeGateToken(value);
+            setToken(value);
+          }}
           onAdmitted={(result) => {
             useTour.getState().note({ admitHash: result.hash ?? null, admitMs: result.ms ?? null });
             void queryClient.invalidateQueries({ queryKey: seatMapQueryKey(event.address) });

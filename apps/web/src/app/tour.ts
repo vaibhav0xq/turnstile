@@ -32,6 +32,8 @@ interface TourState {
   /** Autopilot cannot press this one (passkeys need a real touch) — shown as a hint. */
   waitingForTouch: boolean;
   eventAddress: string | null;
+  /** Event the tour should take (`?event=<address>`), else the newest free door in town. */
+  targetEvent: string | null;
   tokenId: number | null;
   startedAt: number | null;
   finishedAt: number | null;
@@ -43,6 +45,7 @@ interface TourState {
   setAutoplay(on: boolean): void;
   setWaitingForTouch(on: boolean): void;
   setEvent(address: string | null): void;
+  setTargetEvent(address: string | null): void;
   setToken(id: number | null): void;
   note(receipt: Partial<TourReceipt>): void;
 }
@@ -58,6 +61,7 @@ export const useTour = create<TourState>()((set, get) => ({
   autoplay: false,
   waitingForTouch: false,
   eventAddress: null,
+  targetEvent: storedTargetEvent(),
   tokenId: null,
   startedAt: null,
   finishedAt: null,
@@ -93,23 +97,51 @@ export const useTour = create<TourState>()((set, get) => ({
   setEvent: (eventAddress) => {
     if (get().eventAddress !== eventAddress) set({ eventAddress });
   },
+  setTargetEvent: (targetEvent) => {
+    try {
+      if (targetEvent) sessionStorage.setItem(TARGET_KEY, targetEvent);
+      else sessionStorage.removeItem(TARGET_KEY);
+    } catch {
+      // private mode: the choice lives for this page only
+    }
+    if (get().targetEvent !== targetEvent) set({ targetEvent });
+  },
   setToken: (tokenId) => {
     if (get().tokenId !== tokenId) set({ tokenId });
   },
   note: (receipt) => set((s) => ({ receipt: { ...s.receipt, ...receipt } })),
 }));
 
-/** `?tour=1` starts judge mode, `?tour=auto` starts it on autopilot (the flag is dropped from the URL). */
-export function tourRequestedByUrl(): "manual" | "auto" | null {
+const TARGET_KEY = "turnstile.tourEvent";
+
+function storedTargetEvent(): string | null {
+  try {
+    return typeof sessionStorage === "undefined" ? null : sessionStorage.getItem(TARGET_KEY);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * `?tour=1` starts judge mode, `?tour=auto` starts it on autopilot; `?event=<address>` picks the door the
+ * tour walks through (kept for the session so a reload during a take stays on the same night). Both flags
+ * are dropped from the URL.
+ */
+export function consumeTourParams(): { tour: "manual" | "auto" | null; event: string | null } {
   const params = new URLSearchParams(window.location.search);
-  const value = params.get("tour");
-  if (value === null) return null;
+  const tour = params.get("tour");
+  const event = params.get("event");
+  if (tour === null && event === null) return { tour: null, event: null };
   params.delete("tour");
+  params.delete("event");
   const rest = params.toString();
   window.history.replaceState(
     null,
     "",
     `${window.location.pathname}${rest ? `?${rest}` : ""}${window.location.hash}`,
   );
-  return value === "auto" ? "auto" : "manual";
+  return {
+    tour: tour === null ? null : tour === "auto" ? "auto" : "manual",
+    event: event && /^0x[0-9a-fA-F]{40}$/.test(event) ? event : null,
+  };
 }

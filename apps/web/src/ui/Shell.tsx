@@ -29,24 +29,28 @@ export function TopBar({ config, onSignIn }: { config: AppConfig | undefined; on
   }, [envLabel]);
 
   return (
-    <header className="pointer-events-none fixed inset-x-0 top-0 z-30 flex items-start justify-between p-4 sm:p-6">
-      <Link to="/" className="pointer-events-auto flex items-center gap-3">
-        <span className="grid h-9 w-9 place-items-center rounded-full border border-line bg-ink-2/70">
+    <header className="pointer-events-none fixed inset-x-0 top-0 z-30 flex items-start justify-between gap-2 p-3 sm:p-6">
+      <Link
+        to="/"
+        className="pointer-events-auto flex min-w-0 items-center gap-2 sm:gap-3"
+        aria-label="Turnstile — back to the city"
+      >
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-line bg-ink-2/70">
           <svg width="18" height="18" viewBox="0 0 64 64" aria-hidden>
             <circle cx="32" cy="32" r="17" fill="none" stroke="#ffb457" strokeWidth="4" />
             <path d="M32 15v34M15 32h34" stroke="#ffb457" strokeWidth="4" strokeLinecap="round" />
             <circle cx="32" cy="32" r="5" fill="#7ee7ff" />
           </svg>
         </span>
-        <span className="hidden flex-col leading-tight sm:flex">
+        <span className={`${envLabel ? "hidden sm:flex" : "flex"} flex-col leading-tight`}>
           <span className="display text-xl">Turnstile</span>
-          <span className="mono text-[10px] uppercase tracking-[0.2em] text-muted">
+          <span className="mono hidden text-[10px] uppercase tracking-[0.2em] text-muted sm:block">
             {config ? chainName(config.chainId) : "connecting"}
           </span>
         </span>
         {envLabel ? (
           <span
-            className="chip mono border-amber/60 bg-amber/10 text-[10px] uppercase tracking-[0.2em] text-amber"
+            className="chip mono shrink-0 border-amber/60 bg-amber/10 text-[10px] uppercase tracking-[0.2em] text-amber"
             title="Internal rehearsal origin — not the final host. Passkeys made here stay here."
             data-testid="environment-label"
           >
@@ -55,13 +59,17 @@ export function TopBar({ config, onSignIn }: { config: AppConfig | undefined; on
         ) : null}
       </Link>
 
-      <div className="pointer-events-auto flex items-center gap-2">
+      <div className="pointer-events-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
         {!home ? (
-          <Link to="/" className="chip mono hover:bg-ink-2">
-            ← City
-          </Link>
+          // On a phone the wordmark is the way back; the chip would push the actions onto a second line.
+          // (`.chip` is unlayered CSS, so the display utility has to sit on a wrapper.)
+          <span className="hidden sm:contents">
+            <Link to="/" className="chip mono hover:bg-ink-2">
+              ← City
+            </Link>
+          </span>
         ) : null}
-        <Link to="/me" className="chip mono hover:bg-ink-2">
+        <Link to="/me" className="chip mono hover:bg-ink-2" aria-label="Passport">
           {live ? (
             <>
               <Dot tone="cyan" />

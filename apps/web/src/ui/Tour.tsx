@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { useCheckout } from "../app/checkout";
-import { TOUR_STEPS, type TourStep, tourRequestedByUrl, useTour } from "../app/tour";
+import { consumeTourParams, TOUR_STEPS, type TourStep, useTour } from "../app/tour";
 import { type AppConfig, explorerTx } from "../chain/config";
 import type { SeatMap } from "../chain/seats";
 import { useIdentity } from "../identity/store";
@@ -118,10 +118,11 @@ export function Tour({ config, seatMap }: { config: AppConfig | undefined; seatM
   const devSeed = useIdentity((s) => s.devSeed);
   const checkedIn = tokenId != null && (seatMap?.get(tokenId)?.checkedInAt ?? 0) > 0;
 
-  // `?tour=1` / `?tour=auto`
+  // `?tour=1` / `?tour=auto` / `?event=<address>`
   useEffect(() => {
-    const requested = tourRequestedByUrl();
-    if (requested) useTour.getState().start({ autoplay: requested === "auto" });
+    const { tour, event } = consumeTourParams();
+    if (event) useTour.getState().setTargetEvent(event);
+    if (tour) useTour.getState().start({ autoplay: tour === "auto" });
   }, []);
 
   // Route → step. Chain truth (the seat's check-in) is the only way to reach the finale.
