@@ -1,4 +1,5 @@
 import { useQueries } from "@tanstack/react-query";
+import { ACCOUNT_SESSION_TTL_MS } from "@turnstile/identity";
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
 import { type AppConfig, tierForSeat } from "../../chain/config";
@@ -78,6 +79,12 @@ export function Me({ config }: { config: AppConfig | undefined }) {
               ? "passkey known on this device · signed out"
               : "one passkey becomes your account, your door key and your private vault"}
         </div>
+        {live ? (
+          <p className="mt-1 text-[11px] text-muted">
+            Buying keeps working for {Math.round(ACCOUNT_SESSION_TTL_MS / 60_000)} minutes after a prompt;
+            after that the next tap asks your passkey again. Nothing is lost when it lapses.
+          </p>
+        ) : null}
 
         <div className="mt-4 flex flex-wrap gap-2">
           {!live && knownCredentialId ? (
@@ -105,6 +112,34 @@ export function Me({ config }: { config: AppConfig | undefined }) {
             </Button>
           ) : null}
         </div>
+
+        <details
+          className="group mt-3 rounded-xl border border-line px-3 py-2"
+          data-testid="passkey-explainer"
+        >
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-sm">
+            <span>What is a passkey?</span>
+            <span className="mono text-muted transition-transform group-open:rotate-45" aria-hidden>
+              +
+            </span>
+          </summary>
+          <div className="mt-2 flex flex-col gap-2 text-xs text-muted">
+            <p>
+              A key your phone or laptop makes and keeps — unlocked with your face, fingerprint or device PIN.
+              There is no password to remember and nothing to install; Apple, Google and Microsoft sync it
+              between your own devices.
+            </p>
+            <p>
+              Here one passkey does three jobs. It signs as your account on Monad, so a seat is minted to you
+              with no wallet. It derives a door key that exists for one event only, which signs the code you
+              show at the gate. And it opens your private vault, which only that passkey can read.
+            </p>
+            <p>
+              You will see a prompt when you buy, once more when the door key is made, and again after a
+              session lapses. A prompt on someone else's device does nothing: the key never leaves yours.
+            </p>
+          </div>
+        </details>
 
         {import.meta.env.DEV ? (
           <div className="mt-3 flex items-center gap-2 text-xs text-muted">

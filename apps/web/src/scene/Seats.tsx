@@ -262,7 +262,14 @@ function SectionInstances({ layout, section, seatMap, interactive }: SectionProp
     e.stopPropagation();
     const s = e.instanceId != null ? seats[e.instanceId] : undefined;
     if (!s) return;
-    select(useDirector.getState().selectedSeat === s.id ? null : s.id);
+    const { selectedSeat, viewMode } = useDirector.getState();
+    // A second tap on the chosen seat lets go of it from the overview only. From its own view ("View from
+    // here") the seat is what the camera stands in, and a stray tap must not drop the card and its actions.
+    if (selectedSeat === s.id) {
+      if (viewMode === "overview") select(null);
+      return;
+    }
+    select(s.id);
   };
 
   return (

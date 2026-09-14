@@ -161,7 +161,7 @@ export function TicketPanel({
             <div>
               Seat {tokenId} is held by <span className="mono">{shortAddress(state.holder)}</span>
               {checkedIn
-                ? " and has been used at the door."
+                ? ` and was checked in at ${new Date(state.checkedInAt * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}.`
                 : state.listed
                   ? " and is listed for resale."
                   : "."}
@@ -232,6 +232,7 @@ export function TicketPanel({
             slotEndsAt={slotEndsAt}
             big={big}
             eventAddress={event.address}
+            gateOpen={!config.gateProtected}
             onToggle={() => setBig((b) => !b)}
           />
         )}
@@ -266,6 +267,7 @@ function CodeView({
   slotEndsAt,
   big,
   eventAddress,
+  gateOpen,
   onToggle,
 }: {
   code: string | null;
@@ -273,6 +275,8 @@ function CodeView({
   slotEndsAt: number;
   big: boolean;
   eventAddress: string;
+  /** This deployment's door takes anyone (demo): offer to walk up to it. A tokened door is the operator's. */
+  gateOpen: boolean;
   onToggle: () => void;
 }) {
   const [now, setNow] = useState(Date.now());
@@ -343,14 +347,16 @@ function CodeView({
       </div>
       {!big && code ? (
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <Link
-            to={`/gate/${eventAddress}#code=${encodeURIComponent(code)}`}
-            className="btn btn-amber !min-h-9 px-3 text-xs"
-            data-testid="walk-to-door"
-            data-tour="ticket-door"
-          >
-            Walk up to the door →
-          </Link>
+          {gateOpen ? (
+            <Link
+              to={`/gate/${eventAddress}#code=${encodeURIComponent(code)}`}
+              className="btn btn-amber !min-h-9 px-3 text-xs"
+              data-testid="walk-to-door"
+              data-tour="ticket-door"
+            >
+              Walk up to the door →
+            </Link>
+          ) : null}
           <Button
             className="!min-h-9 px-3 text-xs"
             onClick={() => {
@@ -362,13 +368,22 @@ function CodeView({
           >
             {copied ? "Copied" : "Copy code"}
           </Button>
-          <span className="text-[11px] text-muted">One device? The door view opens with this code.</span>
+          <span className="text-[11px] text-muted">
+            {gateOpen
+              ? "One device? The door view opens with this code."
+              : "At the door, tap the code to fill the screen and hold it to the scanner."}
+          </span>
         </div>
       ) : null}
       {big ? (
-        <Button variant="ghost" className="mt-6 !border-ink/20 !text-ink" onClick={onToggle}>
-          Done
-        </Button>
+        <>
+          <div className="mt-4 text-center text-sm text-ink/70">
+            Show this at the door. Brightness up; the code keeps renewing while this is open.
+          </div>
+          <Button variant="ghost" className="mt-4 !border-ink/20 !text-ink" onClick={onToggle}>
+            Done
+          </Button>
+        </>
       ) : null}
     </div>
   );

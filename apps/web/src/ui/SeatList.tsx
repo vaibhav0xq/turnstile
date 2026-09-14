@@ -44,7 +44,10 @@ export function SeatList({ event, layout, seatMap, onClose }: SeatListProps) {
         aria-label="Seat list"
         data-testid="seat-list"
         onKeyDown={(e) => {
-          if (e.key === "Escape") onClose();
+          if (e.key === "Escape") {
+            e.preventDefault(); // the route's Escape handler backs out the next layer otherwise
+            onClose();
+          }
         }}
       >
         <div className="flex items-center justify-between gap-3">

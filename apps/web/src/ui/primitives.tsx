@@ -57,25 +57,29 @@ export function Dot({ tone }: { tone: "amber" | "cyan" | "green" | "red" | "mute
   return <span className={`dot ${tone === "amber" ? "" : `dot-${tone}`}`} />;
 }
 
+/** What the seat colours mean. Folded behind one word on phones, where the room needs the height. */
 export function StatusLegend() {
-  const items: Array<{ tone: "amber" | "cyan" | "green" | "muted"; label: string; extra?: string }> = [
+  const items: Array<{ tone: "amber" | "cyan" | "green" | "muted" | "violet"; label: string }> = [
     { tone: "amber", label: "Available" },
     { tone: "cyan", label: "Yours" },
     { tone: "muted", label: "Taken" },
     { tone: "green", label: "Inside" },
+    { tone: "violet", label: "Listed" },
   ];
   return (
-    <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-      {items.map((i) => (
-        <span key={i.label} className="flex items-center gap-2 text-xs text-muted">
-          <Dot tone={i.tone} />
-          {i.label}
-        </span>
-      ))}
-      <span className="flex items-center gap-2 text-xs text-muted">
-        <Dot tone="violet" />
-        Listed
-      </span>
-    </div>
+    <details className="group">
+      <summary className="mono cursor-pointer list-none text-[11px] text-muted hover:text-paper sm:hidden [&::-webkit-details-marker]:hidden">
+        <span className="group-open:hidden">Legend ▾</span>
+        <span className="hidden group-open:inline">Legend ▴</span>
+      </summary>
+      <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 sm:mt-0 max-sm:hidden max-sm:group-open:flex">
+        {items.map((i) => (
+          <span key={i.label} className="flex items-center gap-2 text-xs text-muted">
+            <Dot tone={i.tone} />
+            {i.label}
+          </span>
+        ))}
+      </div>
+    </details>
   );
 }

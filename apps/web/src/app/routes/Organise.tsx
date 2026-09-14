@@ -1,8 +1,8 @@
 // The organiser's side: publish an event from a passkey and watch its door. No dashboard chrome — one panel
 // over the city, the same primitives as the passport.
 import { useQueryClient } from "@tanstack/react-query";
-import { type ReactNode, useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router";
 import { formatEther } from "viem";
 import { type AppConfig, type EventInfo, explorerTx } from "../../chain/config";
 import { useIdentity } from "../../identity/store";
@@ -36,10 +36,10 @@ export function Organise({ config }: { config: AppConfig | undefined }) {
   const showCity = useDirector((s) => s.showCity);
   const fan = useIdentity((s) => s.fan);
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
   const step = useOrganise((s) => s.step);
   const error = useOrganise((s) => s.error);
   const hash = useOrganise((s) => s.hash);
+  const created = useOrganise((s) => s.created);
   const publish = useOrganise((s) => s.publish);
   const reset = useOrganise((s) => s.reset);
   const [draft, setDraft] = useState<EventDraft>(() => defaultDraft());
@@ -66,17 +66,25 @@ export function Organise({ config }: { config: AppConfig | undefined }) {
   const updateTier = (index: number, patch: Partial<TierDraft>) =>
     setDraft((d) => ({ ...d, tiers: d.tiers.map((t, i) => (i === index ? { ...t, ...patch } : t)) }));
 
+  // Publishing stays on this page: the organiser gets the room, the door link and the live board in one
+  // place, and a clean form for the next night. The city behind has the new beacon lit by now.
   const submit = async () => {
     setTouched(true);
     if (!config || issues.length > 0 || busy) return;
     const address = await publish(config, draft, queryClient);
-    if (address) navigate(`/e/${address}`);
+    if (address) {
+      setDraft(defaultDraft());
+      setTouched(false);
+      panel.current?.scrollTo({ top: 0, behavior: "smooth" });
+    }
   };
+  const panel = useRef<HTMLDivElement>(null);
+  const justPublished = created ? (mine.find((e) => e.address === created.address) ?? null) : null;
 
   return (
     <div className="overlay flex items-end justify-start p-4 pt-20 sm:items-start sm:justify-center sm:p-6 sm:pt-24">
       <Panel className="glass-solid fade-up flex max-h-[calc(100dvh-6rem)] w-full max-w-lg flex-col overflow-hidden sm:max-h-[calc(100dvh-7.5rem)]">
-        <div className="scrollbar-none overflow-y-auto p-5">
+        <div ref={panel} className="scrollbar-none overflow-y-auto p-5">
           <Kicker>Organiser</Kicker>
           <div className="display mt-1 text-3xl">Host a night</div>
           <p className="mt-1 text-sm text-muted">
@@ -85,12 +93,21 @@ export function Organise({ config }: { config: AppConfig | undefined }) {
             relayer tops you up.
           </p>
 
+          {justPublished && config ? (
+            <Published config={config} event={justPublished} hash={hash} onDismiss={reset} />
+          ) : null}
+
           {mine.length > 0 ? (
             <div className="mt-5" data-testid="organiser-events">
               <Kicker>Your events</Kicker>
               <ul className="mt-2 flex flex-col gap-2">
                 {mine.map((event, i) => (
-                  <OrganiserEvent key={event.address} config={config} event={event} defaultOpen={i === 0} />
+                  <OrganiserEvent
+                    key={event.address}
+                    config={config}
+                    event={event}
+                    defaultOpen={justPublished ? event.address === justPublished.address : i === 0}
+                  />
                 ))}
               </ul>
             </div>
@@ -290,26 +307,90 @@ export function Organise({ config }: { config: AppConfig | undefined }) {
                 {error.message}
               </div>
             ) : null}
-            {hash && config ? (
+            {hash && config && !justPublished ? (
               <div className="mono text-[11px] text-muted">
-                tx{" "}
-                {explorerTx(config, hash) ? (
-                  <a
-                    className="underline"
-                    href={explorerTx(config, hash) ?? "#"}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    {shortAddress(hash, 8)}
-                  </a>
-                ) : (
-                  shortAddress(hash, 8)
-                )}
+                tx <TxRef config={config} hash={hash} />
               </div>
             ) : null}
           </form>
         </div>
       </Panel>
+    </div>
+  );
+}
+
+function TxRef({ config, hash }: { config: AppConfig; hash: `0x${string}` }) {
+  const url = explorerTx(config, hash);
+  if (!url) return shortAddress(hash, 8);
+  return (
+    <a className="underline" href={url} target="_blank" rel="noreferrer">
+      {shortAddress(hash, 8)}
+    </a>
+  );
+}
+
+/** The moment after publishing: where the night lives, what to hand the door, and the board to watch. */
+function Published({
+  config,
+  event,
+  hash,
+  onDismiss,
+}: {
+  config: AppConfig;
+  event: EventInfo;
+  hash: `0x${string}` | null;
+  onDismiss: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+  const doorUrl = `${window.location.origin}/gate/${event.address}`;
+  return (
+    <div className="mt-5 rounded-2xl border border-green/30 bg-green/10 p-4" data-testid="organise-published">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <Kicker className="!text-green">Published</Kicker>
+          <div className="display mt-1 text-2xl">{event.name} is on Monad.</div>
+          <div className="mono mt-1 text-[11px] text-muted">
+            {formatDate(event.startsAt)} · {event.capacity} seats · {shortAddress(event.address, 6)}
+            {hash ? (
+              <>
+                {" "}
+                · tx <TxRef config={config} hash={hash} />
+              </>
+            ) : null}
+          </div>
+        </div>
+        <button
+          type="button"
+          className="text-muted hover:text-paper"
+          onClick={onDismiss}
+          aria-label="Dismiss"
+        >
+          ×
+        </button>
+      </div>
+      <p className="mt-2 text-xs text-muted">
+        Its beacon is lit in the city. Send fans the room; open the door link on the phone or tablet that
+        works the gate; the live board below follows the night.
+      </p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Link to={`/e/${event.address}`} className="btn btn-primary !min-h-9 px-3 text-xs">
+          Open the room
+        </Link>
+        <Button
+          className="!min-h-9 px-3 text-xs"
+          title={doorUrl}
+          onClick={() => {
+            void navigator.clipboard?.writeText(doorUrl);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1500);
+          }}
+        >
+          {copied ? "Copied" : "Copy door link"}
+        </Button>
+        <Link to={`/gate/${event.address}`} className="btn btn-ghost !min-h-9 px-3 text-xs">
+          Open the door here
+        </Link>
+      </div>
     </div>
   );
 }

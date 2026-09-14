@@ -2,6 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { useNavigate } from "react-router";
 import { type CheckoutStep, useCheckout } from "../app/checkout";
+import { nextOpenSeat } from "../app/next-seat";
 import { type AppConfig, type EventInfo, explorerTx, tierForSeat, tierPrice } from "../chain/config";
 import type { SeatMap } from "../chain/seats";
 import { useIdentity } from "../identity/store";
@@ -39,6 +40,8 @@ export function Checkout({ config, event, layout, seatMap }: CheckoutProps) {
   const error = useCheckout((s) => s.error);
   const buyHash = useCheckout((s) => s.buyHash);
   const bindHash = useCheckout((s) => s.bindHash);
+  const buyBlock = useCheckout((s) => s.buyBlock);
+  const bindBlock = useCheckout((s) => s.bindBlock);
   const buyMs = useCheckout((s) => s.buyMs);
   const bindMs = useCheckout((s) => s.bindMs);
   const tokenId = useCheckout((s) => s.tokenId);
@@ -46,6 +49,7 @@ export function Checkout({ config, event, layout, seatMap }: CheckoutProps) {
   const run = useCheckout((s) => s.run);
   const bindOnly = useCheckout((s) => s.bindOnly);
   const cancel = useCheckout((s) => s.cancel);
+  const start = useCheckout((s) => s.start);
   const fan = useIdentity((s) => s.fan);
   const knownAddress = useIdentity((s) => s.knownAddress);
   const devSeed = useIdentity((s) => s.devSeed);
@@ -64,6 +68,16 @@ export function Checkout({ config, event, layout, seatMap }: CheckoutProps) {
   const live = fan && fan.expiresAt > Date.now();
   const busy = step === "identity" || step === "funding" || step === "buying" || step === "binding";
   const total = startedAt ? (buyMs ?? 0) + (bindMs ?? 0) : 0;
+  // The seat went under us (or the listing did): the next best seat in the same tier is one tap away,
+  // picked as the tier chip would — skipping this seat, which the map may still show as open.
+  const gone = step === "error" && !buyHash && (error?.code === "SeatTaken" || error?.code === "NotListed");
+  const nextSeat = gone ? nextOpenSeat(event, layout, seatMap, tier.index, seatId) : null;
+  const nextSpec = nextSeat !== null ? layout.byId.get(nextSeat) : undefined;
+  const takeNext = () => {
+    if (nextSeat === null) return;
+    start(event.address, nextSeat);
+    void run(config, event, queryClient);
+  };
 
   return (
     <Panel className="fade-up w-full max-w-md p-5">
@@ -131,14 +145,28 @@ export function Checkout({ config, event, layout, seatMap }: CheckoutProps) {
       ) : null}
 
       <div className="mt-5 flex flex-wrap gap-2">
-        {step === "idle" || (step === "error" && !buyHash) ? (
+        {gone && nextSpec ? (
+          <Button variant="amber" className="flex-1" onClick={takeNext} data-testid="checkout-next-seat">
+            Take {seatLabel(nextSpec)} instead
+          </Button>
+        ) : gone ? (
+          <div className="text-sm text-muted">
+            {tier.name} is sold out now. Close this and pick from another tier.
+          </div>
+        ) : step === "idle" || (step === "error" && !buyHash) ? (
           <Button
             variant="amber"
             className="flex-1"
             onClick={() => void run(config, event, queryClient)}
             data-tour="checkout"
           >
-            {live ? "Confirm seat" : knownAddress ? "Sign in & take seat" : "Create passkey & take seat"}
+            {step === "error"
+              ? "Try again"
+              : live
+                ? "Confirm seat"
+                : knownAddress
+                  ? "Sign in & take seat"
+                  : "Create passkey & take seat"}
           </Button>
         ) : null}
         {step === "error" && buyHash && tokenId != null && !bindHash ? (
@@ -169,8 +197,8 @@ export function Checkout({ config, event, layout, seatMap }: CheckoutProps) {
 
       {buyHash ? (
         <div className="mono mt-4 flex flex-col gap-1 text-[11px] text-muted">
-          <TxLine label="mint" hash={buyHash} config={config} />
-          {bindHash ? <TxLine label="bind" hash={bindHash} config={config} /> : null}
+          <TxLine label="mint" hash={buyHash} block={buyBlock} config={config} />
+          {bindHash ? <TxLine label="bind" hash={bindHash} block={bindBlock} config={config} /> : null}
           {step === "done" ? (
             <span className="text-green">yours in {formatMs(total)} of chain time</span>
           ) : null}
@@ -180,7 +208,17 @@ export function Checkout({ config, event, layout, seatMap }: CheckoutProps) {
   );
 }
 
-function TxLine({ label, hash, config }: { label: string; hash: string; config: AppConfig }) {
+function TxLine({
+  label,
+  hash,
+  block,
+  config,
+}: {
+  label: string;
+  hash: string;
+  block: string | null;
+  config: AppConfig;
+}) {
   const url = explorerTx(config, hash);
   const short = `${hash.slice(0, 10)}…${hash.slice(-6)}`;
   return (
@@ -193,6 +231,7 @@ function TxLine({ label, hash, config }: { label: string; hash: string; config: 
       ) : (
         short
       )}
+      {block ? ` · block ${Number(block).toLocaleString("en-US")}` : ""}
     </span>
   );
 }

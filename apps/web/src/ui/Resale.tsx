@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { formatEther, parseEther } from "viem";
 import { useCheckout } from "../app/checkout";
-import { type AppConfig, type EventInfo, tierForSeat, tierPrice } from "../chain/config";
+import { type AppConfig, type EventInfo, explorerTx, tierForSeat, tierPrice } from "../chain/config";
 import type { SeatState } from "../chain/seats";
 import { formatMon } from "../lib/format";
 import { Button, Spinner } from "./primitives";
@@ -66,6 +66,24 @@ export function ResaleControls({ config, event, tokenId, state }: ResaleProps) {
             {resale.busy === "delist" ? <Spinner /> : null} Delist
           </Button>
         </div>
+        {resale.hash ? (
+          <div className="mono mt-2 text-[11px] text-muted">
+            listed on-chain ·{" "}
+            {explorerTx(config, resale.hash) ? (
+              <a
+                className="underline"
+                href={explorerTx(config, resale.hash) ?? "#"}
+                target="_blank"
+                rel="noreferrer"
+                data-testid="resale-tx"
+              >
+                {resale.hash.slice(0, 10)}…{resale.hash.slice(-6)}
+              </a>
+            ) : (
+              `${resale.hash.slice(0, 10)}…${resale.hash.slice(-6)}`
+            )}
+          </div>
+        ) : null}
         {resale.error ? <div className="mono mt-2 text-[11px] text-red">{resale.error.message}</div> : null}
       </div>
     );

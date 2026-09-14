@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { turnstileEventAbi } from "@turnstile/contracts/abi";
 import { type Address, zeroAddress } from "viem";
-import { publicClientFor } from "./client";
+import { publicClientFor } from "./client.ts";
 import type { AppConfig, EventInfo } from "./config";
 
 export type SeatStatus = "available" | "sold" | "listed" | "checkedIn";

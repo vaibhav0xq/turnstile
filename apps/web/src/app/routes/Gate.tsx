@@ -41,6 +41,15 @@ export function Gate({ config, seatMap }: { config: AppConfig | undefined; seatM
           The relayer recovers the signer from the code, checks it against the bound door key on-chain, then
           submits <span className="mono">checkIn</span> from the gate wallet.
         </p>
+        {!config.gateProtected ? (
+          <div
+            className="fade-up-late mt-3 flex max-w-xs items-start gap-2 text-xs text-muted"
+            data-testid="gate-demo"
+          >
+            <span className="chip mono shrink-0 text-amber">open door · demo</span>
+            <span>Anyone with this link works the door tonight. A real door carries an operator token.</span>
+          </div>
+        ) : null}
       </div>
       <div className="absolute inset-x-4 bottom-4 flex justify-end sm:inset-x-6 sm:bottom-6">
         <GateScanner

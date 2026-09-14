@@ -2,7 +2,7 @@ import { entryCodeForm } from "@turnstile/identity/entry";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { EventInfo } from "../chain/config";
 import { ApiError } from "../lib/api";
-import { formatMs, shortAddress } from "../lib/format";
+import { formatAgo, formatMs, shortAddress } from "../lib/format";
 import { type GateResult, gateCheckIn, gateLookup } from "../relayer/client";
 import { Button, Dot, Kicker, Panel, Spinner } from "./primitives";
 
@@ -53,6 +53,18 @@ export function GateScanner({
   const [tokenDraft, setTokenDraft] = useState("");
   const [unauthorised, setUnauthorised] = useState(false);
   const needsToken = (tokenRequired || unauthorised) && !token;
+  const manualField = useRef<HTMLInputElement>(null);
+  // No camera: the operator types, so the cursor is already in the field.
+  useEffect(() => {
+    if (camera === "denied" || camera === "unsupported") manualField.current?.focus();
+  }, [camera]);
+  // The "ago" column ticks over on its own.
+  const [, tick] = useState(0);
+  useEffect(() => {
+    if (recent.length === 0) return;
+    const id = setInterval(() => tick((n) => n + 1), 10_000);
+    return () => clearInterval(id);
+  }, [recent.length]);
 
   const submit = useCallback(
     async (code: string) => {
@@ -182,7 +194,7 @@ export function GateScanner({
               {camera === "idle" ? (
                 "Starting camera…"
               ) : camera === "denied" ? (
-                "Camera unavailable — paste a code below."
+                "No camera access. Allow it in the browser's site settings, or type the fan's code below."
               ) : camera === "off" ? (
                 <button
                   type="button"
@@ -199,7 +211,9 @@ export function GateScanner({
               )}
             </div>
           ) : null}
-          {phase.kind !== "scanning" ? <Verdict phase={phase} /> : null}
+          <div aria-live="assertive" aria-atomic="true">
+            {phase.kind !== "scanning" ? <Verdict phase={phase} /> : null}
+          </div>
         </div>
         <div className="flex items-center justify-between gap-3 px-4 py-3">
           <div>
@@ -259,6 +273,7 @@ export function GateScanner({
       <Panel className="p-4">
         <div className="flex gap-2">
           <input
+            ref={manualField}
             className="field mono text-xs"
             placeholder="TS3:… (TS2:… and TS1|… also work)"
             value={manual}
@@ -307,13 +322,15 @@ export function GateScanner({
 
       {recent.length ? (
         <Panel className="p-4">
-          <Kicker>Tonight</Kicker>
+          <Kicker>Tonight · last {recent.length === 1 ? "one" : recent.length}</Kicker>
           <ul className="mt-2 flex flex-col gap-1.5">
             {recent.map((r) => (
               <li key={r.at} className="flex items-center gap-3 text-sm">
                 <Dot tone={r.ok ? "green" : "red"} />
                 <span>{r.label}</span>
-                <span className="mono ml-auto text-[11px] text-muted">{r.detail}</span>
+                <span className="mono ml-auto text-[11px] text-muted">
+                  {r.detail} · {formatAgo(r.at)}
+                </span>
               </li>
             ))}
           </ul>

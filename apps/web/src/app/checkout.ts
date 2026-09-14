@@ -30,6 +30,9 @@ interface CheckoutState {
   error: { code: string; message: string } | null;
   buyHash: Hex | null;
   bindHash: Hex | null;
+  /** Block each receipt landed in: the plain proof beside the hash, for everyone, not only judge mode. */
+  buyBlock: string | null;
+  bindBlock: string | null;
   tokenId: number | null;
   buyMs: number | null;
   bindMs: number | null;
@@ -83,7 +86,9 @@ export function explain(error: unknown): { code: string; message: string } {
 function friendly(code: string, fallback: string): string {
   switch (code) {
     case "SeatTaken":
-      return "Someone took that seat a moment ago. Pick another.";
+      return "Someone took that seat a moment ago.";
+    case "NotListed":
+      return "That seat isn't listed any more — someone may have just taken it.";
     case "SalesClosed":
       return "Sales for this event have closed.";
     case "SeatNotInAnyTier":
@@ -106,8 +111,6 @@ function friendly(code: string, fallback: string): string {
       return "Resale closed when doors opened.";
     case "AlreadyCheckedIn":
       return "This ticket has already been used at the door.";
-    case "NotListed":
-      return "This seat isn't listed any more.";
     case "NotTicketHolder":
       return "Only the passkey that holds this ticket can do that.";
     case "SelfPurchase":
@@ -147,6 +150,8 @@ export const useCheckout = create<CheckoutState>()((set, get) => ({
   error: null,
   buyHash: null,
   bindHash: null,
+  buyBlock: null,
+  bindBlock: null,
   tokenId: null,
   buyMs: null,
   bindMs: null,
@@ -160,6 +165,8 @@ export const useCheckout = create<CheckoutState>()((set, get) => ({
       error: null,
       buyHash: null,
       bindHash: null,
+      buyBlock: null,
+      bindBlock: null,
       tokenId: null,
       buyMs: null,
       bindMs: null,
@@ -221,7 +228,7 @@ export const useCheckout = create<CheckoutState>()((set, get) => ({
         throw { code: "REVERTED", message: "The purchase reverted on-chain." };
       const tokenId = (await mintedTokenId(config, receipt.hash)) ?? seatId;
       useTelemetry.getState().confirmed();
-      set({ buyHash: receipt.hash, buyMs: receipt.ms, tokenId });
+      set({ buyHash: receipt.hash, buyBlock: receipt.blockNumber, buyMs: receipt.ms, tokenId });
       void queryClient.invalidateQueries({ queryKey: seatMapQueryKey(event.address) });
 
       set({ step: "binding" });
@@ -229,7 +236,7 @@ export const useCheckout = create<CheckoutState>()((set, get) => ({
       useTelemetry.getState().ceremony();
       const bound = await relay(config, fan, event, "bindDoorKey", bindData(tokenId, door.address));
       if (bound.status !== "success") throw { code: "REVERTED", message: "Binding the door key reverted." };
-      set({ bindHash: bound.hash, bindMs: bound.ms, step: "done" });
+      set({ bindHash: bound.hash, bindBlock: bound.blockNumber, bindMs: bound.ms, step: "done" });
       void queryClient.invalidateQueries({ queryKey: seatMapQueryKey(event.address) });
     } catch (error) {
       // A bought-but-unbound ticket is still a ticket: surface the error but keep the token.
@@ -277,7 +284,7 @@ export const useCheckout = create<CheckoutState>()((set, get) => ({
       const door = await identity.ensureDoor(toEventRef(config.chainId, event.address));
       const bound = await relay(config, fan, event, "bindDoorKey", bindData(tokenId, door.address));
       if (bound.status !== "success") throw { code: "REVERTED", message: "Binding the door key reverted." };
-      set({ bindHash: bound.hash, bindMs: bound.ms, step: "done" });
+      set({ bindHash: bound.hash, bindBlock: bound.blockNumber, bindMs: bound.ms, step: "done" });
       void queryClient.invalidateQueries({ queryKey: seatMapQueryKey(event.address) });
     } catch (error) {
       set({ step: "error", error: explain(error) });
