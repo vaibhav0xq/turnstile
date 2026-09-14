@@ -8,9 +8,10 @@ import {
   defineChain,
   getAddress,
   type Hex,
-  http,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
+import { canonicalHostPolicy } from "./canonical-host.ts";
+import { parseUrlList, planRpc, transportFor } from "./rpc.ts";
 
 type Deployment = { chainId: number; factory: Address; forwarder: Address; implementation: Address };
 
@@ -22,6 +23,8 @@ function required(name: string): string {
 
 const appDir = resolve(fileURLToPath(new URL("..", import.meta.url)));
 export const rpcUrl = required("RPC_URL");
+/** Primary RPC plus optional fallbacks (`RPC_FALLBACK_URLS`, comma-separated); sends stay on the primary. */
+export const rpc = planRpc(rpcUrl, parseUrlList(process.env["RPC_FALLBACK_URLS"]));
 export const chainId = Number(process.env["CHAIN_ID"] ?? 0);
 if (!Number.isSafeInteger(chainId) || chainId <= 0) throw new Error("CHAIN_ID must be a positive integer");
 const deploymentPath =
@@ -60,7 +63,7 @@ export const chain = defineChain({
   id: chainId,
   name: chainId === 31337 ? "Anvil" : chainId === 10143 ? "Monad Testnet" : "Monad",
   nativeCurrency: { name: "MON", symbol: "MON", decimals: 18 },
-  rpcUrls: { default: { http: [rpcUrl] } },
+  rpcUrls: { default: { http: [rpcUrl, ...rpc.fallbacks] } },
   ...(chainId === 31337 ? {} : { contracts: { multicall3: { address: MULTICALL3 } } }),
 });
 // Monad seals a block every 400 ms; viem's default 4 s receipt polling would make every
@@ -70,7 +73,7 @@ const pollingInterval = 400;
 // together are folded into one Multicall3 `aggregate3` and remaining requests share an HTTP round trip.
 export const publicClient = createPublicClient({
   chain,
-  transport: http(rpcUrl, { batch: true }),
+  transport: transportFor(rpc, { batch: true }),
   batch: { multicall: true },
   pollingInterval,
 });
@@ -79,23 +82,33 @@ export const gateAccount = privateKeyToAccount(key("GATE_SIGNER_PRIVATE_KEY"));
 export const relayerWallet = createWalletClient({
   account: relayerAccount,
   chain,
-  transport: http(rpcUrl),
+  transport: transportFor(rpc),
   pollingInterval,
 });
 export const gateWallet = createWalletClient({
   account: gateAccount,
   chain,
-  transport: http(rpcUrl),
+  transport: transportFor(rpc),
   pollingInterval,
 });
 
+const publicOrigin = process.env["PUBLIC_ORIGIN"]?.replace(/\/+$/, "") || null;
+/** Browser-side RPC plan (`PUBLIC_RPC_URL` + `PUBLIC_RPC_FALLBACK_URLS`); the browser only reads, so any public RPC will do. */
+const publicRpc = planRpc(
+  process.env["PUBLIC_RPC_URL"] || rpcUrl,
+  parseUrlList(process.env["PUBLIC_RPC_FALLBACK_URLS"]),
+);
 export const settings = {
-  publicRpcUrl: process.env["PUBLIC_RPC_URL"] || rpcUrl,
+  publicRpcUrl: publicRpc.primary,
+  publicRpcFallbackUrls: publicRpc.fallbacks,
+  publicRpcProvider: publicRpc.provider,
   explorer: process.env["EXPLORER_URL"] || null,
   /** Shown in the web app's header (e.g. `staging`) so a rehearsal origin is never mistaken for the real one. */
   environmentLabel: process.env["ENVIRONMENT_LABEL"]?.trim() || null,
   /** Public origin for absolute URLs in ticket metadata; unset = taken from each request (proxy headers first). */
-  publicOrigin: process.env["PUBLIC_ORIGIN"]?.replace(/\/+$/, "") || null,
+  publicOrigin,
+  /** Alias hosts (`www.<apex>` + `REDIRECT_HOSTS`) answered with a redirect to the public origin; null without one. */
+  canonicalHost: canonicalHostPolicy(publicOrigin, process.env["REDIRECT_HOSTS"]),
   gateToken: process.env["GATE_TOKEN"] || null,
   dripEnabled: process.env["DRIP_ENABLED"] === "1",
   dripAmount: BigInt(process.env["DRIP_AMOUNT_WEI"] || "100000000000000000"),

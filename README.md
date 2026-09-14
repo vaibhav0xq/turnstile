@@ -96,6 +96,13 @@ and will not carry over to the final domain. Token metadata carries an `image` (
 a rendered card of the seat in its tier, amber until check-in, green after) and an `external_url`; both are
 built from `PUBLIC_ORIGIN` (set it on every deployed relayer), else from the request's own `Host`.
 
+Two production knobs the relayer adds on top (`apps/relayer/.env.example`): `RPC_FALLBACK_URLS` /
+`PUBLIC_RPC_FALLBACK_URLS` turn the relayer's and the browser's RPC into a viem `fallback` — reads fail over
+to the next provider, transactions stay pinned to the primary so nonces never split across providers — and
+`/api/health` reports the provider label, host and latency. With a custom `PUBLIC_ORIGIN`, `www.<apex>` and
+any `REDIRECT_HOSTS` alias are redirected (301, 308 for non-GET) to the apex before anything is served, so
+passkeys — which are scoped to the page's host — only ever exist on one host.
+
 The spike is standalone: `cd spike && npm ci && npm run build && npm run verify` (headless Chromium, 17 checks).
 
 `pnpm verify` is the commit gate: `pnpm install --frozen-lockfile`, `pnpm check` (biome, tsc, node tests, forge

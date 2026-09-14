@@ -5,6 +5,7 @@ import { turnstileEventAbi } from "@turnstile/contracts/abi";
 import { type Context, Hono } from "hono";
 import { cors } from "hono/cors";
 import { getAddress, isAddress } from "viem";
+import { redirectStatus, redirectTarget } from "./canonical-host.ts";
 import {
   chain,
   chainId,
@@ -12,6 +13,7 @@ import {
   gateAccount,
   publicClient,
   relayerAccount,
+  rpc,
   settings,
   verifyChain,
 } from "./config.ts";
@@ -22,6 +24,7 @@ import { PassportStore } from "./passport.ts";
 import { PostgresPassportBackend } from "./passport-postgres.ts";
 import { RateLimiter } from "./ratelimit.ts";
 import { relay, relayGas } from "./relay.ts";
+import { rpcHost } from "./rpc.ts";
 import { renderTicketSvg, requestOrigin } from "./ticket-image.ts";
 
 function json(value: unknown, status = 200): Response {
@@ -47,6 +50,18 @@ const passports = new PassportStore(
   settings.databaseUrl ? await PostgresPassportBackend.open(settings.databaseUrl) : settings.passportFile,
 );
 
+// Alias hosts (`www.<apex>`, backup domains) redirect before anything else: a page served from an alias
+// would mint passkeys under a second RP ID (see canonical-host.ts).
+app.use("*", async (context, next) => {
+  const url = new URL(context.req.url);
+  const target = redirectTarget(
+    settings.canonicalHost,
+    context.req.header("host"),
+    url.pathname + url.search,
+  );
+  if (!target) return next();
+  return context.redirect(target, redirectStatus(context.req.method));
+});
 app.use(
   "*",
   cors({
@@ -60,15 +75,24 @@ app.use("*", async (context, next) => {
   console.log(`${context.req.method} ${context.req.path} ${context.res.status} ${Date.now() - started}ms`);
 });
 
-app.get("/api/health", async () =>
-  json({
+app.get("/api/health", async () => {
+  const started = Date.now();
+  const block = await publicClient.getBlockNumber();
+  return json({
     ok: true,
     chainId,
-    block: await publicClient.getBlockNumber(),
+    block,
     relayer: relayerAccount.address,
     gate: gateAccount.address,
-  }),
-);
+    // Which provider answered (hostname only, never the key) and what it falls back to.
+    rpc: {
+      provider: rpc.provider,
+      host: rpcHost(rpc.primary),
+      fallbacks: rpc.fallbacks.map(rpcHost),
+      latencyMs: Date.now() - started,
+    },
+  });
+});
 
 // `?fresh=1` skips the 15 s event cache (the organiser flow calls it right after `createEvent`).
 const fresh = (context: Context) => context.req.query("fresh") === "1";
@@ -77,6 +101,8 @@ app.get("/api/config", async (context) =>
   json({
     chainId,
     rpcUrl: settings.publicRpcUrl,
+    rpcFallbackUrls: settings.publicRpcFallbackUrls,
+    rpcProvider: settings.publicRpcProvider,
     explorer: settings.explorer,
     environmentLabel: settings.environmentLabel,
     factory: deployment.factory,
@@ -84,6 +110,8 @@ app.get("/api/config", async (context) =>
     implementation: deployment.implementation,
     relayer: relayerAccount.address,
     gate: gateAccount.address,
+    // True when check-in needs the operator bearer token (`GATE_TOKEN`); the door UI asks for it up front.
+    gateProtected: settings.gateToken !== null,
     gas: relayGas,
     drip: { enabled: settings.dripEnabled, amountWei: settings.dripAmount },
     events: await getEvents(fresh(context)),
@@ -255,7 +283,14 @@ app.onError((error) => {
 
 serve({ fetch: app.fetch, port: settings.port }, (info) => {
   const store = settings.databaseUrl ? "postgres" : settings.passportFile ? "file" : "memory";
-  console.log(`relayer listening on :${info.port} chain ${chainId} passports ${store}`);
+  console.log(
+    `relayer listening on :${info.port} chain ${chainId} passports ${store} rpc ${rpc.provider} (${rpcHost(rpc.primary)}${rpc.fallbacks.length ? ` +${rpc.fallbacks.length} fallback` : ""})`,
+  );
+  if (settings.canonicalHost) {
+    console.log(
+      `canonical host ${settings.canonicalHost.origin}; redirecting ${[...settings.canonicalHost.aliases].join(", ")}`,
+    );
+  }
   if (chainId !== 31337 && !settings.publicOrigin) {
     console.warn(
       "PUBLIC_ORIGIN is not set: metadata image/external_url will follow each request's Host header",
