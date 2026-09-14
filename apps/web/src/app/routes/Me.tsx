@@ -268,7 +268,7 @@ export function Me({ config }: { config: AppConfig | undefined }) {
           tickets.every((q, i) => mySeats(q.data, address).length === 0 && config?.events[i]) ? (
             <div className="mt-2 text-sm text-muted">
               Nothing yet.{" "}
-              <Link to="/" className="underline">
+              <Link to="/city" className="underline">
                 Pick a night.
               </Link>
             </div>

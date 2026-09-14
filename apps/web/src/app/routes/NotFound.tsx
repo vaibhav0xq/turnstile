@@ -19,7 +19,7 @@ export function NotFound() {
           <span className="mono break-all">{pathname}</span> isn't a page. Tickets live at{" "}
           <span className="mono">/t/…</span>, events at <span className="mono">/e/…</span>.
         </p>
-        <Link to="/" className="chip mono mt-5 inline-flex border-amber/50 text-amber hover:bg-ink-2">
+        <Link to="/city" className="chip mono mt-5 inline-flex border-amber/50 text-amber hover:bg-ink-2">
           ← Back to the city
         </Link>
       </div>

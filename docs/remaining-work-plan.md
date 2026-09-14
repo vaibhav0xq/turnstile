@@ -321,6 +321,7 @@ prompt counts, timings and the JSON from the device page.
 | 4 | 3D fixes on the judge path (§4.1, 4.4, 4.5, 4.6, 4.8) — done 14 Sep: loader + flat fallback with a DOM seat list, theatre reframe, followspot wash, quality tiers (mobile) | 3 days | 25 Sep |
 | 5 | Landing / website (§3) — done 14 Sep: hero CTA + sub-claim, programme sections 01–05 with stills from the judge run, FAQ, footer, OG / manifest / robots / icons, scene chunk split (lazy `World`, 877 kB app + 1.2 MB scene). Left: `VITE_SITE_URL` on the final origin (absolute OG URLs + canonical), Lighthouse pass on the final host, city pulse numbers need the hosted Envio | 3 days | 29 Sep |
 | 6 | 3D depth (§4.2, 4.3, 4.7): city density, descent dolly, club dressing — done 14 Sep; left in §4: theatre reframe (4.4), seat view in the followspot (4.5), finale (4.6), mobile tier (4.8) | 2–3 days | 2 Oct |
+| 6b | Landing redesign Phase A (`docs/landing-redesign-plan.md`) — done 14 Sep: lit city, `/` scroll flight with three story frames, `/city` picker, judge links redirect, mobile header and venue polish. Left: Phase B sample door-code ring (optional), real-browser check of the high tier (bloom) on the new lighting | 1 day | done |
 | 7 | Smoke + judge run on the final origin, **then** re-point `baseURI` (migration order); device matrix (§9), fixes from it | 3 days | 6 Oct |
 | 8 | Freeze: README, write-up, code review, gate + push; seed-night script; storyboard dry run | 1 day | 7 Oct |
 | 9 | Capture and edit the video; submit | 2 days | 9–10 Oct |

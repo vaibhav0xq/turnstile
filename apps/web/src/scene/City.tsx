@@ -6,7 +6,15 @@ import type { EventInfo } from "../chain/config";
 import { mulberry } from "../lib/random";
 import { keepOutRects } from "./anchor";
 import { useDirector } from "./director";
-import { beaconShader, haloShader, makeMassMaterial, poolShader, useShaderMaterial } from "./materials";
+import { flightPose, LABELS_FROM, useFlight } from "./flight";
+import {
+  beaconShader,
+  CITY_NIGHT,
+  haloShader,
+  makeMassMaterial,
+  poolShader,
+  useShaderMaterial,
+} from "./materials";
 
 /** Where each event's beacon stands in the city; the venue itself is rendered at the origin later. */
 export const BEACON_SLOTS: Array<[number, number]> = [
@@ -44,26 +52,32 @@ const cityVertex = /* glsl */ `
     p.y += sin(uTime * 0.6 + aSeed * 12.0) * 0.06;
     vec4 mv = modelViewMatrix * vec4(p, 1.0);
     float flicker = 0.85 + 0.15 * sin(uTime * (1.5 + aSeed * 3.0) + aSeed * 40.0);
-    gl_PointSize = max(2.0 * uPixelRatio, aSize * uPixelRatio * flicker * (240.0 / -mv.z));
+    // aviation lights (aWarm > 1.5) blink slowly instead of flickering
+    float beacon = step(1.5, aWarm);
+    float blink = mix(1.0, smoothstep(0.35, 0.6, sin(uTime * 1.3 + aSeed * 50.0)), beacon);
+    // clamped: a window a few units from the lens must stay a lamp, not a blob
+    gl_PointSize = clamp(aSize * uPixelRatio * flicker * (240.0 / -mv.z), 2.0 * uPixelRatio, 9.0 * uPixelRatio);
     gl_Position = projectionMatrix * mv;
     vWarm = aWarm;
     // haze: far windows dissolve into the night
     float fade = exp(-max(0.0, -mv.z - 160.0) * 0.0024);
-    vAlpha = k * (0.55 + 0.45 * flicker) * fade * uDim;
+    vAlpha = k * (0.55 + 0.45 * flicker) * fade * uDim * blink;
   }
 `;
 
 const cityFragment = /* glsl */ `
   uniform vec3 uWarm;
   uniform vec3 uCool;
+  uniform vec3 uRed;
   varying float vWarm;
   varying float vAlpha;
   void main() {
     vec2 c = gl_PointCoord - 0.5;
     float d = length(c);
     float a = 1.0 - smoothstep(0.1, 0.5, d);
-    vec3 col = mix(uCool, uWarm, vWarm);
-    gl_FragColor = vec4(col * (0.6 + 0.5 * vWarm), a * vAlpha);
+    float beacon = step(1.5, vWarm);
+    vec3 col = mix(mix(uCool, uWarm, vWarm) * (0.6 + 0.5 * vWarm), uRed, beacon);
+    gl_FragColor = vec4(col, a * vAlpha);
   }
 `;
 
@@ -83,7 +97,7 @@ const skyFragment = /* glsl */ `
   void main() {
     // elevation of the view ray, so the horizon stays where the camera sees it
     float h = normalize(vWorld - cameraPosition).y;
-    float band = 1.0 - smoothstep(0.0, 0.34, abs(h));
+    float band = 1.0 - smoothstep(0.0, 0.36, abs(h));
     vec3 col = mix(uZenith, uHorizon, band);
     // light pollution over downtown, warmest straight ahead
     float toward = 0.5 + 0.5 * dot(normalize(vec2(vWorld.x, vWorld.z)), vec2(0.0, -1.0));
@@ -236,7 +250,7 @@ function buildCity(beacons: Array<[number, number]>, detail = 1): CityData {
           }
         }
         // aviation light on the tallest towers
-        if (h > 56) push(ox, h + 0.6, oz, 4, 0.05);
+        if (h > 56) push(ox, h + 0.6, oz, 3.4, 2);
       }
     }
   }
@@ -270,7 +284,7 @@ function buildCity(beacons: Array<[number, number]>, detail = 1): CityData {
         drnd() < 0.75 ? 0.8 + drnd() * 0.2 : drnd() * 0.3,
       );
     }
-    if (t.h > 90) push(t.x, t.h + 0.8, t.z, 4.5, 0.05);
+    if (t.h > 90) push(t.x, t.h + 0.8, t.z, 3.8, 2);
   }
   return {
     buildings,
@@ -374,6 +388,7 @@ export function City({ events, onEnter }: CityProps) {
       uDim: { value: 1.0 },
       uWarm: { value: new THREE.Color("#ffc98a") },
       uCool: { value: new THREE.Color("#8fd6ff") },
+      uRed: { value: new THREE.Color("#ff4a3d") },
     },
     vertexShader: cityVertex,
     fragmentShader: cityFragment,
@@ -401,9 +416,9 @@ export function City({ events, onEnter }: CityProps) {
 
   const sky = useShaderMaterial({
     uniforms: {
-      uZenith: { value: new THREE.Color("#05060a") },
-      uHorizon: { value: new THREE.Color("#141a2c") },
-      uGlow: { value: new THREE.Color("#3a2414") },
+      uZenith: { value: new THREE.Color(CITY_NIGHT.zenith) },
+      uHorizon: { value: new THREE.Color(CITY_NIGHT.horizon) },
+      uGlow: { value: new THREE.Color(CITY_NIGHT.glow) },
     },
     vertexShader: skyVertex,
     fragmentShader: skyFragment,
@@ -416,7 +431,12 @@ export function City({ events, onEnter }: CityProps) {
       <mesh material={sky} renderOrder={-1} frustumCulled={false}>
         <sphereGeometry args={[850, 32, 16]} />
       </mesh>
-      <hemisphereLight args={["#34405f", "#07080c", 1.6]} />
+      <hemisphereLight args={["#3a4870", "#0a0c14", 1.05]} />
+      {/* the moon: a cool key from behind and to the left, so roofs and far walls separate from the haze */}
+      <directionalLight position={[-220, 260, -160]} color={CITY_NIGHT.moon} intensity={1.8} />
+      {/* the city's own glow bounced back: a low warm fill from the south-east so the faces toward the
+          camera's usual side never fall to black */}
+      <directionalLight position={[160, 90, 260]} color="#6b5b4e" intensity={1.2} />
       <Streets />
       <Buildings buildings={data.buildings} startedAt={started} material={mass} />
       <Skyline towers={data.skyline} material={mass} />
@@ -424,7 +444,7 @@ export function City({ events, onEnter }: CityProps) {
       {/* ground plane catches the hemisphere light faintly and hides the horizon */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.2, 0]}>
         <planeGeometry args={[6000, 6000]} />
-        <meshBasicMaterial color="#090a10" />
+        <meshBasicMaterial color="#0b0d16" />
       </mesh>
       {events.map((event, i) => (
         <Beacon
@@ -462,9 +482,9 @@ function Streets() {
   return (
     <lineSegments geometry={geometry} frustumCulled={false}>
       <lineBasicMaterial
-        color="#4a3320"
+        color="#5a3d24"
         transparent
-        opacity={0.45}
+        opacity={0.5}
         blending={THREE.AdditiveBlending}
         toneMapped={false}
         depthWrite={false}
@@ -634,7 +654,9 @@ function Beacon({
     if (!el || !anchor) return;
     const rects = keepOutRects();
     let height = -1;
-    for (const h of CHIP_HEIGHTS) {
+    // in flight the chips are off until the landing: the story's copy speaks for the city there
+    const flying = useFlight.getState().active && flightPose.u < LABELS_FROM;
+    for (const h of flying ? [] : CHIP_HEIGHTS) {
       tmpVec.set(x, h, z).project(camera);
       if (tmpVec.z > 1) break;
       const sx = (tmpVec.x * 0.5 + 0.5) * size.width;

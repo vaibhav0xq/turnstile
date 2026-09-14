@@ -14,24 +14,27 @@ export interface Frame {
   still: { src: string; alt: string };
 }
 
-/** How it works — three stills from the judge run, in the order a fan meets them. */
+/**
+ * The three frames of the landing's flight, in the order a fan meets them: each pairs a still from the judge
+ * run with the one thing to know at that point. Also the "How it works" of the site.
+ */
 export const FRAMES: Frame[] = [
   {
     numeral: "I",
-    title: "Pick a seat",
-    body: "The venue is the seat map. Tap a seat in the room and the card tells you the row, the price and whether it is yours, taken or listed.",
+    title: "The venue is the seat map.",
+    body: "Tap a seat in the room and the card tells you the row, the price and whether it is yours, taken or listed.",
     still: { src: "/site/pick.jpg", alt: "The theatre in 3D with one seat selected and its card open" },
   },
   {
     numeral: "II",
-    title: "Your passkey signs",
-    body: "One prompt. The seat is minted to an address derived from your passkey — nothing to install, no seed phrase. Free seats, door keys and listings are sponsored by the relayer; a paid seat costs its face value from your passkey's own account.",
+    title: "One prompt. Your passkey signs.",
+    body: "The seat is minted to an address derived from your passkey — nothing to install, no seed phrase. Free seats and door keys are sponsored by the relayer; a paid seat is paid from your own account.",
     still: { src: "/site/sign.jpg", alt: "The checkout panel: passkey, seat, door key, one button" },
   },
   {
     numeral: "III",
-    title: "The door reads a 30-second code",
-    body: "Your ticket shows a code signed by a key that exists only for that event. The door scans it, the chain confirms, and your seat lights up in the room.",
+    title: "The door reads a code that goes stale in a minute.",
+    body: "Codes rotate every 30 seconds, signed by a key derived for this door alone. A seat admits once, so a copy is worth at most one early entry — never a second person inside.",
     still: {
       src: "/site/door.jpg",
       alt: "A ticket with its rotating door code and the seconds left in the slot",

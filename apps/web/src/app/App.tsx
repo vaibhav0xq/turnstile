@@ -13,6 +13,7 @@ import { Tour } from "../ui/Tour";
 import { buildLayout } from "../venues/layout";
 import { useOrganise } from "./organise";
 import { usePassport } from "./passport";
+import { City } from "./routes/City";
 import { Event } from "./routes/Event";
 import { Gate } from "./routes/Gate";
 import { Landing } from "./routes/Landing";
@@ -89,6 +90,7 @@ function Frame() {
       <TopBar config={config.data} onSignIn={() => void ensureFan().catch(() => undefined)} />
       <Routes>
         <Route path="/" element={<Landing config={config.data} />} />
+        <Route path="/city" element={<City config={config.data} />} />
         <Route path="/e/:address" element={<Event config={config.data} seatMap={seats.data} />} />
         <Route path="/t/:address/:tokenId" element={<Ticket config={config.data} seatMap={seats.data} />} />
         <Route path="/gate/:address" element={<Gate config={config.data} seatMap={seats.data} />} />

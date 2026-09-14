@@ -396,18 +396,41 @@ export const hazeShader = {
   `,
 };
 
+/** The city's night palette, shared by the sky dome, the fog and the building masses so they meet in one haze. */
+export const CITY_NIGHT = {
+  zenith: "#05060a",
+  horizon: "#1a2338",
+  glow: "#4a2c16",
+  fog: "#161d32",
+  moon: "#7389cf",
+  street: "#ff8a3d",
+} as const;
+
+/**
+ * Building masses. Standard-lit so the moon and the hemisphere shape them, plus three things the lights alone
+ * cannot give a box city at night: a warm street uplight on the lower walls, a moon-coloured rim on every
+ * silhouette so neighbouring masses separate, and a cool roof tint. Ground haze mixes in before the fog.
+ */
 export function makeMassMaterial(): THREE.MeshStandardMaterial {
   const material = new THREE.MeshStandardMaterial({
-    color: "#1a1f33",
-    emissive: "#0e1120",
+    // a real albedo: the lights do the modelling (a near-black colour left every face at the same black,
+    // whatever the light), and the night comes from how little light there is
+    color: "#6f7a9a",
+    emissive: "#05070d",
     emissiveIntensity: 1,
-    roughness: 0.9,
+    roughness: 0.8,
     metalness: 0.05,
   });
   material.onBeforeCompile = (shader) => {
-    shader.uniforms["uHaze"] = { value: new THREE.Color("#141a2c") };
+    shader.uniforms["uHaze"] = { value: new THREE.Color(CITY_NIGHT.fog) };
     shader.uniforms["uHazeHeight"] = { value: 30 };
-    shader.uniforms["uHazeAmount"] = { value: 0.55 };
+    shader.uniforms["uHazeAmount"] = { value: 0.5 };
+    shader.uniforms["uStreet"] = { value: new THREE.Color(CITY_NIGHT.street) };
+    shader.uniforms["uStreetHeight"] = { value: 22 };
+    shader.uniforms["uStreetAmount"] = { value: 0.3 };
+    shader.uniforms["uRim"] = { value: new THREE.Color(CITY_NIGHT.moon) };
+    shader.uniforms["uRimAmount"] = { value: 0.35 };
+    shader.uniforms["uRoof"] = { value: new THREE.Color("#3a4666") };
     shader.vertexShader = shader.vertexShader
       .replace(
         "#include <common>",
@@ -430,16 +453,32 @@ export function makeMassMaterial(): THREE.MeshStandardMaterial {
         uniform vec3 uHaze;
         uniform float uHazeHeight;
         uniform float uHazeAmount;
+        uniform vec3 uStreet;
+        uniform float uStreetHeight;
+        uniform float uStreetAmount;
+        uniform vec3 uRim;
+        uniform float uRimAmount;
+        uniform vec3 uRoof;
         varying float vHazeY;`,
       )
       .replace(
         "#include <fog_fragment>",
-        `float hazeK = uHazeAmount * (1.0 - smoothstep(0.0, uHazeHeight, vHazeY));
+        `{
+          vec3 nrm = normalize(vNormal);
+          // world up in view space is the view matrix's second column
+          float roofK = smoothstep(0.6, 0.95, dot(nrm, viewMatrix[1].xyz));
+          gl_FragColor.rgb = mix(gl_FragColor.rgb, uRoof, roofK * 0.2);
+          float streetK = uStreetAmount * (1.0 - smoothstep(0.0, uStreetHeight, vHazeY)) * (1.0 - roofK);
+          gl_FragColor.rgb += uStreet * streetK;
+          float fres = pow(1.0 - max(dot(nrm, normalize(vViewPosition)), 0.0), 3.0);
+          gl_FragColor.rgb += uRim * (uRimAmount * fres);
+        }
+        float hazeK = uHazeAmount * (1.0 - smoothstep(0.0, uHazeHeight, vHazeY));
         gl_FragColor.rgb = mix(gl_FragColor.rgb, uHaze, hazeK);
         #include <fog_fragment>`,
       );
   };
-  material.customProgramCacheKey = () => "turnstile-mass";
+  material.customProgramCacheKey = () => "turnstile-mass-3";
   return material;
 }
 

@@ -38,6 +38,11 @@ export function Footer({ config }: { config: AppConfig | undefined }) {
             </a>
           </li>
           <li>
+            <Link to="/city" className="hover:text-paper">
+              City
+            </Link>
+          </li>
+          <li>
             <Link to="/organise" className="hover:text-paper">
               Organise
             </Link>

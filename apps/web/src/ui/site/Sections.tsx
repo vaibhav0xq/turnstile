@@ -2,13 +2,12 @@ import type { ReactNode } from "react";
 import { Link } from "react-router";
 import type { AppConfig } from "../../chain/config";
 import { Kicker } from "../primitives";
-import { FAQ, FRAMES, ORGANISER_POINTS, WHY } from "./copy";
+import { FAQ, ORGANISER_POINTS, WHY } from "./copy";
 import { Footer } from "./Footer";
 import { UnderTheHood } from "./UnderTheHood";
 
-/** Section ids double as the programme's anchors; the hero's "Programme ↓" link lands on the first one. */
+/** Section ids double as the programme's anchors. */
 export const PROGRAMME = [
-  { id: "how", label: "How it works" },
   { id: "why", label: "Why identity-bound" },
   { id: "organisers", label: "For organisers" },
   { id: "hood", label: "Under the hood" },
@@ -16,8 +15,8 @@ export const PROGRAMME = [
 ] as const;
 
 /**
- * The landing's below-the-fold programme: the same route and the same world, with the city dimmed behind
- * a run of editorial sections. Plain DOM, so it reads the same with or without WebGL.
+ * The landing's programme, after the flight has landed: the same route and the same world, with the city
+ * dimmed behind a run of editorial sections. Plain DOM, so it reads the same with or without WebGL.
  */
 export function SiteSections({ config }: { config: AppConfig | undefined }) {
   return (
@@ -34,33 +33,9 @@ export function SiteSections({ config }: { config: AppConfig | undefined }) {
         </ul>
       </nav>
 
-      <Section id="how" index={1} kicker="How it works" title="Three frames, one passkey.">
-        <ol className="grid gap-6 md:grid-cols-3">
-          {FRAMES.map((frame) => (
-            <li key={frame.numeral} className="flex flex-col gap-3">
-              <figure className="still">
-                <img
-                  src={frame.still.src}
-                  alt={frame.still.alt}
-                  width={960}
-                  height={600}
-                  loading="lazy"
-                  decoding="async"
-                />
-                <figcaption className="mono absolute left-3 top-3 text-[11px] text-amber">
-                  {frame.numeral}
-                </figcaption>
-              </figure>
-              <h3 className="display text-2xl">{frame.title}</h3>
-              <p className="text-sm text-paper/75">{frame.body}</p>
-            </li>
-          ))}
-        </ol>
-      </Section>
-
       <Section
         id="why"
-        index={2}
+        index={1}
         kicker="Why identity-bound"
         title="A ticket that is also the proof it is yours."
       >
@@ -74,7 +49,7 @@ export function SiteSections({ config }: { config: AppConfig | undefined }) {
         </ul>
       </Section>
 
-      <Section id="organisers" index={3} kicker="For organisers" title="Host a night in five decisions.">
+      <Section id="organisers" index={2} kicker="For organisers" title="Host a night in five decisions.">
         <div className="grid gap-8 md:grid-cols-[1fr_auto] md:items-end">
           <ol className="flex flex-col gap-3">
             {ORGANISER_POINTS.map((line, i) => (
@@ -90,11 +65,11 @@ export function SiteSections({ config }: { config: AppConfig | undefined }) {
         </div>
       </Section>
 
-      <Section id="hood" index={4} kicker="Under the hood" title="What the demo is actually running on.">
+      <Section id="hood" index={3} kicker="Under the hood" title="What the demo is actually running on.">
         <UnderTheHood config={config} />
       </Section>
 
-      <Section id="faq" index={5} kicker="FAQ" title="House rules.">
+      <Section id="faq" index={4} kicker="FAQ" title="House rules.">
         <div className="faq divide-y divide-line border-y border-line">
           {FAQ.map((item) => (
             <details key={item.q} className="group py-4">

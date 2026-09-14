@@ -82,6 +82,16 @@ canvas {
   pointer-events: auto;
 }
 
+/* The picker: the city takes the pointer wherever there is no copy or card, so beacons can be hovered and
+   clicked straight from the scene. Unlayered like the rule above, so it wins on the same element. */
+.overlay > .overlay-passthrough {
+  pointer-events: none;
+}
+
+.overlay-passthrough > * {
+  pointer-events: auto;
+}
+
 .scrim-bottom,
 .scrim-left,
 .scrim-top {
@@ -237,6 +247,30 @@ input:focus-visible {
   font-size: 0.75rem;
   border: 1px solid var(--color-line);
   background: rgba(13, 15, 19, 0.6);
+}
+
+@media (max-width: 639px) {
+  /* a phone header is two or three chips wide, and a venue's tier row is one swipe: smaller chips keep the
+     wordmark and the actions on one line */
+  header .chip,
+  .chips-compact .chip {
+    height: 28px;
+    padding: 0 0.6rem;
+    font-size: 11px;
+  }
+  /* the tier row scrolls sideways on a phone instead of stacking; no scrollbar, the cut-off chip says "more" */
+  .chips-compact {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .chips-compact::-webkit-scrollbar {
+    display: none;
+  }
+  .chips-compact > * {
+    flex-shrink: 0;
+  }
 }
 
 .dot {
@@ -615,6 +649,48 @@ input.field::placeholder {
   .site-inner {
     padding-left: 2rem;
     padding-right: 2rem;
+  }
+}
+
+/* The landing's story: each block of copy carries its own soft pool of ink, so the city can stay bright
+   between the blocks and the flight reads through. */
+.story-copy {
+  position: relative;
+}
+
+.story-copy::before {
+  content: "";
+  position: absolute;
+  inset: -3rem -4rem;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(60% 60% at 50% 50%, rgba(7, 8, 10, 0.78) 0%, rgba(7, 8, 10, 0) 100%);
+}
+
+.story-hero .story-copy::before {
+  inset: -4rem -6rem -4rem -8rem;
+  background: radial-gradient(55% 60% at 45% 55%, rgba(7, 8, 10, 0.82) 0%, rgba(7, 8, 10, 0) 100%);
+}
+
+.scroll-hint {
+  animation: nudge 2.4s ease-in-out infinite;
+}
+
+@keyframes nudge {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.7;
+  }
+  50% {
+    transform: translateY(4px);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll-hint {
+    animation: none;
   }
 }
 

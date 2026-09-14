@@ -19,7 +19,7 @@ export function UnknownRoute({ title, detail }: { title: string; detail: string 
         <Kicker>Not found</Kicker>
         <div className="display mt-2 text-2xl">{title}</div>
         <p className="mt-2 text-sm text-muted">{detail}</p>
-        <Button className="mt-4" onClick={() => navigate("/")}>
+        <Button className="mt-4" onClick={() => navigate("/city")}>
           Back to the city
         </Button>
       </div>

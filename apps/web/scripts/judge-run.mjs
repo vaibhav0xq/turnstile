@@ -80,7 +80,7 @@ try {
     if (f === page.mainFrame()) console.log(`   navigated → ${f.url()}`);
   });
   if (!seed) await addVirtualPasskey(page);
-  const url = `${base}/?tour=auto${seed ? `&dev=${encodeURIComponent(seed)}` : ""}`;
+  const url = `${base}/city?tour=auto${seed ? `&dev=${encodeURIComponent(seed)}` : ""}`;
   console.log(`judge run → ${url}${seed ? "" : "  (virtual passkey)"}`);
   const t0 = performance.now();
   await page.goto(url, { waitUntil: "load", timeout: 90_000 });

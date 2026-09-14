@@ -112,14 +112,14 @@ export function Event({ config, seatMap }: { config: AppConfig | undefined; seat
   return (
     <div className="overlay">
       <div className="scrim-top" aria-hidden />
-      <div className="absolute left-4 top-20 max-w-md sm:left-6 sm:top-24">
+      <div className="absolute left-4 right-4 top-16 max-w-md sm:left-6 sm:right-auto sm:top-24">
         <Kicker className="fade-up">{formatDate(event.startsAt)}</Kicker>
-        <h1 className="display fade-up mt-1 text-4xl sm:text-5xl">{event.name}</h1>
-        <p className="fade-up-late mt-2 text-sm text-paper/75">
+        <h1 className="display fade-up mt-1 text-3xl sm:text-5xl">{event.name}</h1>
+        <p className="fade-up-late mt-1.5 text-[13px] text-paper/75 sm:mt-2 sm:text-sm">
           Pick a seat. No wallet. No app.{" "}
           {seatMap ? `${event.capacity - [...seatMap.values()].length} left.` : ""}
         </p>
-        <div className="fade-up-late mt-4 flex flex-wrap gap-2">
+        <div className="chips-compact fade-up-late mt-3 flex flex-wrap gap-2 sm:mt-4">
           {counts.map(({ tier, free }) => (
             <button
               type="button"
@@ -145,7 +145,7 @@ export function Event({ config, seatMap }: { config: AppConfig | undefined; seat
             {listOpen ? "Hide list" : "Seat list"}
           </button>
         </div>
-        <div className="fade-up-late mt-3">
+        <div className="fade-up-late mt-2.5 sm:mt-3">
           <StatusLegend />
         </div>
       </div>

@@ -129,7 +129,7 @@ export function Tour({ config, seatMap }: { config: AppConfig | undefined; seatM
   useEffect(() => {
     if (!active || step === "lit") return;
     const { go, setEvent, setToken } = useTour.getState();
-    if (location.pathname === "/") {
+    if (location.pathname === "/city") {
       go("city");
       return;
     }
@@ -245,7 +245,7 @@ function TourBar({ config, devIdentity }: { config: AppConfig | undefined; devId
     // A cold start each run: a fresh dev identity here, a signed-out (but kept) passkey in production.
     if (import.meta.env.DEV && identity.devSeed) identity.setDevSeed(Math.random().toString(36).slice(2, 8));
     else identity.endSessions();
-    navigate("/");
+    navigate("/city");
     tour.start({ autoplay: keepAutoplay });
   };
 

@@ -1,11 +1,24 @@
 import { CameraControls } from "@react-three/drei";
-import { useFrame } from "@react-three/fiber";
+import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import type { VenueLayout, Waypoint } from "../venues/layout";
 import { seatFocus, seatViewpoint } from "../venues/layout";
 import { beaconSlot } from "./City";
 import { DESCENT_MS, DIVE_MS, type Transition, useDirector } from "./director";
+import {
+  CITY_FOG_DENSITY,
+  CITY_POSE,
+  damp,
+  FLIGHT_DAMPING,
+  FLIGHT_KEYS,
+  type FlightSample,
+  flightPose,
+  fogDensityAt,
+  PORTRAIT_KEYS,
+  sampleFlight,
+  useFlight,
+} from "./flight";
 
 interface CameraRigProps {
   layout: VenueLayout | null;
@@ -15,8 +28,8 @@ interface CameraRigProps {
   diveBeacon: number | null;
 }
 
-const CITY = { position: new THREE.Vector3(0, 78, 236), target: new THREE.Vector3(0, 18, 0) };
-const DEFAULT_FOV = 42;
+const CITY = { position: new THREE.Vector3(...CITY_POSE.p), target: new THREE.Vector3(...CITY_POSE.t) };
+const DEFAULT_FOV = CITY_POSE.fov;
 /** Pointer parallax in the city: ±2° of yaw, ±1° of pitch, desktop only. */
 const PARALLAX_YAW = THREE.MathUtils.degToRad(2);
 const PARALLAX_PITCH = THREE.MathUtils.degToRad(1);
@@ -31,6 +44,15 @@ interface Move {
 
 const tmpP = new THREE.Vector3();
 const tmpT = new THREE.Vector3();
+const flightSample: FlightSample = { position: [0, 0, 0], target: [0, 0, 0], fov: DEFAULT_FOV };
+
+/** Orbit limits for the picker: close enough to read a beacon, never under the roofs or straight above. */
+function cityLimits(c: CameraControls) {
+  c.minDistance = 120;
+  c.maxDistance = 360;
+  c.minPolarAngle = 0.55;
+  c.maxPolarAngle = 1.32;
+}
 
 function waypointFor(layout: VenueLayout, chapter: string): Waypoint {
   return chapter === "gate" ? layout.camera.entrance : layout.camera.overview;
@@ -50,6 +72,10 @@ export function CameraRig({ layout, focusBeacon, diveBeacon }: CameraRigProps) {
   const move = useRef<Move | null>(null);
   const dragging = useRef(false);
   const parallax = useRef({ yaw: 0, pitch: 0 });
+  const flightActive = useFlight((s) => s.active);
+  const scene = useThree((s) => s.scene);
+  /** Where along the flight the camera is, in key units; eased toward the scroll's target every frame. */
+  const flightU = useRef(0);
   const finePointer = useMemo(
     () => typeof window !== "undefined" && window.matchMedia("(pointer: fine)").matches,
     [],
@@ -64,10 +90,7 @@ export function CameraRig({ layout, focusBeacon, diveBeacon }: CameraRigProps) {
     if (useDirector.getState().transition?.kind === "descent") return;
     if (chapter === "city") {
       fov.current = DEFAULT_FOV;
-      c.minDistance = 120;
-      c.maxDistance = 360;
-      c.minPolarAngle = 0.55;
-      c.maxPolarAngle = 1.32;
+      cityLimits(c);
       c.setLookAt(
         CITY.position.x,
         CITY.position.y + 40,
@@ -181,6 +204,43 @@ export function CameraRig({ layout, focusBeacon, diveBeacon }: CameraRigProps) {
     c.setLookAt(p0.x, p0.y, p0.z, t0.x, t0.y, t0.z, false);
   }, [transition, layout, chapter, diveBeacon]);
 
+  // The landing's flight: while it is on, the frame loop places the camera from the scroll and the user's
+  // orbit is off (the page is the control). Limits open up because the path runs closer and lower than the
+  // picker allows. When it ends without a dive under way, the camera eases to the picker's pose, so
+  // `/` → `/city` is one continuous shot.
+  useEffect(() => {
+    const c = controls.current;
+    if (!c) return;
+    const d = useDirector.getState();
+    if (flightActive) {
+      if (d.chapter !== "city") return;
+      // before the first frame (a fresh load) start where the scroll says; arriving from the picker with
+      // the city already on screen, fly up from its pose instead of cutting
+      flightU.current = d.ready ? FLIGHT_KEYS.length - 1 : useFlight.getState().target;
+      c.enabled = false;
+      c.minDistance = 1;
+      c.maxDistance = 1000;
+      c.minPolarAngle = 0;
+      c.maxPolarAngle = Math.PI;
+      return;
+    }
+    flightPose.u = FLIGHT_KEYS.length - 1;
+    if (scene.fog instanceof THREE.FogExp2) scene.fog.density = CITY_FOG_DENSITY;
+    if (d.transition || d.chapter !== "city") return;
+    cityLimits(c);
+    c.enabled = true;
+    fov.current = DEFAULT_FOV;
+    void c.setLookAt(
+      CITY.position.x,
+      CITY.position.y,
+      CITY.position.z,
+      CITY.target.x,
+      CITY.target.y,
+      CITY.target.z,
+      true,
+    );
+  }, [flightActive, scene]);
+
   // View from a seat ↔ overview.
   useEffect(() => {
     const c = controls.current;
@@ -234,7 +294,7 @@ export function CameraRig({ layout, focusBeacon, diveBeacon }: CameraRigProps) {
 
   // Idle drift: the city slowly orbits and leans with the pointer; the venue breathes. The lens eases
   // toward the shot's field of view. A scripted move overrides all of it.
-  useFrame(({ camera, pointer }, delta) => {
+  useFrame(({ camera, pointer, size }, delta) => {
     const c = controls.current;
     if (!c) return;
     drift.current += delta;
@@ -246,6 +306,27 @@ export function CameraRig({ layout, focusBeacon, diveBeacon }: CameraRigProps) {
     const m = move.current;
     if (transition && m) {
       runMove(c, transition, m, endTransition);
+      return;
+    }
+    if (flightActive && chapter === "city") {
+      const target = useFlight.getState().target;
+      let u = damp(flightU.current, target, FLIGHT_DAMPING, delta);
+      if (Math.abs(u - target) < 0.0005) u = target;
+      flightU.current = u;
+      flightPose.u = u;
+      if (scene.fog instanceof THREE.FogExp2) scene.fog.density = fogDensityAt(u);
+      const sample = sampleFlight(size.width < size.height ? PORTRAIT_KEYS : FLIGHT_KEYS, u, flightSample);
+      fov.current = sample.fov;
+      const [px, py, pz] = sample.position;
+      const [tx, ty, tz] = sample.target;
+      c.setLookAt(px, py, pz, tx, ty, tz, false);
+      if (finePointer) {
+        // the pose is rebuilt every frame, so the parallax is applied as an absolute lean, not a delta
+        const p = parallax.current;
+        p.yaw = THREE.MathUtils.damp(p.yaw, pointer.x * PARALLAX_YAW, 3, delta);
+        p.pitch = THREE.MathUtils.damp(p.pitch, -pointer.y * PARALLAX_PITCH, 3, delta);
+        c.rotate(p.yaw, p.pitch, false);
+      }
       return;
     }
     if (chapter === "city") {

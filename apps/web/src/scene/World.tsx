@@ -9,6 +9,8 @@ import { buildLayout } from "../venues/layout";
 import { CameraRig } from "./CameraRig";
 import { City } from "./City";
 import { useDirector } from "./director";
+import { CITY_FOG_DENSITY } from "./flight";
+import { CITY_NIGHT } from "./materials";
 import { Venue } from "./Venue";
 
 interface WorldProps {
@@ -97,7 +99,7 @@ function Scene({ config, seatMap, onEnterEvent }: WorldProps) {
       >
         <color attach="background" args={["#05060a"]} />
         {chapter === "city" || !layout ? (
-          <fogExp2 attach="fog" args={["#141a2c", 0.0021]} />
+          <fogExp2 attach="fog" args={[CITY_NIGHT.fog, CITY_FOG_DENSITY]} />
         ) : (
           <fogExp2 attach="fog" args={["#05060a", layout.kind === "theatre" ? 0.014 : 0.018]} />
         )}

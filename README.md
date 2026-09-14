@@ -64,7 +64,7 @@ pnpm dev:web                            # http://127.0.0.1:5173 — pick a seat,
 pnpm smoke                              # optional: buy → bind → resale round trip → entry code → check-in, live relayer
 ```
 
-**Judge mode** — the button on the landing page (or `/?tour=auto`) walks the whole thing in about two
+**Judge mode** — the button on the city page (`/city`, or `/city?tour=auto`) walks the whole thing in about two
 minutes: city → seat → checkout → ticket → door → your seat lit green under a followspot, with the mint /
 bind / admit transaction hashes on the last card. The tour only advances when the chain says the seat is
 checked in; it presses the buttons for you except the one that opens the passkey prompt, which is yours.
