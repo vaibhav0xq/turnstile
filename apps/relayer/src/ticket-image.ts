@@ -197,16 +197,25 @@ export function renderTicketSvg(input: TicketImageInput): string {
   );
 }
 
+/** `host[:port]` as a browser would send it — anything else is not a host we will echo into metadata. */
+const HOST =
+  /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*(?::\d{1,5})?$/i;
+
 /**
- * Absolute origin for URLs inside metadata: the configured `PUBLIC_ORIGIN` if any, otherwise what the
- * request says about itself — proxy headers first, then the URL the server saw.
+ * Absolute origin for URLs inside metadata. `PUBLIC_ORIGIN` when configured — set it on every deployed
+ * relayer. Otherwise the request's own `Host` (which any cache in front keys on) and, for the scheme, a
+ * `x-forwarded-proto` that is literally `http` or `https`. `x-forwarded-host` is deliberately ignored:
+ * a client can send it, no cache keys on it, and reflecting it would let one request poison the metadata
+ * everyone else is served.
  */
 export function requestOrigin(headers: Headers, url: string, configured: string | null): string {
   if (configured) return configured;
-  const forwardedHost = headers.get("x-forwarded-host")?.split(",")[0]?.trim();
-  const forwardedProto = headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
-  const host = forwardedHost || headers.get("host")?.trim();
   const parsed = new URL(url);
-  const proto = forwardedProto || parsed.protocol.replace(/:$/, "");
-  return `${proto}://${host || parsed.host}`;
+  const forwardedProto = headers.get("x-forwarded-proto")?.split(",")[0]?.trim().toLowerCase();
+  const proto =
+    forwardedProto === "https" || forwardedProto === "http"
+      ? forwardedProto
+      : parsed.protocol.replace(/:$/, "");
+  const host = headers.get("host")?.trim() ?? "";
+  return `${proto}://${HOST.test(host) ? host : parsed.host}`;
 }

@@ -111,7 +111,7 @@ export const ledWallShader = {
       float bars = 0.5 + 0.5 * sin(uv.y * 26.0 - uTime * 1.2 + n1 * 6.0);
       col *= 0.7 + 0.5 * pow(bars, 3.0);
       // a light bar crossing the wall every twenty-odd seconds
-      float sweep = smoothstep(0.05, 0.0, abs(fract(uTime * 0.045) * 1.4 - 0.2 - uv.x));
+      float sweep = 1.0 - smoothstep(0.0, 0.05, abs(fract(uTime * 0.045) * 1.4 - 0.2 - uv.x));
       col += vec3(0.9, 0.95, 1.0) * sweep * 0.22;
       // LED structure: each cell is a round pixel on a dark tile with its own flicker — and both are
       // filtered by screen size, so a distant wall reads as its mean instead of moiré or shimmer.
@@ -124,7 +124,7 @@ export const ledWallShader = {
       col *= mix(0.94, 0.42 + 0.66 * px, ledFade);
       col *= 1.0 + flicker * 0.07 * ledFade;
       // vignette so the edges read as a wall, not a light source
-      float vig = smoothstep(0.0, 0.18, uv.x) * smoothstep(1.0, 0.82, uv.x) * smoothstep(0.0, 0.2, uv.y) * smoothstep(1.0, 0.8, uv.y);
+      float vig = smoothstep(0.0, 0.18, uv.x) * (1.0 - smoothstep(0.82, 1.0, uv.x)) * smoothstep(0.0, 0.2, uv.y) * (1.0 - smoothstep(0.8, 1.0, uv.y));
       col *= 0.35 + 0.65 * vig;
       gl_FragColor = vec4(col * uIntensity, 1.0);
     }
@@ -158,7 +158,7 @@ export const curtainShader = {
     varying float vFold;
     void main() {
       float shade = 0.55 + 0.45 * vFold;
-      float top = smoothstep(1.0, 0.2, vUv.y);
+      float top = 1.0 - smoothstep(0.2, 1.0, vUv.y);
       vec3 col = uColor * (0.35 + 0.65 * shade) * (0.55 + 0.45 * top);
       col += uLight * 0.08 * pow(max(vFold, 0.0), 6.0) * top;
       gl_FragColor = vec4(col, 1.0);

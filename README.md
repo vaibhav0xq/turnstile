@@ -94,7 +94,7 @@ relayer labels a non-final origin with `ENVIRONMENT_LABEL=staging` (an amber chi
 prefix; any `*.replit.app` host is labelled even without it) — passkeys created there are bound to that origin
 and will not carry over to the final domain. Token metadata carries an `image` (`…/tickets/<id>/image.svg`,
 a rendered card of the seat in its tier, amber until check-in, green after) and an `external_url`; both are
-built from `PUBLIC_ORIGIN` when set, else from the request's forwarded host.
+built from `PUBLIC_ORIGIN` (set it on every deployed relayer), else from the request's own `Host`.
 
 The spike is standalone: `cd spike && npm ci && npm run build && npm run verify` (headless Chromium, 17 checks).
 

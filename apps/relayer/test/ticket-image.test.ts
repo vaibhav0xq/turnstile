@@ -69,17 +69,9 @@ describe("ticket image", () => {
     assert.equal(escapeXml(`a<b>&"c"\u0007'd'`), "a&lt;b&gt;&amp;&quot;c&quot;&apos;d&apos;");
   });
 
-  it("derives the public origin from proxy headers, host, url, or config in that order of trust", () => {
+  it("builds the public origin from config, else Host + a literal http(s) forwarded scheme", () => {
     const url = "http://127.0.0.1:8787/api/events/1/tickets/3";
     assert.equal(requestOrigin(new Headers(), url, "https://tickets.example"), "https://tickets.example");
-    assert.equal(
-      requestOrigin(
-        new Headers({ "x-forwarded-host": "turnstile.example", "x-forwarded-proto": "https" }),
-        url,
-        null,
-      ),
-      "https://turnstile.example",
-    );
     assert.equal(
       requestOrigin(
         new Headers({ host: "turnstile.example:8443", "x-forwarded-proto": "https, http" }),
@@ -89,5 +81,37 @@ describe("ticket image", () => {
       "https://turnstile.example:8443",
     );
     assert.equal(requestOrigin(new Headers(), url, null), "http://127.0.0.1:8787");
+  });
+
+  it("never reflects x-forwarded-host, odd schemes or malformed hosts into metadata", () => {
+    const url = "http://127.0.0.1:8787/api/events/1/tickets/3";
+    assert.equal(
+      requestOrigin(
+        new Headers({
+          host: "turnstile.example",
+          "x-forwarded-host": "evil.example",
+          "x-forwarded-proto": "https",
+        }),
+        url,
+        null,
+      ),
+      "https://turnstile.example",
+    );
+    assert.equal(
+      requestOrigin(new Headers({ host: "turnstile.example", "x-forwarded-proto": "javascript" }), url, null),
+      "http://turnstile.example",
+    );
+    assert.equal(
+      requestOrigin(new Headers({ host: "evil.example/@turnstile.example" }), url, null),
+      "http://127.0.0.1:8787",
+    );
+    assert.equal(
+      requestOrigin(
+        new Headers({ host: "turnstile.example", "x-forwarded-proto": "https" }),
+        url,
+        "https://cfg.example",
+      ),
+      "https://cfg.example",
+    );
   });
 });

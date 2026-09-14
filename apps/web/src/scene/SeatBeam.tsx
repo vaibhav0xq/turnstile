@@ -1,5 +1,5 @@
 import { useFrame } from "@react-three/fiber";
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import type { SeatSpec } from "../venues/layout";
 import { useShaderMaterial } from "./materials";
@@ -36,6 +36,10 @@ export function SeatBeam({ seat, color, footprint }: { seat: SeatSpec; color: st
       }),
     [color],
   );
+  // Geometry/material handed to meshes as props are not R3F children, so they are released by hand.
+  useEffect(() => () => beam.dispose(), [beam]);
+  useEffect(() => () => ring.dispose(), [ring]);
+  useEffect(() => () => ringMaterial.dispose(), [ringMaterial]);
   const ringRef = useRef<THREE.Mesh>(null);
   const light = useRef<THREE.PointLight>(null);
   const born = useRef(performance.now());
@@ -103,7 +107,7 @@ const followspotShader = {
       float facing = abs(dot(normalize(vNormalW), normalize(vViewDir)));
       float body = pow(facing, 1.4);
       float fall = mix(0.22, 1.0, pow(1.0 - vUv.y, 1.6));
-      float top = smoothstep(1.0, 0.86, vUv.y);
+      float top = 1.0 - smoothstep(0.86, 1.0, vUv.y);
       float haze = 0.85 + 0.15 * sin(vUv.y * 14.0 - uTime * 1.3 + sin(vUv.x * 6.2832 + uTime * 0.7) * 1.5);
       float a = body * fall * top * haze * 0.42 * uReveal;
       gl_FragColor = vec4(uColor * 1.35, a);

@@ -1,4 +1,4 @@
-# @turnstile/identity — specification v1.3
+# @turnstile/identity — specification v1.4
 
 Status: **frozen** (v1 12 Sep 2026; v1.1 additive, same day — §4.2 wording, §4.5 `BindDoorKey`; v1.2 additive, 13 Sep — §4.6 passport sync; v1.3 additive, 14 Sep — §4.3 compact entry code; v1.4 additive, 14 Sep — §4.3 base45 entry code). Everything below
 is pinned by `vectors/kdf.json`, `vectors/entry.json` and `vectors/bind.json`; `pnpm vectors:check` fails in CI

@@ -256,4 +256,9 @@ app.onError((error) => {
 serve({ fetch: app.fetch, port: settings.port }, (info) => {
   const store = settings.databaseUrl ? "postgres" : settings.passportFile ? "file" : "memory";
   console.log(`relayer listening on :${info.port} chain ${chainId} passports ${store}`);
+  if (chainId !== 31337 && !settings.publicOrigin) {
+    console.warn(
+      "PUBLIC_ORIGIN is not set: metadata image/external_url will follow each request's Host header",
+    );
+  }
 });
