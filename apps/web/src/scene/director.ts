@@ -4,7 +4,8 @@ import { create } from "zustand";
 export type Chapter = "city" | "venue" | "gate";
 /** overview — the house waypoint · seat — sat in a seat · focus — a hero shot of one seat from behind. */
 export type ViewMode = "overview" | "seat" | "focus";
-export type Quality = "high" | "low";
+/** high — bloom, noise, volumetrics · low — bloom only, DPR ≤ 1.5, half the city · min — no post at all. */
+export type Quality = "high" | "low" | "min";
 
 interface DirectorState {
   chapter: Chapter;
@@ -22,6 +23,13 @@ interface DirectorState {
   revealStartedAt: number;
   hoveredBeacon: string | null;
   quality: Quality;
+  /** First frame rendered: the boot veil can lift. */
+  ready: boolean;
+  /** No WebGL (or the context died): the DOM carries the whole product, the canvas is gone. */
+  flat: boolean;
+  /** When the followspot found a seat / went out — the house lights follow (see `houseLevel`). */
+  litAt: number | null;
+  unlitAt: number | null;
 
   showCity(): void;
   showVenue(eventAddress: string): void;
@@ -34,6 +42,29 @@ interface DirectorState {
   viewOverview(): void;
   hoverBeacon(address: string | null): void;
   setQuality(q: Quality): void;
+  markReady(): void;
+  goFlat(): void;
+  setLit(on: boolean): void;
+}
+
+/** Starting tier: phones and small-core machines begin low; the PerformanceMonitor only steps it down. */
+export function initialQuality(): Quality {
+  if (typeof window === "undefined") return "high";
+  const coarse = window.matchMedia("(pointer: coarse)").matches;
+  const cores = navigator.hardwareConcurrency ?? 8;
+  return (coarse && window.innerWidth < 900) || cores <= 4 ? "low" : "high";
+}
+
+/**
+ * House-lights level, 0.3 → 1. Down over 400 ms once a followspot is on (the beat before it snaps on),
+ * back up over 600 ms after it goes out. Read per frame by the room, the stage and the LED wall.
+ */
+export function houseLevel(now = performance.now()): number {
+  const { litAt, unlitAt } = useDirector.getState();
+  const ease = (x: number) => (x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x));
+  if (litAt !== null) return 1 - 0.7 * ease((now - litAt) / 400);
+  if (unlitAt !== null) return 0.3 + 0.7 * ease((now - unlitAt) / 600);
+  return 1;
 }
 
 let cutTimer: ReturnType<typeof setTimeout> | null = null;
@@ -73,7 +104,11 @@ export const useDirector = create<DirectorState>()((set, get) => {
     curtain: false,
     revealStartedAt: performance.now(),
     hoveredBeacon: null,
-    quality: "high",
+    quality: initialQuality(),
+    ready: false,
+    flat: false,
+    litAt: null,
+    unlitAt: null,
 
     showCity: () =>
       cutTo({
@@ -98,6 +133,20 @@ export const useDirector = create<DirectorState>()((set, get) => {
     hoverBeacon: (address) => {
       if (get().hoveredBeacon !== address) set({ hoveredBeacon: address });
     },
-    setQuality: (quality) => set({ quality }),
+    setQuality: (quality) => {
+      if (get().quality !== quality) set({ quality });
+    },
+    markReady: () => {
+      if (!get().ready) set({ ready: true });
+    },
+    goFlat: () => set({ flat: true, ready: true, curtain: false }),
+    setLit: (on) =>
+      set(
+        on
+          ? { litAt: performance.now(), unlitAt: null }
+          : get().litAt !== null
+            ? { litAt: null, unlitAt: performance.now() }
+            : {},
+      ),
   };
 });

@@ -20,19 +20,22 @@ interface SeatCardProps {
  * Floats above a seat in the room. Hover shows it; a click pins it and offers the action.
  * Lives in the DOM overlay; the scene moves `SeatCardLayer`'s anchor to the seat every frame.
  */
-export function SeatCard({ event, seat, seatMap }: SeatCardProps) {
-  const selected = useDirector((s) => s.selectedSeat === seat.id);
-  const mine = useDirector((s) => s.mine.has(seat.id));
-  const viewFromSeat = useDirector((s) => s.viewFromSeat);
-  const start = useCheckout((s) => s.start);
-  const navigate = useNavigate();
+/** What a seat says about itself: tone for the dot and the one-line status, shared by card and list. */
+export function describeSeat(event: EventInfo, seat: SeatSpec, seatMap: SeatMap | undefined, mine: boolean) {
   const tier = tierForSeat(event, seat.id);
   const state = seatMap?.get(seat.id);
   const status = seatStatus(state);
   const price = tier ? tierPrice(tier) : 0n;
   const listed = status === "listed" && state ? state.listingPrice : null;
-
-  const tone = mine ? "cyan" : status === "available" ? "amber" : status === "checkedIn" ? "green" : "muted";
+  const tone: "cyan" | "amber" | "green" | "muted" | "violet" = mine
+    ? "cyan"
+    : status === "available"
+      ? "amber"
+      : status === "checkedIn"
+        ? "green"
+        : status === "listed"
+          ? "violet"
+          : "muted";
   const line = mine
     ? status === "checkedIn"
       ? "Yours · inside"
@@ -48,7 +51,70 @@ export function SeatCard({ event, seat, seatMap }: SeatCardProps) {
         : status === "checkedIn"
           ? "Inside"
           : "Taken";
+  return { status, listed, tone, line };
+}
 
+interface SeatActionsProps extends SeatCardProps {
+  /** The 3D "View from here" makes no sense without a scene. */
+  spatial: boolean;
+  /** Only one control on the page may carry the tour's `pick-take` target. */
+  tourTarget: boolean;
+}
+
+/** Take / buy / open / view — the actions for a selected seat, shared by the floating card and the list. */
+export function SeatActions({ event, seat, seatMap, spatial, tourTarget }: SeatActionsProps) {
+  const mine = useDirector((s) => s.mine.has(seat.id));
+  const viewFromSeat = useDirector((s) => s.viewFromSeat);
+  const start = useCheckout((s) => s.start);
+  const navigate = useNavigate();
+  const { status, listed } = describeSeat(event, seat, seatMap, mine);
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {status === "available" ? (
+        <button
+          type="button"
+          className="btn btn-amber !min-h-9 px-3 text-xs"
+          onClick={() => start(event.address, seat.id)}
+          data-tour={tourTarget ? "pick-take" : undefined}
+        >
+          Take this seat
+        </button>
+      ) : null}
+      {mine ? (
+        <button
+          type="button"
+          className="btn btn-primary !min-h-9 px-3 text-xs"
+          onClick={() => navigate(`/t/${event.address}/${seat.id}`)}
+        >
+          Open ticket
+        </button>
+      ) : null}
+      {status === "listed" && !mine ? (
+        <button
+          type="button"
+          className={`btn ${listed === 0n ? "btn-amber" : "btn-ghost"} !min-h-9 px-3 text-xs`}
+          onClick={() => start(event.address, seat.id)}
+        >
+          {listed === 0n ? "Take this seat" : "Buy resale"}
+        </button>
+      ) : null}
+      {spatial ? (
+        <button
+          type="button"
+          className="btn btn-ghost !min-h-9 px-3 text-xs"
+          onClick={() => viewFromSeat(seat.id)}
+        >
+          View from here
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+export function SeatCard({ event, seat, seatMap }: SeatCardProps) {
+  const selected = useDirector((s) => s.selectedSeat === seat.id);
+  const mine = useDirector((s) => s.mine.has(seat.id));
+  const { tone, line } = describeSeat(event, seat, seatMap, mine);
   return (
     <div className="seat-card glass">
       <div className="flex items-center justify-between gap-3">
@@ -57,42 +123,8 @@ export function SeatCard({ event, seat, seatMap }: SeatCardProps) {
       </div>
       <div className="mono mt-0.5 text-xs text-muted">{line}</div>
       {selected ? (
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {status === "available" ? (
-            <button
-              type="button"
-              className="btn btn-amber !min-h-9 px-3 text-xs"
-              onClick={() => start(event.address, seat.id)}
-              data-tour="pick-take"
-            >
-              Take this seat
-            </button>
-          ) : null}
-          {mine ? (
-            <button
-              type="button"
-              className="btn btn-primary !min-h-9 px-3 text-xs"
-              onClick={() => navigate(`/t/${event.address}/${seat.id}`)}
-            >
-              Open ticket
-            </button>
-          ) : null}
-          {status === "listed" && !mine ? (
-            <button
-              type="button"
-              className={`btn ${listed === 0n ? "btn-amber" : "btn-ghost"} !min-h-9 px-3 text-xs`}
-              onClick={() => start(event.address, seat.id)}
-            >
-              {listed === 0n ? "Take this seat" : "Buy resale"}
-            </button>
-          ) : null}
-          <button
-            type="button"
-            className="btn btn-ghost !min-h-9 px-3 text-xs"
-            onClick={() => viewFromSeat(seat.id)}
-          >
-            View from here
-          </button>
+        <div className="mt-2">
+          <SeatActions event={event} seat={seat} seatMap={seatMap} spatial tourTarget />
         </div>
       ) : null}
     </div>

@@ -28,6 +28,8 @@ export interface Vec3 {
 export interface Waypoint {
   position: Vec3;
   target: Vec3;
+  /** Vertical field of view for this shot; the rig eases to it (default 42). */
+  fov?: number;
 }
 
 export interface SectionSpec {
@@ -293,7 +295,9 @@ function theatreLayout(event: EventInfo): VenueLayout {
         tier: balcony,
         section: balcony.name,
         center,
-        firstRadius: 22.6,
+        // Two units clear of the circle's back row: with the overhang right above it that row showed as
+        // slivers under the balcony front from every high shot.
+        firstRadius: 24.4,
         rowGap: 1.15,
         spanDeg: 90,
         perRow: 20,
@@ -325,8 +329,10 @@ function theatreLayout(event: EventInfo): VenueLayout {
   });
   return finish("theatre", sections, stage, center, 31, {
     // From a high side box: straight from the back the balcony overhang hides the tiers below it, from
-    // the side all three stack up in one frame with the proscenium at the left.
-    overview: { position: { x: -23, y: 17, z: 12 }, target: { x: 3, y: 2.5, z: -4 } },
+    // the side all three stack up in one frame with the proscenium at the left. High and wide enough
+    // (54°) that the proscenium and the balcony's far end both fit at 16:9 and 3:2; the room shell is a
+    // 31-radius cylinder around the origin, 18 high, so the eye stays inside it.
+    overview: { position: { x: -22, y: 19, z: 16 }, target: { x: 2, y: 3, z: -6 }, fov: 54 },
     // The door looks back at the house from the front-left corner, the way the ushers see it: stalls,
     // circle and balcony stacked in one frame. From behind the stalls the circle overhang hides all of it.
     entrance: { position: { x: -13, y: 5.5, z: -4 }, target: { x: 4, y: 5, z: 12 } },

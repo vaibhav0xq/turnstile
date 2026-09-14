@@ -8,7 +8,7 @@ import { installTapCounter } from "../lib/telemetry";
 import { useDirector } from "../scene/director";
 import { World } from "../scene/World";
 import { SeatCardLayer } from "../ui/SeatCard";
-import { ConnectionNotice, Curtain, ErrorToast, Readout, TopBar } from "../ui/Shell";
+import { ConnectionNotice, Curtain, ErrorToast, Readout, TopBar, Veil } from "../ui/Shell";
 import { Tour } from "../ui/Tour";
 import { buildLayout } from "../venues/layout";
 import { useOrganise } from "./organise";
@@ -75,6 +75,7 @@ function Frame() {
         onEnterEvent={(address) => navigate(`/e/${address}`)}
       />
       <SeatCardLayer event={event} layout={layout} seatMap={seats.data} />
+      <Veil />
       <Curtain />
       <TopBar config={config.data} onSignIn={() => void ensureFan().catch(() => undefined)} />
       <Routes>

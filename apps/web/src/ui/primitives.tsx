@@ -53,7 +53,7 @@ export function Spinner({ className = "" }: { className?: string }) {
   );
 }
 
-export function Dot({ tone }: { tone: "amber" | "cyan" | "green" | "red" | "muted" }) {
+export function Dot({ tone }: { tone: "amber" | "cyan" | "green" | "red" | "muted" | "violet" }) {
   return <span className={`dot ${tone === "amber" ? "" : `dot-${tone}`}`} />;
 }
 
@@ -73,7 +73,7 @@ export function StatusLegend() {
         </span>
       ))}
       <span className="flex items-center gap-2 text-xs text-muted">
-        <span className="dot" style={{ background: "#b58cff", boxShadow: "0 0 12px #b58cff" }} />
+        <Dot tone="violet" />
         Listed
       </span>
     </div>

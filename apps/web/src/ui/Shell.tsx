@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router";
-import { type AppConfig, chainName } from "../chain/config";
+import { useTour } from "../app/tour";
+import { type AppConfig, chainName, explorerTx } from "../chain/config";
 import { useIdentity } from "../identity/store";
 import { environmentLabel } from "../lib/environment";
 import { formatMs, shortAddress } from "../lib/format";
@@ -11,6 +12,26 @@ import { Dot, Kicker } from "./primitives";
 export function Curtain() {
   const curtain = useDirector((s) => s.curtain);
   return <div className="curtain" style={{ opacity: curtain ? 1 : 0 }} aria-hidden />;
+}
+
+/** Boot veil: "Lighting the city…" until the world has drawn its first frame, then a 700 ms lift. */
+export function Veil() {
+  const ready = useDirector((s) => s.ready);
+  const [gone, setGone] = useState(false);
+  useEffect(() => {
+    if (!ready) return;
+    const id = setTimeout(() => setGone(true), 750);
+    return () => clearTimeout(id);
+  }, [ready]);
+  if (gone) return null;
+  return (
+    <div className="veil" style={{ opacity: ready ? 0 : 1 }} aria-hidden={ready} role="status">
+      <div>
+        <div className="mono text-xs text-muted">Lighting the city…</div>
+        <div className="veil-bar mt-2" />
+      </div>
+    </div>
+  );
 }
 
 export function TopBar({ config, onSignIn }: { config: AppConfig | undefined; onSignIn: () => void }) {
@@ -110,6 +131,8 @@ export function Readout({ config }: { config: AppConfig | undefined }) {
   const firstConfirmedAt = useTelemetry((s) => s.firstConfirmedAt);
   const firstConfirmedTaps = useTelemetry((s) => s.firstConfirmedTaps);
   const lastCeremonyMs = useIdentity((s) => s.lastCeremonyMs);
+  // The finale types the check-in's transaction hash: the chain truth the lit seat stands on.
+  const admitHash = useTour((s) => (s.step === "lit" ? s.receipt.admitHash : null));
   const [, tick] = useState(0);
   useEffect(() => {
     if (firstConfirmedAt !== null) return;
@@ -127,10 +150,50 @@ export function Readout({ config }: { config: AppConfig | undefined }) {
       {lastCeremonyMs !== null && lastCeremonyMs > 0 ? (
         <div className="chip mono text-muted">passkey {formatMs(lastCeremonyMs)}</div>
       ) : null}
-      {config ? (
+      {config && !admitHash ? (
         <div className="chip mono text-muted">{config.relayer ? "sponsored by relayer" : ""}</div>
       ) : null}
+      {admitHash ? (
+        <div className="chip mono text-muted" data-testid="readout-admit">
+          <span className="text-green">admit</span>&nbsp;
+          <Typed text={admitHash} href={config ? explorerTx(config, admitHash) : null} />
+        </div>
+      ) : null}
     </div>
+  );
+}
+
+/** Types a string out one character at a time, 18 ms each, with a caret until it is complete. */
+function Typed({ text, href }: { text: string; href: string | null }) {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    setN(0);
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setN(text.length);
+      return;
+    }
+    const id = setInterval(() => {
+      setN((k) => {
+        if (k + 1 >= text.length) clearInterval(id);
+        return Math.min(text.length, k + 1);
+      });
+    }, 18);
+    return () => clearInterval(id);
+  }, [text]);
+  const shown = text.slice(0, n);
+  const done = n >= text.length;
+  const body = (
+    <>
+      {shown}
+      {done ? null : <span className="text-amber">▍</span>}
+    </>
+  );
+  return href && done ? (
+    <a href={href} target="_blank" rel="noreferrer" className="pointer-events-auto hover:text-paper">
+      {body}
+    </a>
+  ) : (
+    <span>{body}</span>
   );
 }
 

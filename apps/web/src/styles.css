@@ -51,6 +51,24 @@ canvas {
   z-index: 0;
 }
 
+/* No WebGL: a still night instead of the city, so the DOM product reads the same. */
+.world-flat {
+  background:
+    radial-gradient(60% 45% at 50% 100%, rgba(255, 180, 87, 0.16), transparent 70%),
+    radial-gradient(40% 30% at 20% 90%, rgba(126, 231, 255, 0.08), transparent 70%),
+    linear-gradient(180deg, #05060a 0%, #0b0e18 55%, #141a2c 100%);
+}
+.world-flat::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 42%;
+  background-image: radial-gradient(rgba(255, 201, 138, 0.55) 0.6px, transparent 0.9px);
+  background-size: 9px 7px;
+  mask-image: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.7) 60%, rgba(0, 0, 0, 0.35));
+  opacity: 0.5;
+}
+
 .overlay {
   position: fixed;
   inset: 0;
@@ -249,6 +267,84 @@ input:focus-visible {
   box-shadow: none;
 }
 
+.dot-violet {
+  background: #b58cff;
+  box-shadow: 0 0 12px #b58cff;
+}
+
+/* 2D seat list: the keyboard / no-WebGL way into the room. One small square per seat, coloured like the
+   scene's legend; the selected seat gets the amber focus ring the rest of the UI uses. */
+.seat-list {
+  position: fixed;
+  z-index: 12;
+  top: 4.5rem;
+  right: 1rem;
+  max-height: calc(100dvh - 10rem);
+  width: min(28rem, calc(100vw - 2rem));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.seat-row {
+  display: grid;
+  grid-template-columns: 2.25rem 1fr;
+  align-items: start;
+  gap: 0.5rem;
+}
+.seat-row + .seat-row {
+  margin-top: 0.4rem;
+}
+.seat-cells {
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 12), minmax(0, 1fr));
+  gap: 3px;
+  min-width: 0;
+}
+.seat-cell {
+  width: 100%;
+  max-width: 1.15rem;
+  aspect-ratio: 1;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  background: rgba(255, 180, 87, 0.22);
+  box-shadow: inset 0 0 0 1px rgba(255, 180, 87, 0.5);
+  transition:
+    transform 120ms ease,
+    box-shadow 120ms ease;
+}
+.seat-cell:hover {
+  transform: scale(1.18);
+}
+.seat-cell[data-tone="cyan"] {
+  background: rgba(126, 231, 255, 0.28);
+  box-shadow: inset 0 0 0 1px var(--color-cyan);
+}
+.seat-cell[data-tone="green"] {
+  background: rgba(89, 242, 161, 0.32);
+  box-shadow: inset 0 0 0 1px var(--color-green);
+}
+.seat-cell[data-tone="violet"] {
+  background: rgba(181, 140, 255, 0.28);
+  box-shadow: inset 0 0 0 1px #b58cff;
+}
+.seat-cell[data-tone="muted"] {
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+.seat-cell[aria-pressed="true"] {
+  outline: 2px solid var(--color-amber);
+  outline-offset: 1px;
+}
+@media (max-width: 640px) {
+  .seat-list {
+    top: auto;
+    right: 0.75rem;
+    left: 0.75rem;
+    bottom: 5rem;
+    width: auto;
+    max-height: 62dvh;
+  }
+}
+
 .seat-anchor {
   position: fixed;
   top: 0;
@@ -323,6 +419,49 @@ input:focus-visible {
   background: #000;
   pointer-events: none;
   transition: opacity 520ms ease;
+}
+
+/* Boot veil: over the canvas, under the DOM, until the first frame is drawn. */
+.veil {
+  position: fixed;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: end start;
+  padding: 0 1.5rem 1.5rem;
+  background: #05060a;
+  pointer-events: none;
+  transition: opacity 700ms ease;
+}
+.veil-bar {
+  position: relative;
+  width: 140px;
+  height: 1px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.12);
+}
+.veil-bar::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 -40%;
+  width: 40%;
+  background: #ffb457;
+  animation: veil-sweep 1.4s ease-in-out infinite;
+}
+@keyframes veil-sweep {
+  to {
+    left: 100%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .veil {
+    transition: none;
+  }
+  .veil-bar::after {
+    animation: none;
+    left: 0;
+    width: 100%;
+  }
 }
 
 .scan-frame {

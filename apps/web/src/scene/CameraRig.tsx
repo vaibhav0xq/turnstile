@@ -14,6 +14,7 @@ interface CameraRigProps {
 }
 
 const CITY = { position: new THREE.Vector3(0, 78, 236), target: new THREE.Vector3(0, 18, 0) };
+const DEFAULT_FOV = 42;
 
 export function CameraRig({ layout, focusBeacon }: CameraRigProps) {
   const controls = useRef<CameraControls>(null);
@@ -22,6 +23,8 @@ export function CameraRig({ layout, focusBeacon }: CameraRigProps) {
   const viewSeat = useDirector((s) => s.viewSeat);
   const revealStartedAt = useDirector((s) => s.revealStartedAt);
   const drift = useRef(0);
+  /** Field of view the current shot asks for; the frame loop eases the camera to it. */
+  const fov = useRef(DEFAULT_FOV);
 
   // Chapter changes: place the camera without transition right after a cut, then ease into the waypoint.
   // biome-ignore lint/correctness/useExhaustiveDependencies: re-run on every cut (revealStartedAt)
@@ -29,6 +32,7 @@ export function CameraRig({ layout, focusBeacon }: CameraRigProps) {
     const c = controls.current;
     if (!c) return;
     if (chapter === "city") {
+      fov.current = DEFAULT_FOV;
       c.minDistance = 120;
       c.maxDistance = 360;
       c.minPolarAngle = 0.55;
@@ -55,6 +59,7 @@ export function CameraRig({ layout, focusBeacon }: CameraRigProps) {
     }
     if (!layout) return;
     const wp = chapter === "gate" ? layout.camera.entrance : layout.camera.overview;
+    fov.current = wp.fov ?? DEFAULT_FOV;
     c.minDistance = 2;
     c.maxDistance = layout.radius * 1.6;
     c.minPolarAngle = 0.25;
@@ -87,6 +92,7 @@ export function CameraRig({ layout, focusBeacon }: CameraRigProps) {
       const seat = layout.byId.get(viewSeat);
       if (!seat) return;
       const wp = viewMode === "seat" ? seatViewpoint(layout, seat) : seatFocus(layout, seat);
+      fov.current = DEFAULT_FOV;
       void c.setLookAt(
         wp.position.x,
         wp.position.y,
@@ -98,6 +104,7 @@ export function CameraRig({ layout, focusBeacon }: CameraRigProps) {
       );
     } else if (viewMode === "overview") {
       const wp = chapter === "gate" ? layout.camera.entrance : layout.camera.overview;
+      fov.current = wp.fov ?? DEFAULT_FOV;
       void c.setLookAt(
         wp.position.x,
         wp.position.y,
@@ -110,11 +117,16 @@ export function CameraRig({ layout, focusBeacon }: CameraRigProps) {
     }
   }, [viewMode, viewSeat, layout, chapter]);
 
-  // Idle drift: the city slowly orbits; the venue breathes.
-  useFrame((_, delta) => {
+  // Idle drift: the city slowly orbits; the venue breathes. The lens eases toward the shot's field of view.
+  useFrame(({ camera }, delta) => {
     const c = controls.current;
     if (!c) return;
     drift.current += delta;
+    if (camera instanceof THREE.PerspectiveCamera && Math.abs(camera.fov - fov.current) > 0.01) {
+      camera.fov = THREE.MathUtils.damp(camera.fov, fov.current, 4, delta);
+      if (Math.abs(camera.fov - fov.current) < 0.05) camera.fov = fov.current;
+      camera.updateProjectionMatrix();
+    }
     if (chapter === "city") {
       const lean = focusBeacon != null ? beaconSlot(focusBeacon) : null;
       const target = lean ? new THREE.Vector3(lean[0] * 0.35, CITY.target.y, lean[1] * 0.35) : CITY.target;

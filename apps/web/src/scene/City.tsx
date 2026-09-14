@@ -3,6 +3,7 @@ import { useFrame } from "@react-three/fiber";
 import { type RefObject, useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import type { EventInfo } from "../chain/config";
+import { mulberry } from "../lib/random";
 import { useDirector } from "./director";
 import { beaconShader, useShaderMaterial } from "./materials";
 
@@ -108,19 +109,11 @@ interface CityData {
   warm: Float32Array;
 }
 
-function mulberry(seed: number) {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = a;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-/** Deterministic downtown: blocks on a grid, towers near the centre, lit windows as points. */
-function buildCity(beacons: Array<[number, number]>): CityData {
+/**
+ * Deterministic downtown: blocks on a grid, towers near the centre, lit windows as points. `detail` scales the
+ * point mass (windows, suburbs, street lights) for the low tier; the buildings themselves stay.
+ */
+function buildCity(beacons: Array<[number, number]>, detail = 1): CityData {
   const rnd = mulberry(1337);
   const buildings: Building[] = [];
   const pos: number[] = [];
@@ -161,7 +154,7 @@ function buildCity(beacons: Array<[number, number]>): CityData {
         const ox = cx - block / 2 + w / 2 + (i * block) / n;
         const oz = cz - block / 2 + d / 2 + rnd() * Math.max(0, block - d);
         const warmth = rnd() < 0.7 ? 0.75 + rnd() * 0.25 : rnd() * 0.3;
-        const density = 0.45 + downtown * 0.25;
+        const density = (0.45 + downtown * 0.25) * detail;
         buildings.push({ x: ox, z: oz, w, d, h, seed: rnd() });
         // windows on four faces, pushed just off the wall so they never z-fight with it
         const lift = 0.12;
@@ -200,7 +193,7 @@ function buildCity(beacons: Array<[number, number]>): CityData {
     }
   }
   // suburbs: loose scatter of low lights out to the haze, thinning with distance
-  for (let i = 0; i < 26000; i++) {
+  for (let i = 0; i < 26000 * detail; i++) {
     const r = 250 + rnd() ** 0.6 * 650;
     const th = rnd() * Math.PI * 2;
     if (rnd() < (r - 250) / 900) continue;
@@ -209,7 +202,7 @@ function buildCity(beacons: Array<[number, number]>): CityData {
   }
   // street lights along the grid
   for (let i = -half; i <= half; i++) {
-    for (let t = -half * pitch; t <= half * pitch; t += 9) {
+    for (let t = -half * pitch; t <= half * pitch; t += 9 / detail) {
       push(i * pitch, 0.4, t, 2.0, 0.95);
       push(t, 0.4, i * pitch, 2.0, 0.95);
     }
@@ -231,7 +224,8 @@ interface CityProps {
 
 export function City({ events, onEnter }: CityProps) {
   const beacons = useMemo(() => events.map((_, i) => beaconSlot(i)), [events]);
-  const data = useMemo(() => buildCity(BEACON_SLOTS), []);
+  const quality = useDirector((s) => s.quality);
+  const data = useMemo(() => buildCity(BEACON_SLOTS, quality === "high" ? 1 : 0.5), [quality]);
   const geometry = useMemo(() => {
     const g = new THREE.BufferGeometry();
     g.setAttribute("position", new THREE.BufferAttribute(data.positions, 3));

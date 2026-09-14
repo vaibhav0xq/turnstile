@@ -5,7 +5,7 @@ import * as THREE from "three";
 import type { SeatMap } from "../chain/seats";
 import type { VenueLayout } from "../venues/layout";
 import { Decks } from "./Decks";
-import { useDirector } from "./director";
+import { houseLevel, useDirector } from "./director";
 import { curtainShader, ledWallShader, useShaderMaterial } from "./materials";
 import { Seats } from "./Seats";
 
@@ -25,8 +25,10 @@ export function Venue({ layout, seatMap, interactive }: VenueProps) {
       {layout.kind === "club" ? <Mezzanine layout={layout} /> : null}
       <Decks layout={layout} lips={layout.kind !== "club"} />
       <Rig layout={layout} volumetric={quality === "high"} />
+      {/* Sparkles and the volumetric cones stay mounted at every tier and are hidden instead: mounting
+          them later compiles new shader programs mid-session, and that stall shows as a black frame. */}
       <Seats layout={layout} seatMap={seatMap} interactive={interactive} />
-      {quality === "high" ? (
+      <group visible={quality === "high"}>
         <Sparkles
           count={260}
           scale={[layout.radius * 1.4, 12, layout.radius * 1.4]}
@@ -36,7 +38,7 @@ export function Venue({ layout, seatMap, interactive }: VenueProps) {
           opacity={0.32}
           color="#ffd9a3"
         />
-      ) : null}
+      </group>
       <Environment resolution={64} frames={1}>
         <Lightformer
           form="rect"
@@ -59,8 +61,23 @@ export function Venue({ layout, seatMap, interactive }: VenueProps) {
   );
 }
 
+/** Light intensities that follow the house level (down while a followspot is on). */
+function useHouseLights(base: number[]) {
+  const refs = useRef<Array<THREE.Light | null>>([]);
+  useFrame(() => {
+    const level = houseLevel();
+    refs.current.forEach((light, i) => {
+      if (light) light.intensity = (base[i] ?? 0) * level;
+    });
+  });
+  return (i: number) => (el: THREE.Light | null) => {
+    refs.current[i] = el;
+  };
+}
+
 function Room({ layout }: { layout: VenueLayout }) {
   const r = layout.radius;
+  const house = useHouseLights([0.12, 0.22]);
   const strips = useMemo(() => {
     const n = layout.kind === "theatre" ? 18 : 28;
     return Array.from({ length: n }, (_, i) => {
@@ -89,14 +106,15 @@ function Room({ layout }: { layout: VenueLayout }) {
           />
         </mesh>
       ))}
-      <ambientLight intensity={0.12} color="#ffe6c7" />
-      <hemisphereLight intensity={0.22} color="#ffd9b0" groundColor="#05060a" />
+      <ambientLight ref={house(0)} intensity={0.12} color="#ffe6c7" />
+      <hemisphereLight ref={house(1)} intensity={0.22} color="#ffd9b0" groundColor="#05060a" />
     </group>
   );
 }
 
 function Stage({ layout }: { layout: VenueLayout }) {
   const { z, width, depth, height } = layout.stage;
+  const house = useHouseLights([12]);
   return (
     <group position={[0, 0, z - depth / 2]}>
       <mesh position={[0, height / 2, 0]}>
@@ -111,7 +129,14 @@ function Stage({ layout }: { layout: VenueLayout }) {
         <planeGeometry args={[width + 2, 0.06]} />
         <meshBasicMaterial color="#ffb457" toneMapped={false} transparent opacity={0.35} />
       </mesh>
-      <pointLight position={[0, height + 2.5, 0]} intensity={12} distance={22} color="#ffc98a" decay={1.6} />
+      <pointLight
+        ref={house(0)}
+        position={[0, height + 2.5, 0]}
+        intensity={12}
+        distance={22}
+        color="#ffc98a"
+        decay={1.6}
+      />
     </group>
   );
 }
@@ -120,14 +145,22 @@ function LedWall({ layout }: { layout: VenueLayout }) {
   const light = useRef<THREE.PointLight>(null);
   const material = useShaderMaterial({ ...ledWallShader, toneMapped: false });
   const uniforms = material.uniforms;
+  const baseIntensity = useRef<number | null>(null);
   useFrame(({ clock }) => {
     const t = clock.getElapsedTime();
+    const level = houseLevel();
     const time = uniforms["uTime"];
     if (time) time.value = t;
+    // The wall dims with the house too (to a third, not out: it is the room's colour).
+    const intensity = uniforms["uIntensity"];
+    if (intensity) {
+      baseIntensity.current ??= intensity.value as number;
+      intensity.value = baseIntensity.current * (0.35 + 0.65 * level);
+    }
     if (light.current) {
       const c = light.current.color;
       c.setHSL((0.06 + 0.5 * (0.5 + 0.5 * Math.sin(t * 0.13))) % 1, 0.7, 0.62);
-      light.current.intensity = 6 + 2 * Math.sin(t * 0.9);
+      light.current.intensity = (6 + 2 * Math.sin(t * 0.9)) * level;
     }
   });
   const { z, width, depth, height } = layout.stage;
@@ -154,6 +187,7 @@ function LedWall({ layout }: { layout: VenueLayout }) {
 
 function Proscenium({ layout }: { layout: VenueLayout }) {
   const material = useShaderMaterial(curtainShader);
+  const house = useHouseLights([10, 5, 5]);
   useFrame(({ clock }) => {
     const time = material.uniforms["uTime"];
     if (time) time.value = clock.getElapsedTime();
@@ -186,14 +220,29 @@ function Proscenium({ layout }: { layout: VenueLayout }) {
       </mesh>
       {/* footlights */}
       <pointLight
+        ref={house(0)}
         position={[0, height + 1.2, depth / 2 - 1.2]}
         intensity={10}
         distance={16}
         color="#ffc98a"
         decay={1.8}
       />
-      <pointLight position={[-4, height + 4, -1]} intensity={5} distance={14} color="#ff9d6b" decay={1.8} />
-      <pointLight position={[4, height + 4, -1]} intensity={5} distance={14} color="#ffd9a3" decay={1.8} />
+      <pointLight
+        ref={house(1)}
+        position={[-4, height + 4, -1]}
+        intensity={5}
+        distance={14}
+        color="#ff9d6b"
+        decay={1.8}
+      />
+      <pointLight
+        ref={house(2)}
+        position={[4, height + 4, -1]}
+        intensity={5}
+        distance={14}
+        color="#ffd9a3"
+        decay={1.8}
+      />
     </group>
   );
 }
@@ -276,7 +325,10 @@ function Rig({ layout, volumetric }: { layout: VenueLayout; volumetric: boolean 
       o.position.x = (i - 1) * 3.4 + Math.sin(t * 0.35 + i * 2.1) * 2.6;
       o.position.z = z - 1.5 + Math.cos(t * 0.28 + i * 1.3) * 1.8;
       const l = lights.current[i];
-      if (l) l.target = o;
+      if (!l) return;
+      l.target = o;
+      // The cone mesh is the spotlight's child; hide it below the high tier rather than unmount it.
+      for (const child of l.children) child.visible = volumetric;
     });
   });
   const colors = ["#ffb457", "#7ee7ff", "#ff7a9e"];
@@ -301,10 +353,10 @@ function Rig({ layout, volumetric }: { layout: VenueLayout; volumetric: boolean 
             angle={0.3}
             penumbra={0.6}
             decay={1.4}
-            attenuation={volumetric ? 14 : 0}
+            attenuation={14}
             anglePower={5}
-            opacity={volumetric ? 0.22 : 0}
-            volumetric={volumetric}
+            opacity={0.22}
+            volumetric
           />
         </group>
       ))}

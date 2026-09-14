@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
 import { type AppConfig, findEvent, tierPrice } from "../../chain/config";
 import { mySeats, type SeatMap, seatStatus } from "../../chain/seats";
@@ -8,6 +8,7 @@ import { useDirector } from "../../scene/director";
 import { Checkout } from "../../ui/Checkout";
 import { Button, Kicker, StatusLegend } from "../../ui/primitives";
 import { RouteLoading, UnknownRoute, unknownEvent } from "../../ui/RouteState";
+import { SeatList } from "../../ui/SeatList";
 import { buildLayout } from "../../venues/layout";
 import { useCheckout } from "../checkout";
 import { useTour } from "../tour";
@@ -25,6 +26,12 @@ export function Event({ config, seatMap }: { config: AppConfig | undefined; seat
   const checkoutSeat = useCheckout((s) => s.seatId);
   const cancelCheckout = useCheckout((s) => s.cancel);
   const tourActive = useTour((s) => s.active);
+  const flat = useDirector((s) => s.flat);
+  // The 2D list is the way in without a scene (no WebGL) and for keyboards; it opens itself in flat mode.
+  const [listOpen, setListOpen] = useState(flat);
+  useEffect(() => {
+    if (flat) setListOpen(true);
+  }, [flat]);
   const layout = useMemo(() => (event ? buildLayout(event) : null), [event]);
 
   useEffect(() => {
@@ -119,15 +126,31 @@ export function Event({ config, seatMap }: { config: AppConfig | undefined; seat
               {tier.name} · {formatMon(tierPrice(tier))} · {free} left
             </button>
           ))}
+          <button
+            type="button"
+            className={`chip mono hover:bg-ink-2 ${listOpen ? "text-paper" : ""}`}
+            aria-pressed={listOpen}
+            aria-controls="seat-list"
+            onClick={() => setListOpen((o) => !o)}
+            title="Every seat as a list, for keyboards and machines without 3D"
+          >
+            {listOpen ? "Hide list" : "Seat list"}
+          </button>
         </div>
         <div className="fade-up-late mt-3">
           <StatusLegend />
         </div>
       </div>
 
-      {viewMode !== "overview" && !tourActive ? (
+      {viewMode !== "overview" && !tourActive && !listOpen ? (
         <div className="absolute right-4 top-20 sm:right-6 sm:top-24">
           <Button onClick={viewOverview}>← Back to the room</Button>
+        </div>
+      ) : null}
+
+      {listOpen ? (
+        <div id="seat-list">
+          <SeatList event={event} layout={layout} seatMap={seatMap} onClose={() => setListOpen(false)} />
         </div>
       ) : null}
 
