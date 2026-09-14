@@ -62,6 +62,7 @@ pnpm dev:chain                          # deploy forwarder/factory + two seeded 
 pnpm dev:relayer                        # http://127.0.0.1:8787 (anvil keys in apps/relayer/.env)
 pnpm dev:web                            # http://127.0.0.1:5173 — pick a seat, get a ticket, scan it at /gate/<event>
 pnpm smoke                              # optional: buy → bind → resale round trip → entry code → check-in, live relayer
+pnpm seed:night                         # optional: a crowd, two booths, a resale and check-ins on the newest event
 ```
 
 **Judge mode** — the button on the city page (`/city`, or `/city?tour=auto`) walks the whole thing in about two

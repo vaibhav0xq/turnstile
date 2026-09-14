@@ -295,11 +295,13 @@ prompt counts, timings and the JSON from the device page.
   timings on the final origin.
 - **Demo data.** Front rows of *Neon Night* already carry four "inside" seats (they add life; keep them). Stop
   running judge flows against the seed events. For the capture, publish a third event ("Turnstile Opening
-  Night") 30 minutes before recording and seed 10–20 realistic activities (mints, one resale, a few check-ins
-  over ten minutes) so the live board and pulse are not empty. Script this (`scripts/seed-night.mjs`) so it can
-  be re-run. **Code prerequisite:** the tour takes the *first* event with a free tier
-  (`apps/web/src/app/routes/Landing.tsx`), which is *Neon Night* forever — change the default to the newest
-  free event and add a `?event=<address>` override for judge mode, otherwise the capture keeps eating seed seats.
+  Night") 30 minutes before recording and seed it. **Done 15 Sep:** `pnpm seed:night -- --relayer <origin>
+  --event <address>` (`apps/relayer/scripts/seed-night.mjs`) puts 12 fans on scattered free seats, two paid
+  booths (via the drip), one priced resale and six check-ins spread over ten minutes, all through the relayer
+  with the web app's dev identities; it is idempotent, and every re-run walks the next fans through the door,
+  so a second run mid-session adds life. Rehearsed against anvil; on the final origin it needs a funded
+  relayer with the drip on, and `GATE_TOKEN` if the door is protected. The tour default (newest free event +
+  `?event=<address>`) landed 14 Sep, so a judge lands on the seeded night without a parameter.
 - Relayer 5 MON, gate 2 MON, drip on; relayer warm (one request a minute before capture, or Reserved VM).
 - Capture rig per `docs/demo-video-storyboard.md`: display capture (passkey sheet is an OS window), 1440×900
   at 60 fps, fresh passkey on the capture machine, phone screen-recording for the mobile insert; a dry run at
@@ -322,8 +324,8 @@ prompt counts, timings and the JSON from the device page.
 | 5 | Landing / website (§3) — done 14 Sep: hero CTA + sub-claim, programme sections 01–05 with stills from the judge run, FAQ, footer, OG / manifest / robots / icons, scene chunk split (lazy `World`, 877 kB app + 1.2 MB scene). Left: `VITE_SITE_URL` on the final origin (absolute OG URLs + canonical), Lighthouse pass on the final host, city pulse numbers need the hosted Envio | 3 days | 29 Sep |
 | 6 | 3D depth (§4.2, 4.3, 4.7): city density, descent dolly, club dressing — done 14 Sep; left in §4: theatre reframe (4.4), seat view in the followspot (4.5), finale (4.6), mobile tier (4.8) | 2–3 days | 2 Oct |
 | 6b | Landing redesign Phase A (`docs/landing-redesign-plan.md`) — done 14 Sep: lit city, `/` scroll flight with three story frames, `/city` picker, judge links redirect, mobile header and venue polish. Left: Phase B sample door-code ring (optional), real-browser check of the high tier (bloom) on the new lighting | 1 day | done |
-| 7 | Smoke + judge run on the final origin, **then** re-point `baseURI` (migration order); device matrix (§9), fixes from it | 3 days | 6 Oct |
-| 8 | Freeze: README, write-up, code review, gate + push; seed-night script; storyboard dry run | 1 day | 7 Oct |
+| 7 | Preflight (`pnpm preflight -- --origin <final> --final`, added 15 Sep), smoke + judge run on the final origin, **then** re-point `baseURI` (migration order); device matrix (§9), fixes from it | 3 days | 6 Oct |
+| 8 | Freeze: README, write-up, code review, gate + push; storyboard dry run. Seed-night script done 15 Sep (`pnpm seed:night`) | 1 day | 7 Oct |
 | 9 | Capture and edit the video; submit | 2 days | 9–10 Oct |
 | — | Buffer to the 14 Oct 09:29 IST deadline | 3–4 days | — |
 

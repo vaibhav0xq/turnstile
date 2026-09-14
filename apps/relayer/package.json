@@ -14,6 +14,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "node --env-file-if-exists=.env --test --test-reporter=spec \"test/**/*.test.ts\"",
     "smoke": "node scripts/smoke.mjs",
+    "seed:night": "node scripts/seed-night.mjs",
+    "preflight": "node scripts/preflight.mjs",
     "db:setup": "node --env-file-if-exists=.env scripts/db-setup.mjs"
   },
   "dependencies": {

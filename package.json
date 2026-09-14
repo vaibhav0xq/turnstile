@@ -22,7 +22,9 @@
     "vectors:check": "pnpm --filter @turnstile/identity vectors:check",
     "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm vectors:check",
     "verify": "pnpm install --frozen-lockfile && pnpm check && pnpm build && pnpm --filter @turnstile/contracts check",
-    "smoke": "pnpm --filter @turnstile/relayer smoke"
+    "smoke": "pnpm --filter @turnstile/relayer smoke",
+    "seed:night": "pnpm --filter @turnstile/relayer seed:night",
+    "preflight": "pnpm --filter @turnstile/relayer preflight"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.13",

@@ -46,6 +46,12 @@ handle it, pick one before recording:
 - Dry run once with the judge script on the same origin the night before: it prints the timings above and
   drops the reference frames (`apps/web/shots/judge-*.png`). If the relayer or the RPC is slow that night,
   you will see it there and not on camera.
+- A live night, not an empty one: publish the capture event ("Turnstile Opening Night", a free tier and a
+  paid one) about 30 minutes before recording, then `pnpm seed:night -- --relayer <origin> --event <address>`
+  from `turnstile/` (add `--gate-token …` if the door is protected). It seeds a scattered crowd, two booths,
+  one resale and six check-ins over ten minutes, so the organiser board, the pulse and the passports have
+  rows; run it again with `--checkins 3 --minutes 3` just before the take for fresh arrivals. The tour lands
+  on the newest free event, so the judge path lands on the seeded night without `?event=`.
 - On the two prompts let the sheet sit for a beat before confirming; keep everything else moving.
 
 ## Scenes

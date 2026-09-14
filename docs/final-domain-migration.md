@@ -49,6 +49,12 @@ Set through the deployment's environment (the *Publishing* pane, production scop
       canonical-host.ts`); add any other purchased alias (for example the backup domains, if bought) to
       `REDIRECT_HOSTS` as a comma-separated list. Check: `curl -sI https://www.<apex>/e/x` → `301` with
       `location: https://<apex>/e/x`. This keeps apex and `www` from growing separate passkey populations.
+      **Caveat (found 15 Sep):** on the current Replit deployment the web is a static site served by the
+      platform and only `/api/*` reaches the relayer (the asset headers prove it: lowercase charsets,
+      `accept-ranges`), so the relayer's redirect covers API paths only. Page routes on `www` are the
+      platform's business: link **only the apex** in Replit, and if `www` must resolve at all, use the
+      registrar's URL forward (301 to `https://<apex>`) rather than a second linked host. `pnpm preflight`
+      checks whatever answers on `www`.
 - [ ] RPC: `RPC_URL` = the Alchemy Monad testnet HTTPS URL (writes and reads), `RPC_FALLBACK_URLS` =
       `https://testnet-rpc.monad.xyz` (reads only fail over; transactions stay pinned to the primary),
       `PUBLIC_RPC_URL` = the browser-restricted Alchemy key, `PUBLIC_RPC_FALLBACK_URLS` = the public RPC.
@@ -56,6 +62,17 @@ Set through the deployment's environment (the *Publishing* pane, production scop
 - [ ] Republish. Watch the relayer boot log: no `PUBLIC_ORIGIN is not set` warning.
 
 ## 3. Verify the origin
+
+One command runs every check in this section (read-only, exit 1 on any failure) and prints what it saw:
+
+```sh
+pnpm preflight -- --origin https://<final> --final
+```
+
+`--final` additionally requires no environment label, `rpc.provider: "alchemy"` with a fallback, absolute
+canonical / `og:url` / `og:image` (so `VITE_SITE_URL` was set at build time) and the `www` → apex redirect.
+Without `--final` the same script checks staging (label allowed, platform hostname, relative OG). The manual
+equivalents, for when something fails and you want to look at it:
 
 - [ ] `curl -s https://<final>/api/health` → `ok: true`, `chainId: 10143`.
 - [ ] `curl -s https://<final>/api/config | jq '.environmentLabel, .explorer'` → `null`, the explorer URL.
