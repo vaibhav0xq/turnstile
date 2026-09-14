@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { type CheckoutStep, useCheckout } from "../app/checkout";
 import { nextOpenSeat } from "../app/next-seat";
@@ -58,6 +58,31 @@ export function Checkout({ config, event, layout, seatMap }: CheckoutProps) {
   useEffect(() => {
     if (seatId != null) selectSeat(seatId);
   }, [seatId, selectSeat]);
+
+  // A busy relayer (429) is momentary: retry once on the fan's behalf after a short, visible countdown. The
+  // session is live at that point, so no passkey prompt comes with it; a second 429 waits for a tap.
+  const throttled = step === "error" && error?.code === "RATE_LIMITED";
+  const [retryIn, setRetryIn] = useState<number | null>(null);
+  const autoRetried = useRef<number | null>(null);
+  useEffect(() => {
+    if (!throttled || autoRetried.current === seatId) {
+      setRetryIn(null);
+      return;
+    }
+    let left = 5;
+    setRetryIn(left);
+    const id = setInterval(() => {
+      left -= 1;
+      setRetryIn(left);
+      if (left > 0) return;
+      clearInterval(id);
+      autoRetried.current = seatId;
+      const c = useCheckout.getState();
+      if (c.buyHash && c.tokenId != null) void bindOnly(config, event, c.tokenId, queryClient);
+      else void run(config, event, queryClient);
+    }, 1000);
+    return () => clearInterval(id);
+  }, [throttled, seatId, config, event, queryClient, run, bindOnly]);
 
   if (seatId == null) return null;
   const seat = layout.byId.get(seatId);
@@ -140,6 +165,7 @@ export function Checkout({ config, event, layout, seatMap }: CheckoutProps) {
       {error ? (
         <div className="mt-4 rounded-xl border border-red/30 bg-red/10 px-3 py-2 text-sm">
           {error.message}
+          {retryIn !== null && retryIn > 0 ? ` Retrying in ${retryIn} s…` : ""}
           <Kicker className="mt-1">{error.code}</Kicker>
         </div>
       ) : null}
