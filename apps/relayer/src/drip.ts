@@ -4,6 +4,10 @@ import { isDenial } from "./spend-guard.ts";
 import { currentGasPrice, denialResponse, queueDenial, relayerQueue, spendGuard } from "./sponsorship.ts";
 
 const lastDrip = new Map<Address, number>();
+const DRIP_COOLDOWN_MS = 600_000;
+// Sent with an explicit 21k gas limit — exactly a plain transfer. Without it the node would estimate, and
+// a recipient contract with an expensive fallback could turn one "drip" into an arbitrarily large gas bill
+// (Monad charges the limit); with it such a recipient simply reverts at 21k.
 const DRIP_GAS = 21_000n;
 
 export async function drip(value: unknown) {
@@ -15,10 +19,12 @@ export async function drip(value: unknown) {
   }
   const to = getAddress(rawTo);
   const previous = lastDrip.get(to) ?? 0;
-  if (previous > Date.now() - 600_000) {
+  if (previous > Date.now() - DRIP_COOLDOWN_MS) {
+    const retryAfterSec = Math.max(1, Math.ceil((previous + DRIP_COOLDOWN_MS - Date.now()) / 1000));
     return {
       status: 429,
-      body: { error: { code: "RATE_LIMITED", message: "Address was dripped recently" } },
+      retryAfterSec,
+      body: { error: { code: "RATE_LIMITED", message: "Address was dripped recently", retryAfterSec } },
     };
   }
   // Floor, hourly/daily drip budget and this address's daily share, before any chain read.
@@ -36,6 +42,7 @@ export async function drip(value: unknown) {
         account: relayerAccount,
         to,
         value: settings.dripAmount,
+        gas: DRIP_GAS,
       });
       lastDrip.set(to, Date.now());
       return { hash, charge };

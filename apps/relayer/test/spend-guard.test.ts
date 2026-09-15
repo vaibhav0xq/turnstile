@@ -16,7 +16,13 @@ const limits: SpendLimits = {
 };
 
 function guard(
-  overrides: { relayer?: bigint; gate?: bigint; cost?: bigint; fail?: boolean; limits?: SpendLimits } = {},
+  overrides: {
+    relayer?: bigint;
+    gate?: bigint;
+    cost?: bigint | Partial<Record<"relay" | "drip" | "gate", bigint>>;
+    fail?: boolean;
+    limits?: SpendLimits;
+  } = {},
 ) {
   const balances = { [RELAYER]: overrides.relayer ?? 10n * MON, [GATE]: overrides.gate ?? 10n * MON };
   let now = 1_000_000;
@@ -27,7 +33,8 @@ function guard(
       relayer: { address: RELAYER, reserveWei: 1n * MON },
       gate: { address: GATE, reserveWei: MON / 5n },
     },
-    estimateCostWei: () => overrides.cost ?? MON / 10n,
+    estimateCostWei: (action) =>
+      (typeof overrides.cost === "bigint" ? overrides.cost : overrides.cost?.[action]) ?? MON / 10n,
     getBalance: async (address) => {
       reads++;
       if (overrides.fail) throw new Error("rpc down");
@@ -77,6 +84,31 @@ test("reserve floor pauses sponsorship before the wallet is drained", async () =
   first.settle(MON / 100n);
   second.settle(MON / 100n);
   assert.equal(await g.admit("relay", FAN), null);
+});
+
+test("in-flight work is held back at its own class's cost, not the current action's", async () => {
+  // 1.16 MON, 1 MON floor; a drip costs 0.1 MON, a relay 0.03 MON. One drip in flight leaves 0.06 MON of
+  // room: two relays fit, the third does not. Counting the drip as a relay (0.03) would have let the
+  // wallet cross the floor.
+  const { guard: g } = guard({
+    relayer: MON + (MON * 16n) / 100n,
+    cost: { drip: MON / 10n, relay: (MON * 3n) / 100n },
+  });
+  const drip = await charged(g, "drip", FAN);
+  assert.equal(await g.admit("relay", FAN), null);
+  const relayA = await charged(g, "relay", FAN);
+  const relayB = await charged(g, "relay", OTHER);
+  assert.equal((await g.admit("relay", FAN))?.code, "SPONSOR_PAUSED");
+  const status = await g.status();
+  assert.equal(status.wallets.relayer.inflight, 3);
+  assert.equal(status.wallets.relayer.reservedWei, (MON * 16n) / 100n);
+  assert.equal(status.wallets.relayer.ok, true); // exactly at the floor, not below it
+  // Settling the drip releases its 0.1 MON, whatever it actually cost.
+  drip.settle(MON / 20n);
+  assert.equal(await g.admit("relay", FAN), null);
+  relayA.settle();
+  relayB.settle();
+  assert.equal((await g.status()).wallets.relayer.reservedWei, 0n);
 });
 
 test("a wallet already at its reserve stops at once, and drip shares the relayer's floor", async () => {

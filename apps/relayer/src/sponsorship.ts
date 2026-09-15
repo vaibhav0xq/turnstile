@@ -97,6 +97,7 @@ export async function sponsorshipStatus() {
       balanceMon: w.balanceWei === null ? null : formatEther(w.balanceWei),
       reserveWei: w.reserveWei,
       inflight: w.inflight,
+      reservedWei: w.reservedWei,
       ok: w.ok,
     };
   };

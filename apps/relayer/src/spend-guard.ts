@@ -76,7 +76,9 @@ export interface WalletStatus {
   address: Address;
   balanceWei: bigint | null;
   reserveWei: bigint;
+  /** Charged sends not yet settled, and the wei reserved for them (each at its own class's estimate). */
   inflight: number;
+  reservedWei: bigint;
   ok: boolean;
 }
 
@@ -158,6 +160,9 @@ export class SpendGuard {
     gate: new Meter(),
   };
   private readonly inflight: Record<WalletName, number> = { relayer: 0, gate: 0 };
+  // Exact wei held back per wallet for charged, unsettled sends: a drip and a relay cost different amounts,
+  // so a count × the current action's estimate would misprice whichever class is in flight.
+  private readonly reservedWei: Record<WalletName, bigint> = { relayer: 0n, gate: 0n };
   private readonly balances: Partial<Record<WalletName, { value: bigint; at: number }>> = {};
   private readonly reads: Partial<Record<WalletName, Promise<bigint>>> = {};
 
@@ -194,10 +199,10 @@ export class SpendGuard {
   }
 
   /**
-   * Reserve check for `extra` more actions of `action` on top of what is already in flight (charged and
+   * Reserve check for `extraWei` more on top of what is already held back for work in flight (charged and
    * not yet settled). A failed balance read counts as paused: sponsoring blind is how a wallet gets drained.
    */
-  private async floor(action: ActionClass, extra: number): Promise<Denial | null> {
+  private async floor(action: ActionClass, extraWei: bigint): Promise<Denial | null> {
     const wallet = WALLET_FOR[action];
     const policy = this.wallets[wallet];
     let balance: bigint;
@@ -212,7 +217,7 @@ export class SpendGuard {
         wallet,
       };
     }
-    const committed = this.estimateCostWei(action) * BigInt(this.inflight[wallet] + extra);
+    const committed = this.reservedWei[wallet] + extraWei;
     if (balance - committed < policy.reserveWei) {
       return {
         code: "SPONSOR_PAUSED",
@@ -267,20 +272,25 @@ export class SpendGuard {
 
   /** Pre-check at the door of a request: nothing is counted. */
   async admit(action: ActionClass, address?: string): Promise<Denial | null> {
-    return (await this.floor(action, 1)) ?? this.budgets(action, address, this.now());
+    return (
+      (await this.floor(action, this.estimateCostWei(action))) ?? this.budgets(action, address, this.now())
+    );
   }
 
   /**
-   * The check that counts: call right before the send, inside the wallet's queue. The in-flight slot is
-   * reserved before the (async) balance read and the budget is checked and counted in one synchronous
-   * step after it, so concurrent charges see each other.
+   * The check that counts: call right before the send, inside the wallet's queue. The action's worst-case
+   * cost is held back before the (async) balance read and the budget is checked and counted in one
+   * synchronous step after it, so concurrent charges see each other.
    */
   async charge(action: ActionClass, address?: string): Promise<Denial | Charge> {
     const wallet = WALLET_FOR[action];
+    const costWei = this.estimateCostWei(action);
     this.inflight[wallet]++;
-    const denied = (await this.floor(action, 0)) ?? this.budgets(action, address, this.now());
+    this.reservedWei[wallet] += costWei;
+    const denied = (await this.floor(action, 0n)) ?? this.budgets(action, address, this.now());
     if (denied) {
       this.inflight[wallet]--;
+      this.reservedWei[wallet] -= costWei;
       return denied;
     }
     const now = this.now();
@@ -295,12 +305,13 @@ export class SpendGuard {
     }
     let settled = false;
     return {
-      settle: (costWei) => {
+      settle: (paidWei) => {
         if (settled) return;
         settled = true;
         this.inflight[wallet]--;
+        this.reservedWei[wallet] -= costWei;
         this.invalidate(wallet);
-        if (costWei !== undefined && costWei > 0n) meter.spent.push({ at: this.now(), costWei });
+        if (paidWei !== undefined && paidWei > 0n) meter.spent.push({ at: this.now(), costWei: paidWei });
         this.pruneSpent(meter);
         this.pruneAddresses(meter);
       },
@@ -328,13 +339,13 @@ export class SpendGuard {
       } catch {
         balance = null;
       }
-      const inflight = this.inflight[name];
       wallets[name] = {
         address: policy.address,
         balanceWei: balance,
         reserveWei: policy.reserveWei,
-        inflight,
-        ok: balance !== null && balance >= policy.reserveWei,
+        inflight: this.inflight[name],
+        reservedWei: this.reservedWei[name],
+        ok: balance !== null && balance - this.reservedWei[name] >= policy.reserveWei,
       };
     }
     const budgets = {} as SpendStatus["budgets"];

@@ -44,6 +44,17 @@ test("internal hops (path router, sidecar) are skipped without configuration", (
   assert.equal(clientIp(headers("10.0.0.1, 127.0.0.1"), { trustedHops: 1 }).key, "unknown");
 });
 
+test("a connection straight from a public peer is keyed by its socket, whatever it sends", () => {
+  const seen = clientIp(headers("1.2.3.4, 203.0.113.9"), { trustedHops: 1, remoteAddress: "198.51.100.23" });
+  assert.equal(seen.address, "198.51.100.23");
+  assert.equal(seen.source, "socket");
+  // …while the same headers through the local proxy read the forwarded chain.
+  assert.equal(
+    clientIp(headers("1.2.3.4, 203.0.113.9"), { trustedHops: 1, remoteAddress: "127.0.0.1" }).address,
+    "203.0.113.9",
+  );
+});
+
 test("isInternalIp", () => {
   for (const ip of [
     "127.0.0.1",

@@ -95,6 +95,52 @@ test("work that waited past maxWaitMs is refused unrun", async () => {
   assert.equal(await later, "later");
 });
 
+test("the wait is a deadline: waiters are refused on time even while the running operation hangs", async () => {
+  let now = 0;
+  const timers = new Map<number, () => void>();
+  let nextTimer = 1;
+  const queue = new TransactionQueue({
+    max: 5,
+    maxWaitMs: 1_000,
+    now: () => now,
+    setTimer: (fn) => {
+      const id = nextTimer++;
+      timers.set(id, fn);
+      return id as unknown as ReturnType<typeof setTimeout>;
+    },
+    clearTimer: (timer) => {
+      timers.delete(timer as unknown as number);
+    },
+  });
+  const hung = deferred<void>();
+  const running = queue.run(() => hung.promise);
+  let ran = false;
+  const waiter = queue.run(async () => {
+    ran = true;
+  });
+  assert.equal(queue.pending, 2);
+  // The running operation's timer was cleared when it started; only the waiter's is armed.
+  assert.equal(timers.size, 1);
+  now = 1_001;
+  for (const [id, fire] of [...timers]) {
+    timers.delete(id); // a fired timer is gone, as with the real one
+    fire();
+  }
+  await assert.rejects(waiter, (error: unknown) => {
+    assert.ok(error instanceof QueueTimeoutError);
+    assert.equal(error.waitedMs, 1_001);
+    return true;
+  });
+  assert.equal(ran, false);
+  assert.equal(queue.pending, 1); // the hung slot is still occupied, nothing else is
+  // A new arrival gets its own deadline; the hung slot finishing runs it normally.
+  const next = queue.run(async () => "next");
+  hung.resolve();
+  await running;
+  assert.equal(await next, "next");
+  assert.equal(timers.size, 0);
+});
+
 test("rejects a bound below one", () => {
   assert.throws(() => new TransactionQueue({ max: 0, maxWaitMs: 1 }));
 });

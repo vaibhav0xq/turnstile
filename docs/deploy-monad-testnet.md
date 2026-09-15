@@ -105,10 +105,10 @@ The relayer pays for every forwarded action, every testnet drip and every check-
 
 | Brake | Default | Refusal |
 | --- | --- | --- |
-| Reserve floor per wallet — no send that would leave the wallet (counting work in flight) below it; an unreadable balance also pauses | relayer 1 MON (`RELAYER_RESERVE_WEI`), gate 0.2 MON (`GATE_RESERVE_WEI`) | `503 SPONSOR_PAUSED` |
+| Reserve floor per wallet — no send whose worst-case cost (gas limit × price; drips are sent with a fixed 21k limit) would leave the wallet below it, counting the cost already held back for work in flight; an unreadable balance also pauses | relayer 1 MON (`RELAYER_RESERVE_WEI`), gate 0.2 MON (`GATE_RESERVE_WEI`) | `503 SPONSOR_PAUSED` |
 | Class budgets per rolling hour / day — `relay` (forwarded fan actions), `drip`, `gate` | relay 60 / 300, drip 10 / 40, gate 300 / 2000 (`*_HOURLY_LIMIT`, `*_DAILY_LIMIT`) | `429 BUDGET_EXHAUSTED` |
 | Per-address quota per rolling day — the fan's `from` for relay, the recipient for drip | relay 24, drip 2 (`RELAY_DAILY_PER_ADDRESS`, `DRIP_DAILY_PER_ADDRESS`) | `429 QUOTA_EXCEEDED` |
-| Bounded queue per wallet — sends stay sequential (that is what keeps nonces in order); past `TX_QUEUE_MAX` pending or `TX_QUEUE_MAX_WAIT_MS` of waiting a request is refused instead of sent | 8 pending, 20 s | `503 BUSY` |
+| Bounded queue per wallet — sends stay sequential (that is what keeps nonces in order); past `TX_QUEUE_MAX` pending a request is refused at once, and one that has waited `TX_QUEUE_MAX_WAIT_MS` is refused on its own timer, even if the send ahead of it is hanging on the RPC | 8 pending, 20 s | `503 BUSY` |
 | Per-IP limits — 30 relay, 10 drip, 20 passport writes per minute; the address is the proxy-written `X-Forwarded-For` entry (the `TRUSTED_PROXY_HOPS`-th public hop from the right, default 1, internal hops skipped), never one the client sent | | `429 RATE_LIMITED` |
 
 Worst case at the defaults: 60 relays × 0.033 + 10 drips × 0.1 ≈ 3 MON an hour, ≈ 14 MON a day, and the
@@ -120,7 +120,9 @@ Everything is in memory: budgets restart empty and the queue only orders one pro
 race nonces and double every budget. `GET /api/health` reports:
 
 - `instance` — a random per-process id; call it a few times, one id means one process;
-- `sponsorship.wallets.{relayer,gate}` — `balanceWei`/`balanceMon`, `reserveWei`, `inflight`, `ok`;
+- `sponsorship.wallets.{relayer,gate}` — `balanceWei`/`balanceMon`, `reserveWei`, `inflight` (charged sends
+  not yet settled) and `reservedWei` (the worst-case cost held back for them, each at its own class's
+  estimate), `ok` (balance minus the reservation is still above the floor);
 - `sponsorship.budgets.{relay,drip,gate}` — `hour`/`day` `{ used, limit }` and `perAddressDay`;
 - `sponsorship.spentWei` — estimated spend of the last hour / day from settled receipts (gas limit × price paid);
 - `sponsorship.queue.{relayer,gate}` — `{ pending, max }`; `sponsorship.paused` when either wallet is at its floor.
@@ -128,9 +130,12 @@ race nonces and double every budget. `GET /api/health` reports:
 Public addresses and on-chain balances only; no key material or provider URL appears anywhere in it.
 `GET /api/ip` echoes what the limiter sees for the caller (`ip`, `source`, `forwardedEntries`,
 `trustedProxyHops`); `pnpm preflight` sends a forged `X-Forwarded-For` and expects it ignored. Loopback and
-private hops (the path router in front of the process) are skipped automatically; if the echo shows a public
-load-balancer address instead of yours, raise `TRUSTED_PROXY_HOPS` to 2 (too high opens the limiter to
-spoofing; too low only merges everyone behind that address into one bucket).
+private hops (the path router in front of the process) are skipped automatically, and a connection whose
+socket peer is a public address is keyed by that peer with its headers ignored (it did not come through the
+proxy chain). If the echo shows a public load-balancer address instead of yours, raise `TRUSTED_PROXY_HOPS`
+to 2 (too high opens the limiter to spoofing; too low only merges everyone behind that address into one
+bucket). Replit's ingress replaces a client-sent `X-Forwarded-For` outright — `forwardedEntries` is the same
+with and without one — which is the check to repeat on every new origin.
 
 ## 4. Gate signer requirements
 

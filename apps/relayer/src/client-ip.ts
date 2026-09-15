@@ -13,7 +13,14 @@ import { isIP } from "node:net";
  * and its limits) rather than open, because a forged entry can only ever sit to the left of the real one.
  *
  * `trustedHops = 0` means the process is reached directly (no proxy): only the socket address counts and
- * forwarding headers are ignored.
+ * forwarding headers are ignored. With trusted hops configured, a connection whose socket peer is a public
+ * address did not come through the proxy chain at all and is keyed by that peer, headers ignored.
+ *
+ * Known limit: a client that itself reaches the ingress from an internal address (another tenant inside the
+ * provider's network) is skipped like a proxy hop, so a forged public entry to its left would be taken.
+ * Replit's ingress replaces the client's `X-Forwarded-For` rather than appending to it (checked with
+ * `/api/ip`: `forwardedEntries` does not grow when one is sent), which closes that on the deployed origins;
+ * the class budgets and per-address quotas in spend-guard.ts cap the damage anywhere it is not.
  */
 export type ClientIpSource = "socket" | "x-forwarded-for" | "none";
 
@@ -93,12 +100,22 @@ export function clientIp(
     .map((entry) => entry.trim())
     .filter((entry) => entry !== "");
   const hops = Math.max(0, Math.floor(options.trustedHops));
-  if (hops === 0) {
-    const socket = normalizeIp(options.remoteAddress);
-    return socket
-      ? { key: limiterKey(socket), address: socket, source: "socket", forwardedEntries: forwarded.length }
+  const socket = normalizeIp(options.remoteAddress);
+  const fromSocket = () =>
+    socket
+      ? {
+          key: limiterKey(socket),
+          address: socket,
+          source: "socket" as const,
+          forwardedEntries: forwarded.length,
+        }
       : { ...UNKNOWN, forwardedEntries: forwarded.length };
-  }
+  if (hops === 0) return fromSocket();
+  // Forwarding headers are only meaningful when the connection actually came through a proxy of ours,
+  // which always sits on an internal address (loopback path router, private ingress hop). A connection
+  // straight from a public peer bypassed that chain, so its headers are entirely its own: key it by its
+  // socket address and ignore them.
+  if (socket && !isInternalIp(socket)) return fromSocket();
   // From the right: skip internal hops, then count public ones; the hops-th is the client. Running out of
   // entries means the request did not come through the expected proxies — never fall back to the left end,
   // which is client-controlled, and never trust an unparsable entry.
