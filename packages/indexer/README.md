@@ -43,3 +43,15 @@ the testnet factory first: deploy (`docs/deploy-monad-testnet.md`), commit `depl
 `pnpm sync-config`, then deploy this directory to Envio's hosted service from the GitHub repo (root
 `packages/indexer`, `config.yaml`). The relayer and the web app keep working without it; once the endpoint
 exists, the organiser page and the passport can read their history from it instead of scanning logs.
+
+### Envio Cloud
+
+Indexer `turnstile` in the `vaibhav0xq` organisation (development tier, public access), created 15 Sep 2026:
+root directory `packages/indexer`, config `config.yaml`, **deployment branch `envio-deploy`** — not `main`.
+On the development tier every deployment has its own GraphQL URL and each push to the deployment branch
+starts a new one (full re-index; three deployments per indexer), so the branch only moves when this
+directory changes: fast-forward `envio-deploy` to `main` after an indexer change, never for unrelated
+commits. Envio ignores pushes that touch nothing under the root directory. The web app bakes the URL in at
+build time (`VITE_ENVIO_GRAPHQL_URL`), so a new deployment means a republish. Development deployments are
+deleted after 30 days: redeploy in the first week of October so the endpoint outlives judging (submission
+closes 13 Oct 2026). Checklist and verification queries: `docs/envio-hosted-handoff.md`.
