@@ -127,7 +127,12 @@ function Scene({ config, seatMap, onEnterEvent }: WorldProps) {
           {chapter === "city" || !layout ? (
             <City events={events} onEnter={(e) => onEnterEvent(e.address)} />
           ) : (
-            <Venue layout={layout} seatMap={seatMap} interactive={chapter === "venue"} />
+            <Venue
+              key={eventAddress ?? ""}
+              layout={layout}
+              seatMap={seatMap}
+              interactive={chapter === "venue"}
+            />
           )}
           <CameraRig layout={layout} focusBeacon={focusBeacon} diveBeacon={diveBeacon} />
           {/* After the scene content, re-keyed on every cut: links the chapter's programs behind the

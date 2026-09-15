@@ -179,6 +179,44 @@ test("asking for the scene that is compiling behind the curtain keeps the curtai
   assert.equal(useDirector.getState().curtain, false);
 });
 
+test("a scene that finishes compiling while a cut away from it is pending cannot drop the curtain", () => {
+  // the door is still compiling behind the curtain when the fan heads back to the city
+  useDirector.setState({ chapter: "gate", eventAddress: CLUB, warm: false, curtain: true });
+  useDirector.getState().showCity();
+  assert.equal(useDirector.getState().cutting, true);
+  mock.timers.tick(200);
+  useDirector.getState().markWarm(); // the door's gate reports in: about to be swapped out, ignored
+  let s = useDirector.getState();
+  assert.equal(s.warm, false);
+  assert.equal(s.curtain, true);
+  mock.timers.tick(320);
+  s = useDirector.getState();
+  assert.equal(s.chapter, "city");
+  assert.equal(s.cutting, false);
+  assert.equal(s.curtain, true);
+  useDirector.getState().markWarm(); // the city's own gate
+  s = useDirector.getState();
+  assert.equal(s.warm, true);
+  assert.equal(s.curtain, false);
+});
+
+test("cancelling a cut back to a scene still compiling keeps the curtain until that scene is warm", () => {
+  useDirector.setState({ chapter: "venue", eventAddress: CLUB, warm: false, curtain: true });
+  useDirector.getState().showCity();
+  mock.timers.tick(100);
+  useDirector.getState().showVenue(CLUB);
+  let s = useDirector.getState();
+  assert.equal(s.chapter, "venue");
+  assert.equal(s.cutting, false);
+  assert.equal(s.curtain, true);
+  mock.timers.tick(1000); // the cancelled cut's swap never lands
+  assert.equal(useDirector.getState().chapter, "venue");
+  useDirector.getState().markWarm(); // the room's gate, no longer stale
+  s = useDirector.getState();
+  assert.equal(s.warm, true);
+  assert.equal(s.curtain, false);
+});
+
 test("the door and the way back to the city are curtain cuts, and returning early cancels one", () => {
   useDirector.setState({ chapter: "venue", eventAddress: CLUB });
   useDirector.getState().showGate(CLUB);

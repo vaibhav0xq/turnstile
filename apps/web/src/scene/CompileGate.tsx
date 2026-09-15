@@ -1,5 +1,5 @@
 import { useThree } from "@react-three/fiber";
-import { useEffect, useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef } from "react";
 import * as THREE from "three";
 import { useDirector } from "./director";
 import { usePerf } from "./perf";
@@ -17,7 +17,8 @@ interface CompileGateProps {
  * are in the graph: every program is issued at once, the scene is hidden while the driver links them (off
  * the main thread where KHR_parallel_shader_compile exists), and each link is then checked in short bursts
  * so a driver without the extension stalls under the overlay, never on a drawn frame. `markWarm` lifts
- * the overlay; the director does the same on its own after WARM_MAX_MS.
+ * the overlay; the director does the same on its own after WARM_MAX_MS, and the gate shows the scene the
+ * moment that happens, whatever state its compile is in.
  *
  * The variant matters: three keys a program on whether a render target is bound (tone mapping and output
  * colour space differ), and the composer renders the scene into one. On those tiers a 1×1 target is bound
@@ -43,14 +44,23 @@ export function CompileGate({ composer, soft }: CompileGateProps) {
     const withComposer = composerRef.current;
     const issued = issue(gl, scene, camera, withComposer);
     // Nothing is drawn until the programs are ready; the overlay is up, the clear colour is behind it.
-    scene.visible = false;
+    // (A scene the director already counts as warm has no overlay to hide behind: it stays on screen.)
+    if (!useDirector.getState().warm) scene.visible = false;
+    const reveal = () => {
+      if (scene.visible) return;
+      scene.visible = true;
+      invalidate();
+    };
+    // The overlay lifts without us after WARM_MAX_MS: never leave an empty canvas under a lifted overlay.
+    const unsubscribe = useDirector.subscribe((s) => {
+      if (s.warm) reveal();
+    });
     void issued
       .then(() => settle(gl, before, () => cancelled))
       .catch(() => undefined)
       .then(() => {
         if (cancelled) return;
-        scene.visible = true;
-        invalidate();
+        reveal();
         useDirector.getState().markWarm();
         const programs = newestProgram(gl) - before;
         const ms = Math.round(performance.now() - started);
@@ -66,14 +76,16 @@ export function CompileGate({ composer, soft }: CompileGateProps) {
       });
     return () => {
       cancelled = true;
+      unsubscribe();
       scene.visible = true;
     };
   }, [gl, scene, camera, invalidate]);
 
   // Objects that arrive after the reveal (the beacons, when the config lands after the city): issue their
-  // programs now, in the background where the driver allows, rather than on their first frame.
+  // programs before the frame that would first draw them — in the background where the driver allows,
+  // as a stall at commit time where it does not, which is what their first frame would have cost.
   // biome-ignore lint/correctness/useExhaustiveDependencies: `soft` is the trigger, not an input
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (first.current) {
       first.current = false;
       return;

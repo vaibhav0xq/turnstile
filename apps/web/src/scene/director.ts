@@ -44,6 +44,12 @@ interface DirectorState {
    * gate calls `markWarm`; the flash or the curtain stays up meanwhile (at most WARM_MAX_MS).
    */
   warm: boolean;
+  /**
+   * A cut has started and the next scene is not swapped in yet (the dive is under way, or the curtain is
+   * on its way up). The scene still mounted may finish compiling in this window; its `markWarm` must not
+   * drop the overlay that is about to cover the swap.
+   */
+  cutting: boolean;
   hoveredBeacon: string | null;
   quality: Quality;
   /** First frame rendered: the boot veil can lift. */
@@ -144,10 +150,11 @@ export const useDirector = create<DirectorState>()((set, get) => {
       if (state.transition?.kind === "dive" || state.curtain) {
         clearTimers();
         if (state.warm) {
-          set({ ...next, transition: null, flash: false, curtain: false });
+          set({ ...next, cutting: false, transition: null, flash: false, curtain: false });
         } else {
-          // swapped already and still compiling behind the curtain: leave it up, it lifts when warm
-          set(next);
+          // still compiling behind the curtain (swapped already, or the cut was cancelled before the
+          // swap): leave it up, it lifts when warm
+          set({ ...next, cutting: false });
           later(() => get().markWarm(), WARM_MAX_MS);
         }
       } else {
@@ -164,6 +171,7 @@ export const useDirector = create<DirectorState>()((set, get) => {
     // reveal clock restarts then, once it is actually drawing.
     const swap = () => ({
       ...next,
+      cutting: false,
       warm: false,
       revealStartedAt: performance.now(),
       hoveredSeat: null,
@@ -182,6 +190,7 @@ export const useDirector = create<DirectorState>()((set, get) => {
       const eventAddress = next.eventAddress as string;
       set({
         transition: { kind: "dive", eventAddress, chapter: next.chapter, startedAt: performance.now() },
+        cutting: true,
         curtain: false,
         flash: false,
       });
@@ -194,7 +203,7 @@ export const useDirector = create<DirectorState>()((set, get) => {
       later(() => get().markWarm(), DIVE_MS + WARM_MAX_MS);
       return;
     }
-    set({ curtain: true, flash: false, transition: null });
+    set({ cutting: true, curtain: true, flash: false, transition: null });
     later(() => set(swap()), 520);
     later(() => get().markWarm(), 520 + WARM_MAX_MS);
   }
@@ -212,6 +221,7 @@ export const useDirector = create<DirectorState>()((set, get) => {
     transition: null,
     revealStartedAt: performance.now(),
     warm: false,
+    cutting: false,
     hoveredBeacon: null,
     quality: PINNED ?? initialQuality(),
     ready: false,
@@ -251,7 +261,9 @@ export const useDirector = create<DirectorState>()((set, get) => {
     },
     markWarm: () => {
       const state = get();
-      if (state.warm) return;
+      // A scene reporting warm while a cut away from it is pending is about to be swapped out; the
+      // overlay stays for the scene that replaces it.
+      if (state.warm || state.cutting) return;
       const now = performance.now();
       const held = state.transition?.kind === "descent";
       set({
@@ -270,7 +282,15 @@ export const useDirector = create<DirectorState>()((set, get) => {
     },
     goFlat: () => {
       clearTimers();
-      set({ flat: true, ready: true, warm: true, curtain: false, flash: false, transition: null });
+      set({
+        flat: true,
+        ready: true,
+        warm: true,
+        cutting: false,
+        curtain: false,
+        flash: false,
+        transition: null,
+      });
     },
     setLit: (on) =>
       set(
