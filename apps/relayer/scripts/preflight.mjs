@@ -116,11 +116,12 @@ check(
   `sees ${me.json?.ip ?? "no public hop from here"} (${me.json?.source}, ${me.json?.forwardedEntries} forwarded, hops ${me.json?.trustedProxyHops}); forged → ${forged.json?.ip ?? "none"} (${forged.json?.forwardedEntries} forwarded)`,
 );
 // The hop count must match the proxy chain in front of this origin. We sent no forwarding header, so the
-// leftmost public entry is us and every public entry after it is a proxy: hops = public entries − 1. Too
-// low keys everyone by a proxy address (one shared bucket); too high would trust a client-sent entry.
+// leftmost public entry is us and every public entry after it is a proxy. The limiter takes the hops-th
+// public entry from the right (1 = the rightmost), so reaching us means hops = public entries. Too low
+// keys everyone by a proxy address (one shared bucket); too high would trust a client-sent entry.
 const pattern = Array.isArray(me.json?.forwardedPattern) ? me.json.forwardedPattern : null;
 const publicEntries = pattern?.filter((c) => c === "public").length ?? 0;
-const hopsWanted = publicEntries > 0 ? publicEntries - 1 : null;
+const hopsWanted = publicEntries > 0 ? publicEntries : null;
 const hopsSet = me.json?.trustedProxyHops;
 const patternText = pattern
   ? pattern.map((c) => c[0].toUpperCase()).join("")

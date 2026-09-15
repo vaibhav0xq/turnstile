@@ -134,16 +134,18 @@ and `trustedProxyHops`). Loopback and private hops (the path router in front of 
 automatically, and a connection whose socket peer is a public address is keyed by that peer with its
 headers ignored (it did not come through the proxy chain).
 
-`TRUSTED_PROXY_HOPS` must equal the number of public entries in that chain minus one, read from a client
-that sent no forwarding header (then the leftmost public entry is the client and every public entry after
-it is a proxy). `pnpm preflight --origin …` checks exactly that and prints the value to set, and it sends
-a forged `X-Forwarded-For` expecting it ignored. The two origins differ: the dev origin's chain is
-`client, private hop, loopback` (1 public → hops 1), the published origin's has Google's edge in front —
-`client, edge, private hop, loopback` (2 public → **hops 2**). Too low is fail-closed but keys every
-visitor by the edge's rotating address (one shared per-minute bucket for the whole audience); too high
-would take a client-sent entry. The published edge *appends* to a client-sent header rather than replacing
-it (the dev origin replaces), so the forged-entry check matters there — repeat both checks on every new
-origin.
+`TRUSTED_PROXY_HOPS` must equal the number of public entries in that chain, read from a client that sent
+no forwarding header (then the leftmost public entry is the client, every public entry after it is a
+proxy, and the limiter counts public entries from the right — 1 is the rightmost). `pnpm preflight
+--origin …` checks exactly that and prints the value to set, and it sends a forged `X-Forwarded-For`
+expecting it ignored. The two origins differ: the dev origin's chain is `client, private hop, loopback`
+(1 public → hops 1); the published origin sits behind Google's load balancer and the platform's proxies,
+which append three public addresses after the client — `client, P, P, P` (4 public → **hops 4**, verified
+15 Sep 2026 from two outside networks). Too low is fail-closed but keys visitors by a proxy's address —
+a rotating one on the published origin, so one visitor's requests land in unrelated buckets and the
+per-minute limits mean nothing; too high would take a client-sent entry. The published chain *appends* to
+a client-sent header rather than replacing it (the dev origin replaces), so the forged-entry check matters
+there — repeat both checks on every new origin and after any platform change to the proxy layout.
 
 ## 4. Gate signer requirements
 

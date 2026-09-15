@@ -96,8 +96,9 @@ export type ForwardedClass = "public" | "internal" | "invalid";
 /**
  * The shape of the `X-Forwarded-For` chain, addresses withheld: one class per entry, left to right. Read
  * from a client that sent no forwarding header of its own, the leftmost public entry is that client and
- * every public entry to its right is a proxy hop — so `TRUSTED_PROXY_HOPS` must equal the number of public
- * entries minus one. `/api/ip` echoes it and `pnpm preflight` checks that equality on every origin.
+ * every public entry to its right is a proxy hop. `clientIp` takes the `TRUSTED_PROXY_HOPS`-th public entry
+ * from the right (1 = the rightmost), so the setting must equal the number of public entries in that chain.
+ * `/api/ip` echoes it and `pnpm preflight` checks that equality on every origin.
  */
 export function classifyForwarded(headers: Headers): ForwardedClass[] {
   return (headers.get("x-forwarded-for") ?? "")
