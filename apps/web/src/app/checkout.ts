@@ -127,7 +127,15 @@ function friendly(code: string, fallback: string): string {
     case "HttpRequestError":
       return "Couldn't reach the relayer. Check your connection and try again — nothing was charged.";
     case "RATE_LIMITED":
+    case "BUSY":
       return "The relayer is busy right now. Wait a few seconds and try again.";
+    // Spend safety (relayer spend-guard): these clear on their own or need the operator, not a retry.
+    case "SPONSOR_PAUSED":
+      return "Sponsored transactions are paused while the relayer wallet is topped up. Try again later.";
+    case "BUDGET_EXHAUSTED":
+      return "The relayer has hit its sponsorship budget for now. Try again in a while.";
+    case "QUOTA_EXCEEDED":
+      return "This account has used its sponsored actions for today.";
     case "INTERNAL_ERROR":
       return "The relayer hit an error. Try again in a moment; if it keeps happening the chain may be congested.";
     case "WaitForTransactionReceiptTimeoutError":

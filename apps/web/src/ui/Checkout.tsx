@@ -62,7 +62,7 @@ export function Checkout({ config, event, layout, seatMap }: CheckoutProps) {
   // A busy relayer (429) is momentary: retry once per seat on the fan's behalf after a short, visible
   // countdown — and only while the session is still live, so the retry can never raise a passkey prompt
   // nobody asked for. A second 429, or a lapsed session, waits for a tap.
-  const throttled = step === "error" && error?.code === "RATE_LIMITED";
+  const throttled = step === "error" && (error?.code === "RATE_LIMITED" || error?.code === "BUSY");
   const retryKey = seatId == null ? null : `${event.address}:${seatId}`;
   const [retryIn, setRetryIn] = useState<number | null>(null);
   const autoRetried = useRef(new Set<string>());

@@ -4,7 +4,15 @@ import { type Address, getAddress, zeroAddress } from "viem";
 import { chainId, gateAccount, gateWallet, publicClient } from "./config.ts";
 import { decodeContractError } from "./errors.ts";
 import { findEvent } from "./events.ts";
-import { transactionQueue } from "./queue.ts";
+import { isDenial } from "./spend-guard.ts";
+import {
+  currentGasPrice,
+  denialResponse,
+  GATE_CHECK_IN_GAS,
+  gateQueue,
+  queueDenial,
+  spendGuard,
+} from "./sponsorship.ts";
 
 type LookupSuccess = {
   ok: true;
@@ -130,6 +138,9 @@ export async function checkIn(text: unknown) {
   const lookup = await lookupEntry(text);
   if (!lookup.ok) return lookup;
   const args = [lookup.tokenId, lookup.slot, lookup.signature] as const;
+  // The gate wallet has its own floor and hourly budget; a paused door says so before simulating.
+  const denied = await spendGuard.admit("gate");
+  if (denied) return gateDenial(denialResponse(denied));
   try {
     await publicClient.simulateContract({
       account: gateAccount,
@@ -137,28 +148,56 @@ export async function checkIn(text: unknown) {
       abi: turnstileEventAbi,
       functionName: "checkIn",
       args,
-      gas: 180_000n,
+      gas: GATE_CHECK_IN_GAS,
     } as never);
   } catch (error) {
     return { ok: false, status: 409, ...decodeContractError(error) };
   }
   const started = Date.now();
-  return transactionQueue.run(async () => {
-    const hash = await gateWallet.writeContract({
-      address: lookup.eventAddress,
-      abi: turnstileEventAbi,
-      functionName: "checkIn",
-      args,
-      gas: 180_000n,
-    } as never);
-    const receipt = await publicClient.waitForTransactionReceipt({ hash, timeout: 30_000 });
-    console.log(`tx gate ${hash} ${receipt.gasUsed}`);
-    return {
-      ...lookup,
-      hash,
-      blockNumber: receipt.blockNumber,
-      gasUsed: receipt.gasUsed,
-      ms: Date.now() - started,
-    };
+  const queued = gateQueue.run(async () => {
+    const charge = await spendGuard.charge("gate");
+    if (isDenial(charge)) return gateDenial(denialResponse(charge));
+    try {
+      const hash = await gateWallet.writeContract({
+        address: lookup.eventAddress,
+        abi: turnstileEventAbi,
+        functionName: "checkIn",
+        args,
+        gas: GATE_CHECK_IN_GAS,
+      } as never);
+      const receipt = await publicClient.waitForTransactionReceipt({ hash, timeout: 30_000 });
+      charge.settle(GATE_CHECK_IN_GAS * receipt.effectiveGasPrice);
+      console.log(`tx gate ${hash} ${receipt.gasUsed}`);
+      return {
+        ...lookup,
+        hash,
+        blockNumber: receipt.blockNumber,
+        gasUsed: receipt.gasUsed,
+        ms: Date.now() - started,
+      };
+    } catch (error) {
+      charge.settle(GATE_CHECK_IN_GAS * currentGasPrice());
+      throw error;
+    }
   });
+  return queued.catch((error) => {
+    const busy = queueDenial(error);
+    if (busy) return gateDenial(busy);
+    throw error;
+  });
+}
+
+/** Gate responses are flat (`{ ok, code, message }`), unlike the relay's `{ error }` envelope. */
+function gateDenial(denial: {
+  status: number;
+  retryAfterSec: number;
+  body: { error: { code: string; message: string } };
+}) {
+  return {
+    ok: false as const,
+    status: denial.status,
+    code: denial.body.error.code,
+    message: denial.body.error.message,
+    retryAfterSec: denial.retryAfterSec,
+  };
 }

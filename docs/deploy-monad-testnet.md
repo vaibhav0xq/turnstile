@@ -95,7 +95,42 @@ change its nonce.)
 - Simulates before sending (`eth_call` the exact `execute`), because OZ's `ERC2771Forwarder.execute` reports an
   inner revert only as `FailedCall()`.
 - Uses `eth_maxPriorityFeePerGas` (2 gwei today) and `max_fee = base_fee + tip`, not forge's 2× bid.
-- Balance alert at 1 MON; never let it reach 0 mid-demo.
+- Balance alert at 1 MON; never let it reach 0 mid-demo — and it cannot: the reserve floor below stops
+  sponsorship first.
+
+### 3a. Spend safety (relayer and gate)
+
+The relayer pays for every forwarded action, every testnet drip and every check-in, so it brakes on its own
+(`apps/relayer/src/spend-guard.ts`, knobs in `.env.example`, all optional):
+
+| Brake | Default | Refusal |
+| --- | --- | --- |
+| Reserve floor per wallet — no send that would leave the wallet (counting work in flight) below it; an unreadable balance also pauses | relayer 1 MON (`RELAYER_RESERVE_WEI`), gate 0.2 MON (`GATE_RESERVE_WEI`) | `503 SPONSOR_PAUSED` |
+| Class budgets per rolling hour / day — `relay` (forwarded fan actions), `drip`, `gate` | relay 60 / 300, drip 10 / 40, gate 300 / 2000 (`*_HOURLY_LIMIT`, `*_DAILY_LIMIT`) | `429 BUDGET_EXHAUSTED` |
+| Per-address quota per rolling day — the fan's `from` for relay, the recipient for drip | relay 24, drip 2 (`RELAY_DAILY_PER_ADDRESS`, `DRIP_DAILY_PER_ADDRESS`) | `429 QUOTA_EXCEEDED` |
+| Bounded queue per wallet — sends stay sequential (that is what keeps nonces in order); past `TX_QUEUE_MAX` pending or `TX_QUEUE_MAX_WAIT_MS` of waiting a request is refused instead of sent | 8 pending, 20 s | `503 BUSY` |
+| Per-IP limits — 30 relay, 10 drip, 20 passport writes per minute; the address is the proxy-written `X-Forwarded-For` entry (the `TRUSTED_PROXY_HOPS`-th public hop from the right, default 1, internal hops skipped), never one the client sent | | `429 RATE_LIMITED` |
+
+Worst case at the defaults: 60 relays × 0.033 + 10 drips × 0.1 ≈ 3 MON an hour, ≈ 14 MON a day, and the
+floor ends it before the wallet is empty. Every refusal carries `Retry-After` and a `retryAfterSec` in the body;
+the web app shows the reason and auto-retries only `RATE_LIMITED` / `BUSY`.
+
+Everything is in memory: budgets restart empty and the queue only orders one process. The deployment must run a
+**single instance** (autoscale max machines 1, or a reserved VM) — two processes sharing the relayer key would
+race nonces and double every budget. `GET /api/health` reports:
+
+- `instance` — a random per-process id; call it a few times, one id means one process;
+- `sponsorship.wallets.{relayer,gate}` — `balanceWei`/`balanceMon`, `reserveWei`, `inflight`, `ok`;
+- `sponsorship.budgets.{relay,drip,gate}` — `hour`/`day` `{ used, limit }` and `perAddressDay`;
+- `sponsorship.spentWei` — estimated spend of the last hour / day from settled receipts (gas limit × price paid);
+- `sponsorship.queue.{relayer,gate}` — `{ pending, max }`; `sponsorship.paused` when either wallet is at its floor.
+
+Public addresses and on-chain balances only; no key material or provider URL appears anywhere in it.
+`GET /api/ip` echoes what the limiter sees for the caller (`ip`, `source`, `forwardedEntries`,
+`trustedProxyHops`); `pnpm preflight` sends a forged `X-Forwarded-For` and expects it ignored. Loopback and
+private hops (the path router in front of the process) are skipped automatically; if the echo shows a public
+load-balancer address instead of yours, raise `TRUSTED_PROXY_HOPS` to 2 (too high opens the limiter to
+spoofing; too low only merges everyone behind that address into one bucket).
 
 ## 4. Gate signer requirements
 
@@ -111,7 +146,7 @@ change its nonce.)
   `checkInWithBind` 171 k (≈ 197 k) → send **250 000**. ≈ 0.018 / 0.026 MON per scan at 102 gwei.
 - The gate wallet's key lives in the gate app's backend, never in the browser scanner. Slot tolerance on chain is
   ±1 slot (30 s each); the scanner still applies `{current, current − 1}` on its own clock.
-- Balance alert at 0.5 MON.
+- Balance alert at 0.5 MON; check-ins pause below the 0.2 MON reserve floor (§3a).
 
 ## 5. Funding on Monad testnet
 

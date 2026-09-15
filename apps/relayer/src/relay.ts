@@ -10,7 +10,8 @@ import {
   type Validation,
   validateRelayBody,
 } from "./forward-request.ts";
-import { transactionQueue } from "./queue.ts";
+import { isDenial } from "./spend-guard.ts";
+import { currentGasPrice, denialResponse, queueDenial, relayerQueue, spendGuard } from "./sponsorship.ts";
 
 export { type ForwardRequest, relayGas, type Validation, validateRelayBody };
 
@@ -30,6 +31,9 @@ export async function relay(body: unknown) {
   const validated = validateRelayBody(body);
   if (!validated.ok) return { status: 400, body: { error: validated } };
   const { request, action } = validated;
+  // Spend safety first: a paused or exhausted relayer answers before it spends RPC reads on the request.
+  const denied = await spendGuard.admit("relay", request.from);
+  if (denied) return denialResponse(denied);
   if (!(await findEvent(request.to))) {
     return {
       status: 400,
@@ -81,26 +85,42 @@ export async function relay(body: unknown) {
     return { status: 409, body: { error: decodeContractError(error) } };
   }
   const started = Date.now();
-  return transactionQueue.run(async () => {
-    const hash = await relayerWallet.writeContract({
-      address: deployment.forwarder,
-      abi: erc2771ForwarderAbi,
-      functionName: "execute",
-      args: [forwardRequest],
-      value: 0n,
-      gas: txGas[action],
-    });
-    const receipt = await publicClient.waitForTransactionReceipt({ hash, timeout: 30_000 });
-    console.log(`tx relay ${hash} ${receipt.gasUsed}`);
-    return {
-      status: 200,
-      body: {
-        hash,
-        blockNumber: receipt.blockNumber,
-        status: receipt.status,
-        gasUsed: receipt.gasUsed,
-        ms: Date.now() - started,
-      },
-    };
+  const queued = relayerQueue.run(async () => {
+    // The charge that counts happens here, in turn, so a burst of admitted requests cannot overshoot a
+    // budget by more than the queue depth; the floor is re-read against work already in flight.
+    const charge = await spendGuard.charge("relay", request.from);
+    if (isDenial(charge)) return denialResponse(charge);
+    try {
+      const hash = await relayerWallet.writeContract({
+        address: deployment.forwarder,
+        abi: erc2771ForwarderAbi,
+        functionName: "execute",
+        args: [forwardRequest],
+        value: 0n,
+        gas: txGas[action],
+      });
+      const receipt = await publicClient.waitForTransactionReceipt({ hash, timeout: 30_000 });
+      charge.settle(txGas[action] * receipt.effectiveGasPrice);
+      console.log(`tx relay ${hash} ${receipt.gasUsed}`);
+      return {
+        status: 200,
+        body: {
+          hash,
+          blockNumber: receipt.blockNumber,
+          status: receipt.status,
+          gasUsed: receipt.gasUsed,
+          ms: Date.now() - started,
+        },
+      };
+    } catch (error) {
+      // The send may still have landed (a receipt timeout): count the gas cap so the floor stays honest.
+      charge.settle(txGas[action] * currentGasPrice());
+      throw error;
+    }
+  });
+  return queued.catch((error) => {
+    const busy = queueDenial(error);
+    if (busy) return busy;
+    throw error;
   });
 }

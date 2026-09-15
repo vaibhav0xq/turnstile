@@ -1,11 +1,13 @@
 import { existsSync, readFileSync } from "node:fs";
 import { extname, join, normalize } from "node:path";
 import { serve } from "@hono/node-server";
+import { getConnInfo } from "@hono/node-server/conninfo";
 import { turnstileEventAbi } from "@turnstile/contracts/abi";
 import { type Context, Hono } from "hono";
 import { cors } from "hono/cors";
 import { getAddress, isAddress } from "viem";
 import { redirectStatus, redirectTarget } from "./canonical-host.ts";
+import { clientIp } from "./client-ip.ts";
 import {
   chain,
   chainId,
@@ -25,20 +27,44 @@ import { PostgresPassportBackend } from "./passport-postgres.ts";
 import { RateLimiter } from "./ratelimit.ts";
 import { relay, relayGas } from "./relay.ts";
 import { rpcHost } from "./rpc.ts";
+import { instanceId, sponsorshipStatus } from "./sponsorship.ts";
 import { renderTicketSvg, requestOrigin } from "./ticket-image.ts";
 
-function json(value: unknown, status = 200): Response {
+function json(value: unknown, status = 200, headers: Record<string, string> = {}): Response {
   return new Response(
     JSON.stringify(value, (_, item: unknown) => (typeof item === "bigint" ? item.toString() : item)),
     {
       status,
-      headers: { "content-type": "application/json; charset=UTF-8" },
+      headers: { "content-type": "application/json; charset=UTF-8", ...headers },
     },
   );
 }
 
-function ip(headers: Headers): string {
-  return headers.get("x-forwarded-for")?.split(",")[0]?.trim() || headers.get("x-real-ip") || "unknown";
+/** Route result → response; refusals carry `Retry-After` so well-behaved clients back off correctly. */
+function answer(result: { status: number; body: unknown; retryAfterSec?: number | undefined }): Response {
+  const headers = result.retryAfterSec ? { "retry-after": String(result.retryAfterSec) } : {};
+  return json(result.body, result.status, headers);
+}
+
+function tooMany(): Response {
+  return json({ error: { code: "RATE_LIMITED", message: "Too many requests" } }, 429, {
+    "retry-after": "10",
+  });
+}
+
+/** The limiter key: only proxy-written forwarding entries count (client-ip.ts), never the client's own. */
+function ip(context: Context): string {
+  return resolveIp(context).key;
+}
+
+function resolveIp(context: Context) {
+  let remoteAddress: string | null = null;
+  try {
+    remoteAddress = getConnInfo(context).remote.address ?? null;
+  } catch {
+    remoteAddress = null;
+  }
+  return clientIp(context.req.raw.headers, { trustedHops: settings.trustedProxyHops, remoteAddress });
 }
 
 await verifyChain();
@@ -91,6 +117,22 @@ app.get("/api/health", async () => {
       fallbacks: rpc.fallbacks.map(rpcHost),
       latencyMs: Date.now() - started,
     },
+    // Spend safety, in the open: balances against their floors, budget use and queue depth. Public
+    // addresses and on-chain balances only — nothing here is a secret.
+    instance: instanceId,
+    sponsorship: await sponsorshipStatus(),
+  });
+});
+
+// What the limiter sees for this caller: the sweep sends a forged X-Forwarded-For and expects to be ignored.
+app.get("/api/ip", (context) => {
+  const seen = resolveIp(context);
+  return json({
+    ip: seen.address,
+    key: seen.key,
+    source: seen.source,
+    forwardedEntries: seen.forwardedEntries,
+    trustedProxyHops: settings.trustedProxyHops,
   });
 });
 
@@ -193,11 +235,8 @@ async function ticketImage(context: Context) {
 }
 
 app.post("/api/relay", async (context) => {
-  if (!relayLimit.allow(ip(context.req.raw.headers))) {
-    return json({ error: { code: "RATE_LIMITED", message: "Too many requests" } }, 429);
-  }
-  const result = await relay(await context.req.json().catch(() => undefined));
-  return json(result.body, result.status);
+  if (!relayLimit.allow(ip(context))) return tooMany();
+  return answer(await relay(await context.req.json().catch(() => undefined)));
 });
 
 app.get("/api/gate/lookup", async (context) => {
@@ -210,7 +249,10 @@ app.post("/api/gate/check-in", async (context) => {
   }
   const body = (await context.req.json().catch(() => undefined)) as { code?: unknown } | undefined;
   const result = await checkIn(body?.code);
-  return json(result, result.ok ? 200 : result.status);
+  if (result.ok) return json(result);
+  const retryAfterSec =
+    "retryAfterSec" in result && typeof result.retryAfterSec === "number" ? result.retryAfterSec : undefined;
+  return answer({ status: result.status, body: result, retryAfterSec });
 });
 
 // The private passport: ciphertext in, ciphertext out. Writes carry the account key's signature (SPEC §4.6).
@@ -223,9 +265,7 @@ app.get("/api/passport/:address", async (context) => {
   return json({ blob: record.blob, issuedAt: record.issuedAt, updatedAt: record.updatedAt });
 });
 app.put("/api/passport/:address", async (context) => {
-  if (!passportLimit.allow(ip(context.req.raw.headers))) {
-    return json({ error: { code: "RATE_LIMITED", message: "Too many requests" } }, 429);
-  }
+  if (!passportLimit.allow(ip(context))) return tooMany();
   const result = await passports.put(
     context.req.param("address"),
     await context.req.json().catch(() => undefined),
@@ -234,11 +274,8 @@ app.put("/api/passport/:address", async (context) => {
 });
 
 app.post("/api/drip", async (context) => {
-  if (!dripIpLimit.allow(ip(context.req.raw.headers))) {
-    return json({ error: { code: "RATE_LIMITED", message: "Too many requests" } }, 429);
-  }
-  const result = await drip(await context.req.json().catch(() => undefined));
-  return json(result.body, result.status);
+  if (!dripIpLimit.allow(ip(context))) return tooMany();
+  return answer(await drip(await context.req.json().catch(() => undefined)));
 });
 
 if (settings.staticDir) {

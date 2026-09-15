@@ -69,6 +69,65 @@ const rpcDetail = rpc
 check(!FINAL || rpc?.provider === "alchemy", "rpc provider", rpcDetail);
 check(!FINAL || (rpc?.fallbacks?.length ?? 0) > 0, "rpc fallback configured", rpcDetail);
 
+// Spend safety: floors, budgets and the queue are visible; the relayer sees through a forged X-Forwarded-For;
+// one process answers (two would race nonces and double every budget).
+const sponsorship = health.json?.sponsorship ?? null;
+const wallets = sponsorship?.wallets ?? {};
+const mon = (w) => (w?.balanceMon == null ? "?" : Number(w.balanceMon).toFixed(3));
+check(
+  sponsorship !== null && wallets.relayer && wallets.gate && sponsorship.budgets && sponsorship.queue,
+  "/api/health reports sponsorship status",
+  sponsorship ? `paused ${sponsorship.paused}` : "missing (older relayer build?)",
+);
+check(
+  wallets.relayer?.ok === true,
+  "relayer wallet above its reserve",
+  `${mon(wallets.relayer)} MON, floor ${Number(wallets.relayer?.reserveWei ?? 0) / 1e18} MON`,
+);
+check(
+  wallets.gate?.ok === true,
+  "gate wallet above its reserve",
+  `${mon(wallets.gate)} MON, floor ${Number(wallets.gate?.reserveWei ?? 0) / 1e18} MON`,
+);
+const budgets = sponsorship?.budgets ?? {};
+check(
+  ["relay", "drip", "gate"].every((k) => budgets[k] && budgets[k].hour.used < budgets[k].hour.limit),
+  "hourly budgets have room",
+  ["relay", "drip", "gate"]
+    .map((k) => `${k} ${budgets[k]?.hour.used ?? "?"}/${budgets[k]?.hour.limit ?? "?"}`)
+    .join(" · "),
+);
+check(
+  (sponsorship?.queue?.relayer?.pending ?? Number.NaN) === 0,
+  "transaction queue idle",
+  `relayer ${sponsorship?.queue?.relayer?.pending}/${sponsorship?.queue?.relayer?.max} · gate ${sponsorship?.queue?.gate?.pending}/${sponsorship?.queue?.gate?.max}`,
+);
+
+// From inside Replit's own network every hop is internal and the echo is null for us; the check is that the
+// forged entry never shows up and the key does not move. Run from the outside, `ip` should be your address.
+const me = await get("/api/ip");
+const forged = await get("/api/ip", { headers: { "x-forwarded-for": "203.0.113.77, 198.51.100.1" } });
+check(
+  me.status === 200 &&
+    forged.status === 200 &&
+    forged.json?.ip !== "203.0.113.77" &&
+    forged.json?.ip !== "198.51.100.1" &&
+    forged.json?.key === me.json?.key,
+  "forged X-Forwarded-For ignored by the limiter",
+  `sees ${me.json?.ip ?? "no public hop from here"} (${me.json?.source}, ${me.json?.forwardedEntries} forwarded, hops ${me.json?.trustedProxyHops}); forged → ${forged.json?.ip ?? "none"}`,
+);
+
+const instances = new Set([health.json?.instance]);
+for (let i = 0; i < 4; i++) instances.add((await get("/api/health")).json?.instance);
+instances.delete(undefined);
+check(
+  instances.size === 1,
+  "single relayer instance",
+  instances.size === 0
+    ? "no instance id (older relayer build?)"
+    : `${instances.size} id(s): ${[...instances].join(", ")}`,
+);
+
 const config = await get("/api/config");
 check(config.status === 200 && Array.isArray(config.json?.events), "/api/config", `status ${config.status}`);
 const label = config.json?.environmentLabel ?? null;

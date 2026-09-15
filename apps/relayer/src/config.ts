@@ -21,6 +21,23 @@ function required(name: string): string {
   return value;
 }
 
+/** Optional non-negative integer setting; a malformed value is a startup error, not a silent default. */
+function integer(name: string, fallback: number): number {
+  const raw = process.env[name];
+  if (raw === undefined || raw === "") return fallback;
+  const value = Number(raw);
+  if (!Number.isSafeInteger(value) || value < 0) throw new Error(`${name} must be a non-negative integer`);
+  return value;
+}
+
+/** Optional wei amount (decimal string). */
+function wei(name: string, fallback: bigint): bigint {
+  const raw = process.env[name];
+  if (raw === undefined || raw === "") return fallback;
+  if (!/^[0-9]+$/.test(raw)) throw new Error(`${name} must be a decimal wei amount`);
+  return BigInt(raw);
+}
+
 const appDir = resolve(fileURLToPath(new URL("..", import.meta.url)));
 export const rpcUrl = required("RPC_URL");
 /** Primary RPC plus optional fallbacks (`RPC_FALLBACK_URLS`, comma-separated); sends stay on the primary. */
@@ -112,6 +129,36 @@ export const settings = {
   gateToken: process.env["GATE_TOKEN"] || null,
   dripEnabled: process.env["DRIP_ENABLED"] === "1",
   dripAmount: BigInt(process.env["DRIP_AMOUNT_WEI"] || "100000000000000000"),
+  /**
+   * `X-Forwarded-For` entries written by proxies we trust (rightmost first). 1 = one proxy in front of the
+   * process (Replit's ingress); 0 = reached directly, use the socket address. Client-sent entries never count.
+   */
+  trustedProxyHops: integer("TRUSTED_PROXY_HOPS", 1),
+  /** Spend safety: reserve floors per wallet and rolling budgets per action class (spend-guard.ts). */
+  spend: {
+    relayerReserveWei: wei("RELAYER_RESERVE_WEI", 10n ** 18n),
+    gateReserveWei: wei("GATE_RESERVE_WEI", 2n * 10n ** 17n),
+    limits: {
+      hourly: {
+        relay: integer("RELAY_HOURLY_LIMIT", 60),
+        drip: integer("DRIP_HOURLY_LIMIT", 10),
+        gate: integer("GATE_HOURLY_LIMIT", 300),
+      },
+      daily: {
+        relay: integer("RELAY_DAILY_LIMIT", 300),
+        drip: integer("DRIP_DAILY_LIMIT", 40),
+        gate: integer("GATE_DAILY_LIMIT", 2000),
+      },
+      perAddressDaily: {
+        relay: integer("RELAY_DAILY_PER_ADDRESS", 24),
+        drip: integer("DRIP_DAILY_PER_ADDRESS", 2),
+      },
+    },
+    /** Transactions queued or running per wallet before new ones are refused with `BUSY`. */
+    queueMax: integer("TX_QUEUE_MAX", 8),
+    /** Longest a transaction may wait for its turn before it is refused instead of sent. */
+    queueMaxWaitMs: integer("TX_QUEUE_MAX_WAIT_MS", 20_000),
+  },
   corsOrigins: (process.env["CORS_ORIGIN"] || "*").split(",").map((x) => x.trim()),
   port: Number(process.env["PORT"] || "8787"),
   /** Optional: serve the built web app (apps/web/dist) from this process, so one deployment is enough. */

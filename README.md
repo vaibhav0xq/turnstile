@@ -106,6 +106,13 @@ to the next provider, transactions stay pinned to the primary so nonces never sp
 any `REDIRECT_HOSTS` alias are redirected (301, 308 for non-GET) to the apex before anything is served, so
 passkeys — which are scoped to the page's host — only ever exist on one host.
 
+The relayer also brakes on its own spend (`docs/deploy-monad-testnet.md` §3a): a reserve floor per wallet
+(sponsorship pauses before the relayer or gate wallet is drained), rolling hourly and daily budgets per action
+class (relay, drip, check-in), a per-address daily quota, a bounded per-wallet transaction queue that keeps
+sends sequential so nonces cannot race, and per-IP limits keyed on the proxy-written `X-Forwarded-For` hop
+rather than anything the client sends. `/api/health → sponsorship` shows balances against the floors, budget
+use and queue depth; `/api/ip` shows what the limiter sees for you.
+
 The spike is standalone: `cd spike && npm ci && npm run build && npm run verify` (headless Chromium, 17 checks).
 
 `pnpm verify` is the commit gate: `pnpm install --frozen-lockfile`, `pnpm check` (biome, tsc, node tests, forge

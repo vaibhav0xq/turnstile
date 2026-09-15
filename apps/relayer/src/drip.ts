@@ -1,8 +1,10 @@
 import { type Address, getAddress, isAddress } from "viem";
 import { publicClient, relayerAccount, relayerWallet, settings } from "./config.ts";
-import { transactionQueue } from "./queue.ts";
+import { isDenial } from "./spend-guard.ts";
+import { currentGasPrice, denialResponse, queueDenial, relayerQueue, spendGuard } from "./sponsorship.ts";
 
 const lastDrip = new Map<Address, number>();
+const DRIP_GAS = 21_000n;
 
 export async function drip(value: unknown) {
   if (!settings.dripEnabled)
@@ -19,15 +21,46 @@ export async function drip(value: unknown) {
       body: { error: { code: "RATE_LIMITED", message: "Address was dripped recently" } },
     };
   }
+  // Floor, hourly/daily drip budget and this address's daily share, before any chain read.
+  const denied = await spendGuard.admit("drip", to);
+  if (denied) return denialResponse(denied);
   const balance = await publicClient.getBalance({ address: to });
   if (balance >= settings.dripAmount / 2n) {
     return { status: 409, body: { error: { code: "ALREADY_FUNDED", message: "Address already has funds" } } };
   }
-  const hash = await transactionQueue.run(() =>
-    relayerWallet.sendTransaction({ account: relayerAccount, to, value: settings.dripAmount }),
-  );
-  await publicClient.waitForTransactionReceipt({ hash, timeout: 30_000 });
-  lastDrip.set(to, Date.now());
-  console.log(`tx drip ${hash}`);
-  return { status: 200, body: { hash, amountWei: settings.dripAmount } };
+  const queued = relayerQueue.run(async () => {
+    const charge = await spendGuard.charge("drip", to);
+    if (isDenial(charge)) return denialResponse(charge);
+    try {
+      const hash = await relayerWallet.sendTransaction({
+        account: relayerAccount,
+        to,
+        value: settings.dripAmount,
+      });
+      lastDrip.set(to, Date.now());
+      return { hash, charge };
+    } catch (error) {
+      charge.settle(settings.dripAmount + DRIP_GAS * currentGasPrice());
+      throw error;
+    }
+  });
+  let sent: Awaited<typeof queued>;
+  try {
+    sent = await queued;
+  } catch (error) {
+    const busy = queueDenial(error);
+    if (busy) return busy;
+    throw error;
+  }
+  if ("status" in sent) return sent;
+  // The receipt wait happens outside the queue: the next transaction can go out on the pending nonce.
+  try {
+    const receipt = await publicClient.waitForTransactionReceipt({ hash: sent.hash, timeout: 30_000 });
+    sent.charge.settle(settings.dripAmount + DRIP_GAS * receipt.effectiveGasPrice);
+  } catch (error) {
+    sent.charge.settle(settings.dripAmount + DRIP_GAS * currentGasPrice());
+    throw error;
+  }
+  console.log(`tx drip ${sent.hash}`);
+  return { status: 200, body: { hash: sent.hash, amountWei: settings.dripAmount } };
 }
