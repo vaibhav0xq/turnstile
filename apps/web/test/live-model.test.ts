@@ -5,6 +5,7 @@ import {
   describeActivity,
   freshness,
   kindLabel,
+  lagAsTime,
   minuteSeries,
   summariseProvenance,
   timeAgo,
@@ -29,6 +30,20 @@ test("freshness never claims sync it cannot see", () => {
   assert.equal(freshness(100n, 130n).tone, "amber");
   assert.equal(freshness(100n, 300n).tone, "red");
   assert.equal(freshness(100n, 300n).label, "Envio · 200 blocks behind");
+});
+
+test("freshness tones are set in seconds, not blocks", () => {
+  // 0.4 s blocks: a dozen blocks is one poll of ordinary latency, still in sync
+  assert.equal(freshness(100n, 112n).tone, "green");
+  assert.equal(freshness(100n, 112n).lag, 12);
+  assert.equal(freshness(100n, 113n).tone, "amber"); // 5.2 s
+  assert.equal(freshness(100n, 250n).tone, "amber"); // 60 s, the last amber
+  assert.equal(freshness(100n, 251n).tone, "red");
+  // a slower chain reaches the same thresholds in fewer blocks
+  assert.equal(freshness(100n, 103n, 2_000).tone, "amber");
+  assert.equal(lagAsTime(3), "≈ 1.2 s");
+  assert.equal(lagAsTime(120), "≈ 48 s");
+  assert.equal(lagAsTime(600), "≈ 4 min");
 });
 
 test("timeAgo rounds the way a feed reads", () => {

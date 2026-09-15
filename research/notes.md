@@ -273,3 +273,13 @@ Exact rules text, team-size cap, KYC, video requirement, "Community Team" defini
   label now reads "Envio · in sync" so every Live surface names its source. Redeploy (one push to
   `envio-deploy`) in the first week of October so the endpoint outlives judging; then update the URL and
   republish.
+- Envio surfaces on the published origin (15 Sep 2026, after the republish): preflight clean (24 ✓), judge run
+  43.0 s / 6 taps / 2 prompts (seat 17; mint 710 ms, bind 717 ms, admit 724 ms); the city pulse listed the
+  run's three rows within a minute. Two findings, both fixed: the chip's two heads were separate 8 s polls out
+  of phase, so it read "3 blocks behind" (amber) with the indexer fully caught up — measured together the lag
+  was 0–3 blocks; now one query reads both in the same tick and the tones are set in seconds (in sync ≤ 5 s,
+  amber ≤ 60 s, red beyond) with the block count kept in the label. The provenance strip had no chip; it now
+  has a "Seat history" header with one. Publishing from a fresh passkey took 2.6 s end to end (top-up +
+  create): event #3 "Late Set at the Depot" `0x2BA270…3E1b15`, tx `0xde5ea09d…9d2eacb9`, indexed at once.
+  The organiser live board is only reachable from the passkey that published, and that headless passkey was
+  not exported before the browser closed — the board on the live origin is still unverified by eye.

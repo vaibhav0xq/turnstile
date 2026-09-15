@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
 import { gql, liveEnabled } from "./client";
+import { big } from "./model";
 import {
   CITY_PULSE,
   type CityPulseData,
@@ -74,22 +75,40 @@ export function useTicketProvenance(chainId: number, eventAddress: string, token
   );
 }
 
-export function useIndexerSync(chainId: number | undefined) {
-  return useLive<IndexerSyncData>(["sync", chainId], INDEXER_SYNC, { chainId }, chainId !== undefined);
-}
-
 interface HealthBody {
   ok: boolean;
   chainId: number;
   block: string | number;
 }
 
-/** The chain head as the relayer sees it, polled only while the Live layer is on (it is the chip's yardstick). */
-export function useChainHead() {
-  return useQuery<HealthBody, Error>({
-    queryKey: ["health"],
-    queryFn: () => api<HealthBody>("/api/health"),
-    enabled: liveEnabled,
+export interface LiveFreshness {
+  /** The indexer's latest processed block; null until it reports one. */
+  indexed: bigint | null;
+  /** The chain head the relayer's RPC sees; null when the relayer did not answer. */
+  head: bigint | null;
+}
+
+/**
+ * The freshness chip's two numbers, read in the same tick. Polled separately they were up to a poll apart,
+ * and on a 0.4 s chain that skew alone shows as "20 blocks behind" while the indexer is caught up. The
+ * indexer's answer is the one that matters: a relayer hiccup leaves the head unknown instead of blanking
+ * the indexer's own height.
+ */
+export function useLiveFreshness(chainId: number | undefined) {
+  return useQuery<LiveFreshness, Error>({
+    queryKey: ["live", "freshness", chainId],
+    queryFn: async ({ signal }) => {
+      const [sync, health] = await Promise.all([
+        gql<IndexerSyncData>(INDEXER_SYNC, { chainId }, signal),
+        api<HealthBody>("/api/health", { signal }).catch(() => null),
+      ]);
+      const row = sync.chain_metadata[0];
+      return {
+        indexed: row?.latest_processed_block == null ? null : big(row.latest_processed_block),
+        head: health ? big(health.block) : null,
+      };
+    },
+    enabled: liveEnabled && chainId !== undefined,
     refetchInterval: LIVE_POLL_MS,
     staleTime: LIVE_POLL_MS / 2,
     retry: 1,

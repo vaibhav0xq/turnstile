@@ -1,34 +1,36 @@
 import { liveEnabled } from "../../live/client";
-import { useChainHead, useIndexerSync } from "../../live/hooks";
-import { big, freshness } from "../../live/model";
+import { useLiveFreshness } from "../../live/hooks";
+import { freshness, lagAsTime } from "../../live/model";
 import { Dot } from "../primitives";
 
 /**
- * The freshness chip: how far the Envio indexer trails the chain the relayer sees. Renders nothing when the
- * deployment has no indexer; says "unavailable" (with the reason on hover) rather than pretending.
+ * The freshness chip: how far the Envio indexer trails the chain the relayer sees, both heads read in the
+ * same tick. Renders nothing when the deployment has no indexer; says "unavailable" (with the reason on
+ * hover) rather than pretending.
  */
 export function LiveChip({ chainId, className = "" }: { chainId: number | undefined; className?: string }) {
-  const sync = useIndexerSync(chainId);
-  const head = useChainHead();
+  const fresh = useLiveFreshness(chainId);
   if (!liveEnabled) return null;
-  if (sync.isError) {
+  if (fresh.isError) {
     return (
       <span
         className={`chip mono shrink-0 whitespace-nowrap text-red ${className}`}
-        title={sync.error.message}
+        title={fresh.error.message}
         data-testid="live-chip"
       >
         <Dot tone="red" /> Envio unavailable
       </span>
     );
   }
-  const row = sync.data?.chain_metadata[0];
-  const indexed = row?.latest_processed_block == null ? null : big(row.latest_processed_block);
-  const headBlock = head.data ? big(head.data.block) : null;
+  const indexed = fresh.data?.indexed ?? null;
+  const headBlock = fresh.data?.head ?? null;
   const state = freshness(indexed, headBlock);
   const title = [
     indexed === null ? null : `indexer at #${indexed}`,
     headBlock === null ? null : `relayer sees #${headBlock}`,
+    state.lag
+      ? `${state.lag} ${state.lag === 1 ? "block" : "blocks"} ${lagAsTime(state.lag)} · read together`
+      : null,
     "indexed by Envio HyperIndex",
   ]
     .filter(Boolean)

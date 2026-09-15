@@ -22,18 +22,37 @@ export interface Freshness {
   lag: number | null;
 }
 
+/** Monad's block cadence. The chip judges lag in seconds, so three blocks (≈1 s) never reads as "behind". */
+export const MONAD_BLOCK_MS = 400;
+/** Up to this much behind the relayer's head is "in sync": one poll's worth of ordinary indexing latency. */
+export const IN_SYNC_MS = 5_000;
+/** Beyond this the chip turns red: the indexer is stalled, not merely a few seconds behind. */
+export const BEHIND_MS = 60_000;
+
 /**
  * How far the indexer trails the chain the relayer sees. `head` comes from `/api/health` (the relayer's own
  * RPC); `indexed` is the indexer's latest processed block. Either may be unknown; say so instead of guessing.
- * The label names Envio: the chip is the one place every Live surface says where its rows come from.
+ * The label names Envio: the chip is the one place every Live surface says where its rows come from. Tones
+ * are set by time at `blockMs` per block; the label keeps the block count because that is what both sides
+ * actually report.
  */
-export function freshness(indexed: bigint | null, head: bigint | null): Freshness {
+export function freshness(indexed: bigint | null, head: bigint | null, blockMs = MONAD_BLOCK_MS): Freshness {
   if (indexed === null) return { tone: "muted", label: "Envio · waiting", lag: null };
   if (head === null) return { tone: "muted", label: `Envio · #${indexed}`, lag: null };
-  const lag = Number(head - indexed);
-  if (lag <= 2) return { tone: "green", label: "Envio · in sync", lag: Math.max(0, lag) };
-  if (lag <= 60) return { tone: "amber", label: `Envio · ${lag} blocks behind`, lag };
-  return { tone: "red", label: `Envio · ${lag} blocks behind`, lag };
+  // the indexer can be a block ahead of the relayer's RPC node; that is sync, not negative lag
+  const lag = Math.max(0, Number(head - indexed));
+  const behindMs = lag * blockMs;
+  if (behindMs <= IN_SYNC_MS) return { tone: "green", label: "Envio · in sync", lag };
+  const label = `Envio · ${lag} blocks behind`;
+  return { tone: behindMs <= BEHIND_MS ? "amber" : "red", label, lag };
+}
+
+/** "≈ 1.2 s" / "≈ 48 s" / "≈ 3 min" — the lag in time, for the chip's hover text. */
+export function lagAsTime(lag: number, blockMs = MONAD_BLOCK_MS): string {
+  const s = (lag * blockMs) / 1000;
+  if (s < 10) return `≈ ${s.toFixed(1)} s`;
+  if (s < 120) return `≈ ${Math.round(s)} s`;
+  return `≈ ${Math.round(s / 60)} min`;
 }
 
 export const KIND_LABEL: Record<ActivityKind, string> = {

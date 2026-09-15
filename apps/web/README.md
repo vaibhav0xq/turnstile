@@ -63,7 +63,9 @@ Behind a proxied preview (a tunnel, a cloud IDE) the dev server is reached under
 **Live layer.** `src/live/` reads the Envio indexer's GraphQL endpoint (`VITE_ENVIO_GRAPHQL_URL`, build-time)
 for the four surfaces RPC reads cannot give: the organiser live board (`/organise` → Live), the city pulse on
 the landing, the attendance record on `/me` and a seat's provenance on `/t/<event>/<seat>`. Every one polls
-every 8 s and carries the freshness chip (indexer block vs the relayer's `/api/health` block). With the
+every 8 s and carries the freshness chip: the indexer's block and the relayer's `/api/health` block, read in
+the same tick (polled apart they drift a poll's worth, which on 0.4 s blocks looks like lag), with tones set
+by time — in sync to 5 s, amber to a minute, red beyond. With the
 variable unset they render an explicit "unavailable" line, never fabricated rows. For UI work without Docker
 or a hosted indexer, `node scripts/mock-indexer.mjs [--lag N] [--fail]` answers the five named operations
 with deterministic fake rows on `http://127.0.0.1:8790/v1/graphql` — local only, never point a deployment at it.
