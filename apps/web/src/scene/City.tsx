@@ -224,7 +224,9 @@ export function City({ events, onEnter }: CityProps) {
   const lit = useMemo(() => events.slice(0, BEACON_SLOTS.length), [events]);
   const beacons = useMemo(() => lit.map((_, i) => beaconSlot(i)), [lit]);
   const quality = useDirector((s) => s.quality);
-  const data = useMemo(() => buildCity(BEACON_SLOTS, quality === "high" ? 1 : 0.5), [quality]);
+  // low and min share one city: a step from low to min must not rebuild the point cloud
+  const detail = quality === "high" ? 1 : 0.5;
+  const data = useMemo(() => buildCity(BEACON_SLOTS, detail), [detail]);
   const geometry = useMemo(() => {
     const g = new THREE.BufferGeometry();
     g.setAttribute("position", new THREE.BufferAttribute(data.positions, 3));
@@ -298,7 +300,7 @@ export function City({ events, onEnter }: CityProps) {
       {/* the city's own glow bounced back: a low warm fill from the south-east so the faces toward the
           camera's usual side never fall to black */}
       <directionalLight position={[160, 90, 260]} color="#7a6656" intensity={1.0} />
-      <Ground detail={quality === "high" ? 1 : 0.5} plazas={BEACON_SLOTS} />
+      <Ground detail={detail} plazas={BEACON_SLOTS} />
       <Buildings buildings={data.buildings} startedAt={started} material={mass} />
       <Skyline towers={data.skyline} material={mass} />
       <points geometry={geometry} material={material} frustumCulled={false} />
@@ -309,7 +311,7 @@ export function City({ events, onEnter }: CityProps) {
           position={beacons[i] ?? [0, 0]}
           onEnter={onEnter}
           points={material}
-          detail={quality === "high" ? 1 : 0.5}
+          detail={detail}
         />
       ))}
     </group>

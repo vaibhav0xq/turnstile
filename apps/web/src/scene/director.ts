@@ -10,14 +10,17 @@ export type Quality = "high" | "low" | "min";
 /**
  * The move from the city into a room: the camera dives into the beacon (`dive`), a warm flash hides the
  * scene swap at the bottom, then it comes down out of the light into the house (`descent`) while the seats
- * light up row by row. The camera rig drives both from `startedAt`.
+ * light up row by row. The camera rig drives both from `startedAt`. A `held` descent is parked at its top:
+ * the room is still compiling behind the flash; `markWarm` restarts it.
  */
 export type Transition =
   | { kind: "dive"; eventAddress: string; chapter: Chapter; startedAt: number }
-  | { kind: "descent"; startedAt: number };
+  | { kind: "descent"; startedAt: number; held?: true };
 
 export const DIVE_MS = 600;
 export const DESCENT_MS = 800;
+/** Longest the flash or the curtain waits for a scene to compile before it lifts regardless. */
+export const WARM_MAX_MS = 4000;
 
 interface DirectorState {
   chapter: Chapter;
@@ -34,8 +37,13 @@ interface DirectorState {
   /** Warm full-frame flash at the bottom of the dive, covering the scene swap. */
   flash: boolean;
   transition: Transition | null;
-  /** House-lights reveal, 0 → 1 after a scene enters. */
+  /** House-lights reveal, 0 → 1 after a scene enters (restarted when the scene is warm and on screen). */
   revealStartedAt: number;
+  /**
+   * The scene on the canvas has its programs compiled and is drawing. False from a swap until the compile
+   * gate calls `markWarm`; the flash or the curtain stays up meanwhile (at most WARM_MAX_MS).
+   */
+  warm: boolean;
   hoveredBeacon: string | null;
   quality: Quality;
   /** First frame rendered: the boot veil can lift. */
@@ -58,6 +66,8 @@ interface DirectorState {
   hoverBeacon(address: string | null): void;
   setQuality(q: Quality): void;
   markReady(): void;
+  /** The compile gate has the scene drawing: lift the overlay, start the reveal and the descent. */
+  markWarm(): void;
   goFlat(): void;
   setLit(on: boolean): void;
   /** The rig has landed the descent: hand the camera back to the user. */
@@ -75,12 +85,18 @@ export function pinnedQuality(search: string): Quality | null {
   return TIERS.find((t) => t === tier) ?? null;
 }
 
-/** Starting tier: phones and small-core machines begin low; the PerformanceMonitor only steps it down. */
+/**
+ * Starting tier; the PerformanceMonitor only ever steps it down. Phones begin at `min`: no composer at all
+ * (MSAA instead of SMAA, DPR ≤ 1.25), so a mobile GPU never compiles the post chain or a second variant
+ * of every material for it — on a Redmi Note 11 that compile was the multi-second freeze, not the frame
+ * rate. Small-core desktops begin at `low`.
+ */
 export function initialQuality(): Quality {
   if (typeof window === "undefined") return "high";
   const coarse = window.matchMedia("(pointer: coarse)").matches;
   const cores = navigator.hardwareConcurrency ?? 8;
-  return (coarse && window.innerWidth < 900) || cores <= 4 ? "low" : "high";
+  if (coarse && window.innerWidth < 900) return "min";
+  return cores <= 4 ? "low" : "high";
 }
 
 const PINNED = typeof window === "undefined" ? null : pinnedQuality(window.location.search);
@@ -127,7 +143,13 @@ export const useDirector = create<DirectorState>()((set, get) => {
       // timers would swap the scene out from under the new route. A running descent is left to land.
       if (state.transition?.kind === "dive" || state.curtain) {
         clearTimers();
-        set({ ...next, transition: null, flash: false, curtain: false });
+        if (state.warm) {
+          set({ ...next, transition: null, flash: false, curtain: false });
+        } else {
+          // swapped already and still compiling behind the curtain: leave it up, it lifts when warm
+          set(next);
+          later(() => get().markWarm(), WARM_MAX_MS);
+        }
       } else {
         set(next);
       }
@@ -138,8 +160,11 @@ export const useDirector = create<DirectorState>()((set, get) => {
       return; // already on the way there
     }
     clearTimers();
+    // The new scene mounts behind the overlay and reports back through `markWarm` (the compile gate); the
+    // reveal clock restarts then, once it is actually drawing.
     const swap = () => ({
       ...next,
+      warm: false,
       revealStartedAt: performance.now(),
       hoveredSeat: null,
       hoveredBeacon: null,
@@ -161,19 +186,17 @@ export const useDirector = create<DirectorState>()((set, get) => {
         flash: false,
       });
       later(() => set({ flash: true }), DIVE_MS - 240);
-      later(() => set({ ...swap(), transition: { kind: "descent", startedAt: performance.now() } }), DIVE_MS);
-      later(() => set({ flash: false }), DIVE_MS + 60);
-      // safety net: if the rig never lands the descent (tab hidden, canvas gone), free the camera anyway
+      // the room swaps in under the flash with its descent parked; both go when the room is warm
       later(
-        () => {
-          if (get().transition?.kind === "descent") set({ transition: null });
-        },
-        DIVE_MS + DESCENT_MS + 400,
+        () => set({ ...swap(), transition: { kind: "descent", startedAt: performance.now(), held: true } }),
+        DIVE_MS,
       );
+      later(() => get().markWarm(), DIVE_MS + WARM_MAX_MS);
       return;
     }
     set({ curtain: true, flash: false, transition: null });
-    later(() => set({ ...swap(), curtain: false }), 520);
+    later(() => set(swap()), 520);
+    later(() => get().markWarm(), 520 + WARM_MAX_MS);
   }
 
   return {
@@ -188,6 +211,7 @@ export const useDirector = create<DirectorState>()((set, get) => {
     flash: false,
     transition: null,
     revealStartedAt: performance.now(),
+    warm: false,
     hoveredBeacon: null,
     quality: PINNED ?? initialQuality(),
     ready: false,
@@ -225,9 +249,28 @@ export const useDirector = create<DirectorState>()((set, get) => {
     markReady: () => {
       if (!get().ready) set({ ready: true });
     },
+    markWarm: () => {
+      const state = get();
+      if (state.warm) return;
+      const now = performance.now();
+      const held = state.transition?.kind === "descent";
+      set({
+        warm: true,
+        revealStartedAt: now,
+        flash: false,
+        curtain: false,
+        transition: held ? { kind: "descent", startedAt: now } : state.transition,
+      });
+      // safety net: if the rig never lands the descent (tab hidden, canvas gone), free the camera anyway
+      if (held) {
+        later(() => {
+          if (get().transition?.kind === "descent") set({ transition: null });
+        }, DESCENT_MS + 400);
+      }
+    },
     goFlat: () => {
       clearTimers();
-      set({ flat: true, ready: true, curtain: false, flash: false, transition: null });
+      set({ flat: true, ready: true, warm: true, curtain: false, flash: false, transition: null });
     },
     setLit: (on) =>
       set(

@@ -405,7 +405,9 @@ export function CameraRig({ layout, focusBeacon, diveBeacon }: CameraRigProps) {
 
 /** One frame of the scripted move: the dive accelerates into the light, the descent eases out of it. */
 function runMove(c: CameraControls, transition: Transition, m: Move, done: () => void) {
-  const elapsed = performance.now() - transition.startedAt;
+  // a held descent sits at its top until the room is warm (the director restarts it with a new startedAt)
+  const elapsed =
+    transition.kind === "descent" && transition.held ? 0 : performance.now() - transition.startedAt;
   if (transition.kind === "dive") {
     const k = THREE.MathUtils.clamp(elapsed / DIVE_MS, 0, 1);
     const kp = k * k * (0.55 + 0.45 * k);

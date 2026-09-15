@@ -5,6 +5,7 @@ import { consumeTourParams, TOUR_STEPS, type TourStep, useTour } from "../app/to
 import { type AppConfig, explorerTx } from "../chain/config";
 import type { SeatMap } from "../chain/seats";
 import { useIdentity } from "../identity/store";
+import { isPhone } from "../lib/device";
 import { formatMs } from "../lib/format";
 import { useTelemetry } from "../lib/telemetry";
 import { useDirector } from "../scene/director";
@@ -118,11 +119,11 @@ export function Tour({ config, seatMap }: { config: AppConfig | undefined; seatM
   const devSeed = useIdentity((s) => s.devSeed);
   const checkedIn = tokenId != null && (seatMap?.get(tokenId)?.checkedInAt ?? 0) > 0;
 
-  // `?tour=1` / `?tour=auto` / `?event=<address>`
+  // `?tour=1` / `?tour=auto` / `?event=<address>` — a phone opens the city and keeps the target night
   useEffect(() => {
     const { tour, event } = consumeTourParams();
     if (event) useTour.getState().setTargetEvent(event);
-    if (tour) useTour.getState().start({ autoplay: tour === "auto" });
+    if (tour && !isPhone()) useTour.getState().start({ autoplay: tour === "auto" });
   }, []);
 
   // The run walks up to the door itself; behind an operator token there is no door for it to reach, so a

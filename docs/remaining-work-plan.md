@@ -133,7 +133,13 @@ Ordered by what appears on the judge path.
    Sep**: three pendants over the booth arc, LED wall on a 90 s wheel (flow / type ticker / beat rings and
    spectrum), two drifting haze sheets (hidden on the `min` tier).
 8. **Mobile quality tier.** Bloom off below the `low` tier, DPR cap 1.5, halve city point count, no
-   post-processing noise; measure ≥ 30 fps on a mid-range Android.
+   post-processing noise; measure ≥ 30 fps on a mid-range Android. — **First pass 16 Sep**: phones (coarse
+   pointer, < 900 px wide) start at `min` — no post stack, MSAA instead of SMAA, DPR ≤ 1.25, no haze,
+   sparkles or volumetric cones mounted — and every cut links its shader programs behind the flash or the
+   curtain (`scene/CompileGate.tsx`), so the link stalls the Redmi Note 11 showed on drawn frames (2.3 s at
+   boot, 2.0 s at the city → room cut) happen under the overlay. `?perf=1` overlays fps, worst frame, draw
+   calls and compile time; the judge-mode chip is hidden on phones. Open: steady-state fps on the Redmi
+   from the overlay, then the light budget at `min`.
 9. **Verification.** Re-run the judge frames after each step; keep `shots/judge-*.png` as the reference set.
 
 ## 5. UI/UX fixes on current surfaces

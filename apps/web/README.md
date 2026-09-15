@@ -137,3 +137,9 @@ Rendering notes: the seat card is a DOM element in the overlay, moved to the pro
 frame by `scene/anchor.ts` (no HTML inside the canvas container, no per-frame React work). The city is one
 point cloud (window lights) plus instanced blocks, and the venue draws one instanced mesh per section; both
 scenes rely on `postprocessing` (bloom, SMAA, vignette) with the tone mapping left to three.
+
+Quality tiers: `high` / `low` / `min`, chosen from the device at load (phones start at `min`: no post stack,
+MSAA instead of SMAA, DPR ≤ 1.25, no haze, sparkles or volumetric cones) and only ever stepped down by the
+frame-time monitor. Every cut links its shader programs behind the flash or the curtain
+(`scene/CompileGate.tsx`) before a frame is drawn, so a slow driver stalls under the overlay rather than on
+screen. `?tier=min|low|high` pins a tier; `?perf=1` overlays frame time, draw calls and compile time.

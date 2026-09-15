@@ -1,6 +1,6 @@
 import { Environment, Lightformer, Sparkles, SpotLight } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import type { SeatMap } from "../chain/seats";
 import type { VenueLayout } from "../venues/layout";
@@ -17,6 +17,12 @@ interface VenueProps {
 
 export function Venue({ layout, seatMap, interactive }: VenueProps) {
   const quality = useDirector((s) => s.quality);
+  // Decided once per room: a session that enters at `min` (phones) never mounts the dressing the higher
+  // tiers hide — the haze, the sparkles, the volumetric cones — so its GPU never compiles those programs.
+  // A session stepped down to `min` later keeps them hidden. The environment map stays at every tier: it
+  // is what lights the floor and the metals (dark albedo, so without it they go black), and it costs a
+  // handful of programs that the compile gate links behind the flash.
+  const [minAtMount] = useState(() => quality === "min");
   return (
     <group>
       <Room layout={layout} />
@@ -26,25 +32,29 @@ export function Venue({ layout, seatMap, interactive }: VenueProps) {
         <>
           <Mezzanine layout={layout} />
           <BoothLights layout={layout} />
-          <Haze layout={layout} visible={quality !== "min"} />
+          {minAtMount ? null : <Haze layout={layout} visible={quality !== "min"} />}
         </>
       ) : null}
       <Decks layout={layout} lips={layout.kind !== "club"} />
-      <Rig layout={layout} volumetric={quality === "high"} />
-      {/* Sparkles and the volumetric cones stay mounted at every tier and are hidden instead: mounting
+      <Rig layout={layout} cones={!minAtMount} volumetric={quality === "high"} />
+      {/* Above `min`, the sparkles and the volumetric cones stay mounted and are hidden instead: mounting
           them later compiles new shader programs mid-session, and that stall shows as a black frame. */}
       <Seats layout={layout} seatMap={seatMap} interactive={interactive} />
-      <group visible={quality === "high"}>
-        <Sparkles
-          count={260}
-          scale={[layout.radius * 1.4, 12, layout.radius * 1.4]}
-          position={[0, 5, -2]}
-          size={1.6}
-          speed={0.25}
-          opacity={0.32}
-          color="#ffd9a3"
-        />
-      </group>
+      {minAtMount ? null : (
+        <group visible={quality === "high"}>
+          <Sparkles
+            count={260}
+            scale={[layout.radius * 1.4, 12, layout.radius * 1.4]}
+            position={[0, 5, -2]}
+            size={1.6}
+            speed={0.25}
+            opacity={0.32}
+            color="#ffd9a3"
+          />
+        </group>
+      )}
+      {/* Mounted before the compile gate in tree order, so its layout effect has set `scene.environment`
+          by the time the gate compiles: what links behind the flash is the env-mapped variant. */}
       <Environment resolution={64} frames={1}>
         <Lightformer
           form="rect"
@@ -390,8 +400,11 @@ function Haze({ layout, visible }: { layout: VenueLayout; visible: boolean }) {
   );
 }
 
-/** Truss with three moving heads over the stage. */
-function Rig({ layout, volumetric }: { layout: VenueLayout; volumetric: boolean }) {
+/**
+ * Truss with three moving heads over the stage. `cones` mounts the volumetric cone meshes (hidden below the
+ * high tier, shown by `volumetric`); a room entered at `min` leaves them out altogether.
+ */
+function Rig({ layout, cones, volumetric }: { layout: VenueLayout; cones: boolean; volumetric: boolean }) {
   const targets = useMemo(() => [new THREE.Object3D(), new THREE.Object3D(), new THREE.Object3D()], []);
   const { z, height, width } = layout.stage;
   const lights = useRef<Array<THREE.SpotLight | null>>([]);
@@ -437,7 +450,7 @@ function Rig({ layout, volumetric }: { layout: VenueLayout; volumetric: boolean 
             attenuation={14}
             anglePower={5}
             opacity={0.22}
-            volumetric
+            volumetric={cones}
           />
         </group>
       ))}

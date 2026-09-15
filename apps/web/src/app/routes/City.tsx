@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import type { AppConfig } from "../../chain/config";
 import { chainName } from "../../chain/config";
+import { isPhone } from "../../lib/device";
 import { useDirector } from "../../scene/director";
 import { Bill, useKeepOut } from "../../ui/Bill";
 import { Kicker } from "../../ui/primitives";
@@ -37,7 +38,7 @@ export function City({ config }: { config: AppConfig | undefined }) {
           <p className="fade-up-late mt-3 max-w-sm text-sm text-paper/75 sm:text-base">
             Hover a beacon or a card; enter and the room opens. Choose a seat, and the passkey does the rest.
           </p>
-          {!tourActive ? (
+          {!tourActive && !isPhone() ? (
             <div className="fade-up-late mt-4 flex flex-wrap items-center gap-2">
               {config?.gateProtected ? (
                 <span className="text-xs text-muted" data-testid="tour-unavailable">

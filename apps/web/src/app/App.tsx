@@ -7,6 +7,7 @@ import { useIdentity } from "../identity/store";
 import { installTapCounter } from "../lib/telemetry";
 import { WorldBoundary } from "../scene/boundary";
 import { useDirector } from "../scene/director";
+import { PerfHud } from "../ui/PerfHud";
 import { SeatCardLayer } from "../ui/SeatCard";
 import { ConnectionNotice, Curtain, ErrorToast, Readout, TopBar, Veil } from "../ui/Shell";
 import { Tour } from "../ui/Tour";
@@ -87,6 +88,7 @@ function Frame() {
       <SeatCardLayer event={event} layout={layout} seatMap={seats.data} />
       <Veil />
       <Curtain />
+      <PerfHud />
       <TopBar config={config.data} onSignIn={() => void ensureFan().catch(() => undefined)} />
       <Routes>
         <Route path="/" element={<Landing config={config.data} />} />
