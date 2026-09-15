@@ -23,12 +23,12 @@ test("big accepts the shapes Hasura serialises numerics as", () => {
 
 test("freshness never claims sync it cannot see", () => {
   assert.equal(freshness(null, 100n).tone, "muted");
-  assert.equal(freshness(100n, null).label, "Live · #100");
-  assert.deepEqual(freshness(100n, 101n), { tone: "green", label: "Live · in sync", lag: 1 });
+  assert.equal(freshness(100n, null).label, "Envio · #100");
+  assert.deepEqual(freshness(100n, 101n), { tone: "green", label: "Envio · in sync", lag: 1 });
   assert.equal(freshness(105n, 100n).lag, 0); // indexer ahead of the relayer's RPC: still in sync
   assert.equal(freshness(100n, 130n).tone, "amber");
   assert.equal(freshness(100n, 300n).tone, "red");
-  assert.equal(freshness(100n, 300n).label, "Live · 200 blocks behind");
+  assert.equal(freshness(100n, 300n).label, "Envio · 200 blocks behind");
 });
 
 test("timeAgo rounds the way a feed reads", () => {

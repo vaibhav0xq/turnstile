@@ -25,14 +25,15 @@ export interface Freshness {
 /**
  * How far the indexer trails the chain the relayer sees. `head` comes from `/api/health` (the relayer's own
  * RPC); `indexed` is the indexer's latest processed block. Either may be unknown; say so instead of guessing.
+ * The label names Envio: the chip is the one place every Live surface says where its rows come from.
  */
 export function freshness(indexed: bigint | null, head: bigint | null): Freshness {
-  if (indexed === null) return { tone: "muted", label: "Live · waiting", lag: null };
-  if (head === null) return { tone: "muted", label: `Live · #${indexed}`, lag: null };
+  if (indexed === null) return { tone: "muted", label: "Envio · waiting", lag: null };
+  if (head === null) return { tone: "muted", label: `Envio · #${indexed}`, lag: null };
   const lag = Number(head - indexed);
-  if (lag <= 2) return { tone: "green", label: "Live · in sync", lag: Math.max(0, lag) };
-  if (lag <= 60) return { tone: "amber", label: `Live · ${lag} blocks behind`, lag };
-  return { tone: "red", label: `Live · ${lag} blocks behind`, lag };
+  if (lag <= 2) return { tone: "green", label: "Envio · in sync", lag: Math.max(0, lag) };
+  if (lag <= 60) return { tone: "amber", label: `Envio · ${lag} blocks behind`, lag };
+  return { tone: "red", label: `Envio · ${lag} blocks behind`, lag };
 }
 
 export const KIND_LABEL: Record<ActivityKind, string> = {

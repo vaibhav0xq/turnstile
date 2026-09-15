@@ -18,7 +18,7 @@ export function LiveChip({ chainId, className = "" }: { chainId: number | undefi
         title={sync.error.message}
         data-testid="live-chip"
       >
-        <Dot tone="red" /> Indexer unavailable
+        <Dot tone="red" /> Envio unavailable
       </span>
     );
   }

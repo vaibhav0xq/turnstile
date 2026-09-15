@@ -260,3 +260,16 @@ Exact rules text, team-size cap, KYC, video requirement, "Community Team" defini
   and whose `image.svg` renders; storage slot 4 on both events = `0x59` (44 bytes) decoding to the new URIs;
   `/api/health` unchanged (alchemy, 25 ms); final preflight still 24/25. Staging passkeys are dead on the new
   origin by design; the front-row seats they hold stay sold.
+- Envio Cloud (15 Sep 2026): indexer `turnstile` / org `vaibhav0xq`, development tier, root `packages/indexer`,
+  deployment branch `envio-deploy` (dedicated: dev-tier URLs are per deployment, every push re-indexes, three
+  deployments per indexer, 30-day life). An empty commit on the branch was ignored — Envio only registers
+  pushes that change something under the root directory; a README edit there (`6f13b3d`) deployed at once.
+  Built and synced in < 3 min: 38 events from block 62 312 967, caught up 12:12:18 UTC. Endpoint
+  `https://indexer.dev.hyperindex.xyz/1aff1ac/v1/graphql`. Verified against chain: club `sold 8 / checkedIn 8 / resales 3`
+  equals `/api/events`; token 4 reads MINT → BIND → LIST → RESALE (taker) → BIND → CHECKIN with the smoke
+  hashes; token 14 MINT → BIND → CHECKIN with the judge-run admit hash (gate wallet as counterparty). CORS
+  from `https://turnstile.work` is open (Hasura answers the preflight with the origin). All five web queries
+  validate against the deployed schema. `VITE_ENVIO_GRAPHQL_URL` set in the production environment; the chip
+  label now reads "Envio · in sync" so every Live surface names its source. Redeploy (one push to
+  `envio-deploy`) in the first week of October so the endpoint outlives judging; then update the URL and
+  republish.

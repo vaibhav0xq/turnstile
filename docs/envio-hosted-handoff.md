@@ -28,23 +28,32 @@ indexer without deterministic event or account addresses colliding.
 
 Source: <https://docs.envio.dev/docs/HyperIndex/hosted-service-deployment>.
 
-- [ ] <https://envio.dev/app/login> → *Log in with GitHub* (the `vaibhav0xq` account that owns the repo).
-- [ ] Select the personal organisation; install the **Envio Deployments GitHub App** with access to
+**Done 15 Sep 2026 (12:00–12:12 UTC).** Indexer `turnstile` in org `vaibhav0xq`, development tier, public;
+root `packages/indexer`, config `config.yaml`, deployment branch **`envio-deploy`** (not `main`: on the
+development tier every deployment has its own URL and every push to the branch re-indexes, so the branch only
+moves when the indexer changes). First deployment = commit `6f13b3d`, endpoint
+`https://indexer.dev.hyperindex.xyz/1aff1ac/v1/graphql` — note the id `1aff1ac` changes with each new
+deployment. Two things the docs do not say: Envio ignores pushes that touch nothing under the root directory
+(an empty commit did not register; a README change under `packages/indexer` did), and the build + sync took
+under three minutes (38 events from block 62 312 967, caught up at 12:12:18 UTC).
+
+- [x] <https://envio.dev/app/login> → *Log in with GitHub* (the `vaibhav0xq` account that owns the repo).
+- [x] Select the personal organisation; install the **Envio Deployments GitHub App** with access to
       `vaibhav0xq/turnstile` (that repo only is fine).
-- [ ] *Add Indexer*:
+- [x] *Add Indexer*:
       - repository `vaibhav0xq/turnstile`
       - **root directory** `packages/indexer`
       - **config file** `config.yaml` (relative to the root directory)
-      - **deployment branch** `main`
+      - **deployment branch** `envio-deploy` (was planned as `main`; see above)
       - name `turnstile`
-- [ ] Save; the first build starts from the current `main`. Watch the build log to the end once — the
+- [x] Save; the first build starts from the first push that changes the root directory. Watch the build log to the end once — the
       likely trip-wire is the install step: `packages/indexer` is a pnpm workspace member, so `pnpm install`
       from that folder walks up to `pnpm-workspace.yaml` and installs the whole workspace. That works in CI
       here (esbuild and `@parcel/watcher` build scripts are already ignored in the workspace file). If the
       hosted build still fails on install, tell me the log line; the fallback is a dedicated deployment
       branch where `packages/indexer` carries its own lockfile (`pnpm install --ignore-workspace` in that
       folder, committed there only) and the indexer's *deployment branch* points at it.
-- [ ] Sync: the factory has a handful of events since block 62 312 572, so HyperSync is done in minutes.
+- [x] Sync: the factory has a handful of events since block 62 312 572, so HyperSync is done in minutes.
       The dashboard shows *synced* and the GraphQL URL (`https://indexer.dev.hyperindex.xyz/<id>/v1/graphql`).
 
 Development-plan rules that matter for the timeline (submission 22 Sep–14 Oct, judging after):
@@ -83,15 +92,15 @@ smoke-test seats plus one per judge run; the theatre (`0x9c4b…3029`, eventId 2
 
 Checks:
 
-- [ ] `Event.sold` / `checkedIn` for the club equal the club entry's `sold` / `checkedIn` in
+- [x] `Event.sold` / `checkedIn` for the club equal the club entry's `sold` / `checkedIn` in
       `https://<origin>/api/events` (the relayer reads the contract directly).
-- [ ] The judge-run seat shows `checkedInAt` set and a `CHECKIN` row whose `counterparty` is the gate wallet
+- [x] The judge-run seat shows `checkedInAt` set and a `CHECKIN` row whose `counterparty` is the gate wallet
       (`0x6FA9…F9CF`) and whose `txHash` is the admit hash on the summary card.
-- [ ] The smoke test's resale shows as `LIST` → `RESALE` rows, `handovers: 1` on that seat, `doorKey: null`
+- [x] The smoke test's resale shows as `LIST` → `RESALE` rows, `handovers: 1` on that seat, `doorKey: null`
       after the resale until the buyer rebinds.
-- [ ] Id casing: entity ids are prefixed by the chain id and their address portions are lower-case. Query the
+- [x] Id casing: entity ids are prefixed by the chain id and their address portions are lower-case. Query the
       explicit `chainId` and lower-case `address` fields rather than constructing ids in clients.
-- [ ] Note the endpoint URL and the deployment id in `research/notes.md`.
+- [x] Note the endpoint URL and the deployment id in `research/notes.md`.
 
 ## 3. Wire it into the app (me, once the URL exists)
 
@@ -285,7 +294,7 @@ query TicketProvenance($chainId: Int!, $eventAddress: String!, $tokenId: numeric
 ## 4. Bounty checklist (Best Use of Envio)
 
 - [x] Public repo with `config.yaml`, `schema.graphql`, handlers — `packages/indexer`.
-- [ ] Deployed indexer (Envio Cloud URL in the README) — §1.
+- [x] Deployed indexer (Envio Cloud URL in the README) — §1.
 - [ ] A feature that runs on it, visible in the demo — §3 (the door feed in scene 6 / the organiser feed as
       B-roll; a line in the voice-over: "the door feed comes from an Envio indexer, not from an RPC").
 - [ ] Alive through judging — the 30-day and 7-day rules in §1.

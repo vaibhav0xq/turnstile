@@ -29,7 +29,7 @@ apps/relayer             sponsored ERC-2771 calls, gate verifier + checkIn, test
 apps/gate                door scanner — lives in apps/web at /gate/:address
 packages/identity        passkey ceremonies, KDFs, EIP-712 Entry + BindDoorKey, vault + passport sync — ✅ 0.2.0, 54 tests
 packages/contracts       TurnstileFactory / TurnstileEvent (Foundry)   — ✅ 62 tests, live on Monad testnet
-packages/indexer         Envio HyperIndex: events, seats, fans, door feed, stats — ✅ handlers + 5 tests, web Live layer wired, hosted deploy pending
+packages/indexer         Envio HyperIndex: events, seats, fans, door feed, stats — ✅ handlers + 5 tests, deployed on Envio Cloud, web Live layer reads it
 spike/                   Mera 0.2.0 spike (17 vectors, device pages)   — frozen evidence
 docs/                    runbooks (testnet deploy, final domain, Envio), storyboard, spike report, device matrix
 research/                hackathon report, build plan, notes, sources
@@ -127,11 +127,14 @@ taking a free listing is sponsored too. The sale clears the seller's door key an
 the gate (`pnpm smoke` covers the whole round trip with a second identity). Organiser page: publish an
 event from a passkey (tiers, venue, resale rules; the deployment's gate key is granted on creation) and
 watch sold / inside; the new room lights up in the city at once.
-Envio indexer written and tested in-process (events, seats, fans, live feed, per-chain stats, minute
-throughput, handovers); `config.yaml` already points at the testnet factory from `deployments/`. The web
-app's Live layer reads it — organiser live board, city pulse, attendance record, seat provenance, each with
-a freshness chip — and says "unavailable" until `VITE_ENVIO_GRAPHQL_URL` names the hosted deploy, which is
-what is left.
+Envio indexer (events, seats, fans, live feed, per-chain stats, minute throughput, handovers) deployed on
+Envio Cloud on 15 Sep 2026 — indexer `turnstile`, org `vaibhav0xq`, deployment branch `envio-deploy`, root
+`packages/indexer`; the current endpoint is `https://indexer.dev.hyperindex.xyz/1aff1ac/v1/graphql`
+(development tier: the id changes with each deployment, so the README is not the source of truth — the
+dashboard is). It synced the factory's history from block 62 312 967 in under three minutes. The web app's
+Live layer reads it — organiser live board, city pulse, attendance record, seat provenance, each with an
+"Envio · in sync" freshness chip that compares the indexer's head with the relayer's — and says
+"unavailable" rather than inventing rows when the endpoint is missing or behind.
 Judge mode (guided two-minute run, finale on chain truth) and SPEC v1.3/v1.4's denser entry codes (`TS2:`
 QR-alphanumeric, then `TS3:` with an RFC 9285 base45 blob: the ticket QR drops from 57 to 49 to 41 modules;
 `TS1|` and `TS2:` still decode). Venue tiers are now derived from the seat rows.
