@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { clientIp, isInternalIp, limiterKey, normalizeIp } from "../src/client-ip.ts";
+import { classifyForwarded, clientIp, isInternalIp, limiterKey, normalizeIp } from "../src/client-ip.ts";
 
 const headers = (forwarded?: string) =>
   new Headers(forwarded === undefined ? {} : { "x-forwarded-for": forwarded });
@@ -53,6 +53,17 @@ test("a connection straight from a public peer is keyed by its socket, whatever 
     clientIp(headers("1.2.3.4, 203.0.113.9"), { trustedHops: 1, remoteAddress: "127.0.0.1" }).address,
     "203.0.113.9",
   );
+});
+
+test("classifyForwarded describes the chain without its addresses", () => {
+  assert.deepEqual(classifyForwarded(headers("203.0.113.9, 35.1.2.3, 10.28.0.4, 127.0.0.1")), [
+    "public",
+    "public",
+    "internal",
+    "internal",
+  ]);
+  assert.deepEqual(classifyForwarded(headers("garbage, 203.0.113.9")), ["invalid", "public"]);
+  assert.deepEqual(classifyForwarded(headers()), []);
 });
 
 test("isInternalIp", () => {

@@ -7,7 +7,7 @@ import { type Context, Hono } from "hono";
 import { cors } from "hono/cors";
 import { getAddress, isAddress } from "viem";
 import { redirectStatus, redirectTarget } from "./canonical-host.ts";
-import { clientIp } from "./client-ip.ts";
+import { classifyForwarded, clientIp } from "./client-ip.ts";
 import {
   chain,
   chainId,
@@ -132,6 +132,8 @@ app.get("/api/ip", (context) => {
     key: seen.key,
     source: seen.source,
     forwardedEntries: seen.forwardedEntries,
+    // Classes only (no addresses): from a clean client, public entries − 1 is the right TRUSTED_PROXY_HOPS.
+    forwardedPattern: classifyForwarded(context.req.raw.headers),
     trustedProxyHops: settings.trustedProxyHops,
   });
 });

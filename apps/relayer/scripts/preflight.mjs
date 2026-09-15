@@ -103,19 +103,39 @@ check(
   `relayer ${sponsorship?.queue?.relayer?.pending}/${sponsorship?.queue?.relayer?.max} · gate ${sponsorship?.queue?.gate?.pending}/${sponsorship?.queue?.gate?.max}`,
 );
 
-// From inside Replit's own network every hop is internal and the echo is null for us; the check is that the
-// forged entry never shows up and the key does not move. Run from the outside, `ip` should be your address.
+// The forged entries must never be the address the limiter picks. (The key itself may differ between the
+// two calls when the hop count is off and a proxy pool is being keyed instead of us — that is the next
+// check's job.) From inside Replit's own network every hop is internal and the echo is null; run from the
+// outside, `ip` should be your own address.
 const me = await get("/api/ip");
 const forged = await get("/api/ip", { headers: { "x-forwarded-for": "203.0.113.77, 198.51.100.1" } });
+const forgedTaken = ["203.0.113.77", "198.51.100.1"].includes(forged.json?.ip);
 check(
-  me.status === 200 &&
-    forged.status === 200 &&
-    forged.json?.ip !== "203.0.113.77" &&
-    forged.json?.ip !== "198.51.100.1" &&
-    forged.json?.key === me.json?.key,
+  me.status === 200 && forged.status === 200 && !forgedTaken,
   "forged X-Forwarded-For ignored by the limiter",
-  `sees ${me.json?.ip ?? "no public hop from here"} (${me.json?.source}, ${me.json?.forwardedEntries} forwarded, hops ${me.json?.trustedProxyHops}); forged → ${forged.json?.ip ?? "none"}`,
+  `sees ${me.json?.ip ?? "no public hop from here"} (${me.json?.source}, ${me.json?.forwardedEntries} forwarded, hops ${me.json?.trustedProxyHops}); forged → ${forged.json?.ip ?? "none"} (${forged.json?.forwardedEntries} forwarded)`,
 );
+// The hop count must match the proxy chain in front of this origin. We sent no forwarding header, so the
+// leftmost public entry is us and every public entry after it is a proxy: hops = public entries − 1. Too
+// low keys everyone by a proxy address (one shared bucket); too high would trust a client-sent entry.
+const pattern = Array.isArray(me.json?.forwardedPattern) ? me.json.forwardedPattern : null;
+const publicEntries = pattern?.filter((c) => c === "public").length ?? 0;
+const hopsWanted = publicEntries > 0 ? publicEntries - 1 : null;
+const hopsSet = me.json?.trustedProxyHops;
+const patternText = pattern
+  ? pattern.map((c) => c[0].toUpperCase()).join("")
+  : "no forwardedPattern (older relayer build?)";
+if (pattern && publicEntries === 0) {
+  console.log(
+    `  TRUSTED_PROXY_HOPS not checkable from an internal client (chain ${patternText}); run from outside`,
+  );
+} else {
+  check(
+    pattern !== null && hopsWanted === hopsSet,
+    "TRUSTED_PROXY_HOPS matches the proxy chain",
+    `chain ${patternText} (P public, I internal) → wants ${hopsWanted ?? "?"}, set ${hopsSet}${hopsWanted !== null && hopsWanted !== hopsSet ? ` — set TRUSTED_PROXY_HOPS=${hopsWanted} and republish` : ""}`,
+  );
+}
 
 const instances = new Set([health.json?.instance]);
 for (let i = 0; i < 4; i++) instances.add((await get("/api/health")).json?.instance);

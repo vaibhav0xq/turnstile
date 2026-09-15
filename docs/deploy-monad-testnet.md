@@ -129,13 +129,21 @@ race nonces and double every budget. `GET /api/health` reports:
 
 Public addresses and on-chain balances only; no key material or provider URL appears anywhere in it.
 `GET /api/ip` echoes what the limiter sees for the caller (`ip`, `source`, `forwardedEntries`,
-`trustedProxyHops`); `pnpm preflight` sends a forged `X-Forwarded-For` and expects it ignored. Loopback and
-private hops (the path router in front of the process) are skipped automatically, and a connection whose
-socket peer is a public address is keyed by that peer with its headers ignored (it did not come through the
-proxy chain). If the echo shows a public load-balancer address instead of yours, raise `TRUSTED_PROXY_HOPS`
-to 2 (too high opens the limiter to spoofing; too low only merges everyone behind that address into one
-bucket). Replit's ingress replaces a client-sent `X-Forwarded-For` outright — `forwardedEntries` is the same
-with and without one — which is the check to repeat on every new origin.
+`forwardedPattern` — the chain's shape as `public`/`internal`/`invalid` per entry, addresses withheld —
+and `trustedProxyHops`). Loopback and private hops (the path router in front of the process) are skipped
+automatically, and a connection whose socket peer is a public address is keyed by that peer with its
+headers ignored (it did not come through the proxy chain).
+
+`TRUSTED_PROXY_HOPS` must equal the number of public entries in that chain minus one, read from a client
+that sent no forwarding header (then the leftmost public entry is the client and every public entry after
+it is a proxy). `pnpm preflight --origin …` checks exactly that and prints the value to set, and it sends
+a forged `X-Forwarded-For` expecting it ignored. The two origins differ: the dev origin's chain is
+`client, private hop, loopback` (1 public → hops 1), the published origin's has Google's edge in front —
+`client, edge, private hop, loopback` (2 public → **hops 2**). Too low is fail-closed but keys every
+visitor by the edge's rotating address (one shared per-minute bucket for the whole audience); too high
+would take a client-sent entry. The published edge *appends* to a client-sent header rather than replacing
+it (the dev origin replaces), so the forged-entry check matters there — repeat both checks on every new
+origin.
 
 ## 4. Gate signer requirements
 
