@@ -299,3 +299,16 @@ Exact rules text, team-size cap, KYC, video requirement, "Community Team" defini
   bill, the beacons, the lit count and the tour's pick; direct links still open old rooms. Base fee was a
   flat 100 gwei throughout (checked over 3 000 blocks), so 0.1 MON covers `createEvent` (0.073 MON at
   1.25× the estimate — Monad charges the limit, not the gas used).
+- Republish verified (15 Sep 2026, build 13:55→14:00 UTC, bundle `index-pFIk7hgz`): every route serves it,
+  the live sweep is 21/22 (only the optional `www` forward), Envio reads Event #4 `sold 1 / checkedIn 1`
+  and seat 15 MINT → BIND → CHECKIN with the run's hashes, CORS preflight from the origin 204. The chip on
+  `/city` over 45 s: both heads move together every tick, 2–4 blocks → green; one tick read 18 blocks
+  (≈ 7.2 s) → amber and was green again the next — a real momentary lag, classified as designed. Hide rule
+  on the origin: with the page clock moved four days on (the Depot's doors + 6 h behind) the bill went 4 → 3
+  cards, `4 LIT` → `3 LIT`, and the beams 4 → 3 (pixel-counted), the remaining labels intact. The workspace
+  restarted mid-check and took the headless organiser session for room #4 with it (same fate as #3), so
+  the board was checked by running the deployed commit in dev mode against the live relayer and indexer
+  with the identity pointed at the organiser address — the board is gated client-side on the address and
+  reads only public indexer data: chip in sync, INSIDE 1 · TAKEN 1 · LISTED 0 · RESALES 0, the minute bar
+  empty (the run was an hour old), the three door-feed rows. No fifth room: four is enough for judging;
+  a judge who wants the organiser side publishes their own (2.6 s) and keeps the passkey.
