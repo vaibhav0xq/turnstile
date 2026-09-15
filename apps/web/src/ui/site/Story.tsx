@@ -1,6 +1,7 @@
 import { type RefObject, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { useTour } from "../../app/tour";
+import { useNightsOn } from "../../app/use-nights-on";
 import type { AppConfig } from "../../chain/config";
 import { chainName } from "../../chain/config";
 import { flightProgress, useFlight } from "../../scene/flight";
@@ -57,8 +58,7 @@ export function Story({
     };
   }, [overlay, setActive, setTarget]);
 
-  const events = config?.events ?? [];
-  const lit = events.length;
+  const lit = useNightsOn(config).length;
   const enterCity = () => navigate("/city");
   const watchTour = () => {
     navigate("/city");

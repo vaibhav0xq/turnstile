@@ -282,4 +282,20 @@ Exact rules text, team-size cap, KYC, video requirement, "Community Team" defini
   has a "Seat history" header with one. Publishing from a fresh passkey took 2.6 s end to end (top-up +
   create): event #3 "Late Set at the Depot" `0x2BA270…3E1b15`, tx `0xde5ea09d…9d2eacb9`, indexed at once.
   The organiser live board is only reachable from the passkey that published, and that headless passkey was
-  not exported before the browser closed — the board on the live origin is still unverified by eye.
+  not exported before the browser closed — nobody can administer event #3 now, and its doors sit at the form
+  default (18 Sep), so it becomes a dead room during judging. Hence two product rules below.
+- Organiser board verified by eye (15 Sep 2026, published origin): a fourth room, "Afterhours at the Signal
+  House" (`0x7CD7BC…8c87e8`, tx `0xbeeaa033…5022f7ba`, doors 14 Nov 20:00 UTC, organiser `0xD685…Cfd8`),
+  published from one long-lived headless session (a virtual passkey cannot be exported and re-imported with
+  its PRF secret — CDP `WebAuthn.getCredentials` drops hmac-secret, so an imported credential asserts fine
+  but yields no PRF and the app cannot derive its keys). The judge run then took seat 15 in that room
+  (38.1 s, mint 708 / bind 706 / admit 721 ms) and the board read INSIDE 1 · TAKEN 1, the minute bar and the
+  three feed rows, chip "Envio · in sync". Two findings from the publish itself: (1) the first send from a
+  freshly dripped account failed twice with the node's "Signer had insufficient balance" (viem shows it as
+  "Missing or invalid parameters"): the balance read and the send hit different RPC nodes a block apart;
+  the same publish a minute later took 5.6 s. Fixed with a 6 s retry on that error and a plain message if
+  it persists. (2) The tour picks the newest free night, so every new free room becomes the judge run's
+  room; and a night whose doors have passed would be picked too. Now `nightsOn` (doors + 6 h) filters the
+  bill, the beacons, the lit count and the tour's pick; direct links still open old rooms. Base fee was a
+  flat 100 gwei throughout (checked over 3 000 blocks), so 0.1 MON covers `createEvent` (0.073 MON at
+  1.25× the estimate — Monad charges the limit, not the gas used).

@@ -3,6 +3,7 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { Bloom, EffectComposer, Noise, SMAA, Vignette } from "@react-three/postprocessing";
 import { BlendFunction } from "postprocessing";
 import { Suspense, useEffect, useMemo } from "react";
+import { useNightsOn } from "../app/use-nights-on";
 import { type AppConfig, findEvent } from "../chain/config";
 import type { SeatMap } from "../chain/seats";
 import { buildLayout } from "../venues/layout";
@@ -60,7 +61,7 @@ function Scene({ config, seatMap, onEnterEvent }: WorldProps) {
   const setQuality = useDirector((s) => s.setQuality);
   const event = findEvent(config, eventAddress ?? undefined);
   const layout = useMemo(() => (event ? buildLayout(event) : null), [event]);
-  const events = config?.events ?? [];
+  const events = useNightsOn(config);
   const focusBeacon = hoveredBeacon ? events.findIndex((e) => e.address === hoveredBeacon) : -1;
   const diveBeacon =
     transition?.kind === "dive"

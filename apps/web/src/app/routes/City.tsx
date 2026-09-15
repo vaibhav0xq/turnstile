@@ -5,6 +5,7 @@ import { useDirector } from "../../scene/director";
 import { Bill, useKeepOut } from "../../ui/Bill";
 import { Kicker } from "../../ui/primitives";
 import { useTour } from "../tour";
+import { useNightsOn } from "../use-nights-on";
 
 /**
  * The city: pick a night. The 3D city is the interface here — a beacon per night, hover to light it, click
@@ -19,8 +20,7 @@ export function City({ config }: { config: AppConfig | undefined }) {
     showCity();
   }, [showCity]);
   useKeepOut(copy);
-  const events = config?.events ?? [];
-  const lit = events.length;
+  const lit = useNightsOn(config).length;
   return (
     <div className="overlay flex flex-col overflow-y-auto overscroll-contain">
       <div className="scrim-bottom" aria-hidden />

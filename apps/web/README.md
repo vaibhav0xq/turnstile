@@ -22,7 +22,13 @@ needed). The form maps tiers onto the venue templates in order — club: floor, 
 stalls, circle, balcony — numbers seats 1…, 1001…, 2001… per tier, grants the deployment's gate key
 `GATE_ROLE` so `/gate/<event>` works from the first minute, and points `baseURI` at the relayer's metadata
 (`/api/events/<eventId>/tickets/`). The call is simulated first, so a bad configuration comes back by name
-(`InvalidConfig`, `InvalidTiers`) instead of as a failed transaction.
+(`InvalidConfig`, `InvalidTiers`) instead of as a failed transaction. Right after a top-up the send is
+retried for a few seconds if a node answers "insufficient balance": on 0.4 s blocks behind a pool of RPC
+nodes, the node that took the send can be a block behind the one that confirmed the drip.
+
+The city shows tonight, not an archive: a night leaves the bill, the beacons and the tour's pick six hours
+after doors (`src/app/nights.ts`; sales close at doors on chain, so nothing is left to take). Direct links
+to an older room still open it.
 
 The private vault on `/me` is the third key in use. *Open vault* is one more passkey prompt; it re-derives
 the AES-256-GCM passport key (`packages/identity/SPEC.md` §2.3), fetches the blob the relayer holds for

@@ -21,6 +21,7 @@ import { balanceOf, drip } from "../relayer/client";
 import { VENUE_IDS } from "../venues/layout";
 import { explain } from "./checkout";
 import { buildCreateEventArgs, createEventGas, type EventDraft, metadataBaseURI } from "./event-draft";
+import { BALANCE_LAG_RETRY_MS, isBalanceLag } from "./publish-errors";
 
 export type OrganiseStep = "idle" | "identity" | "funding" | "creating" | "done" | "error";
 export interface OrganiseError {
@@ -113,13 +114,34 @@ export const useOrganise = create<OrganiseState>()((set) => ({
         chain: chainFor(config),
         transport: http(config.rpcUrl),
       });
-      const hash = await wallet.writeContract({
-        address: config.factory,
-        abi: turnstileFactoryAbi,
-        functionName: "createEvent",
-        args: [args.config, args.tiers, args.gates],
-        gas,
-      });
+      // Monad blocks are 0.4 s and the RPC is a pool of nodes: right after the top-up one node answers
+      // the balance read while another, a block behind, rejects the send as unfunded. Keep sending for a
+      // few seconds before calling that a failure; nothing is spent by a rejected send.
+      const send = () =>
+        wallet.writeContract({
+          address: config.factory,
+          abi: turnstileFactoryAbi,
+          functionName: "createEvent",
+          args: [args.config, args.tiers, args.gates],
+          gas,
+        });
+      const until = Date.now() + BALANCE_LAG_RETRY_MS;
+      let hash: Hex;
+      for (;;) {
+        try {
+          hash = await send();
+          break;
+        } catch (error) {
+          if (!isBalanceLag(error)) throw error;
+          if (Date.now() >= until)
+            throw {
+              code: "BALANCE_LAG",
+              message:
+                "Your top-up landed but the network has not caught up with it yet. Publish again in a moment.",
+            };
+          await new Promise((r) => setTimeout(r, 800));
+        }
+      }
       set({ hash });
       const receipt = await client.waitForTransactionReceipt({ hash, timeout: 60_000 });
       if (receipt.status !== "success") throw { code: "REVERTED", message: "Publishing the event reverted." };

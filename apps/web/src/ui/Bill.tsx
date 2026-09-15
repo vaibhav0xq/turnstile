@@ -2,6 +2,7 @@ import { type RefObject, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router";
 import { useTour } from "../app/tour";
 import { pickTourEvent } from "../app/tour-target";
+import { useNightsOn } from "../app/use-nights-on";
 import type { AppConfig, EventInfo } from "../chain/config";
 import { tierPrice } from "../chain/config";
 import { formatDate, formatMon } from "../lib/format";
@@ -33,7 +34,7 @@ export function Bill({
   const targetEvent = useTour((s) => s.targetEvent);
   const ref = useRef<HTMLDivElement>(null);
   useKeepOut(ref);
-  const events = config?.events ?? [];
+  const events = useNightsOn(config);
   // The tour takes `?event=` when given, else the newest night with a free door (see tour-target.ts).
   const tourEvent = tourTargets ? pickTourEvent(events, targetEvent) : undefined;
   return (
