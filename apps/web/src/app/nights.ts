@@ -11,3 +11,16 @@ export const NIGHT_LINGER_MS = 6 * 3_600_000;
 export function nightsOn<T extends Pick<EventInfo, "startsAt">>(events: readonly T[], now: number): T[] {
   return events.filter((event) => event.startsAt * 1000 + NIGHT_LINGER_MS > now);
 }
+
+/** When the next of these nights goes off (ms since epoch), or null when none of them will. */
+export function nextNightOff<T extends Pick<EventInfo, "startsAt">>(
+  events: readonly T[],
+  now: number,
+): number | null {
+  let next: number | null = null;
+  for (const event of events) {
+    const off = event.startsAt * 1000 + NIGHT_LINGER_MS;
+    if (off > now && (next === null || off < next)) next = off;
+  }
+  return next;
+}

@@ -8,7 +8,7 @@ import { type AppConfig, findEvent } from "../chain/config";
 import type { SeatMap } from "../chain/seats";
 import { buildLayout } from "../venues/layout";
 import { CameraRig } from "./CameraRig";
-import { City } from "./City";
+import { BEACON_SLOTS, City } from "./City";
 import { useDirector } from "./director";
 import { CITY_FOG_DENSITY } from "./flight";
 import { CITY_NIGHT } from "./materials";
@@ -62,11 +62,14 @@ function Scene({ config, seatMap, onEnterEvent }: WorldProps) {
   const event = findEvent(config, eventAddress ?? undefined);
   const layout = useMemo(() => (event ? buildLayout(event) : null), [event]);
   const events = useNightsOn(config);
-  const focusBeacon = hoveredBeacon ? events.findIndex((e) => e.address === hoveredBeacon) : -1;
-  const diveBeacon =
+  // Past the last slot a night has a card but no beacon: never wrap it onto another night's tower.
+  const slotOf = (i: number) => (i >= 0 && i < BEACON_SLOTS.length ? i : null);
+  const focusBeacon = slotOf(hoveredBeacon ? events.findIndex((e) => e.address === hoveredBeacon) : -1);
+  const diveBeacon = slotOf(
     transition?.kind === "dive"
       ? events.findIndex((e) => e.address.toLowerCase() === transition.eventAddress.toLowerCase())
-      : -1;
+      : -1,
+  );
   const reduced =
     typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -119,11 +122,7 @@ function Scene({ config, seatMap, onEnterEvent }: WorldProps) {
           ) : (
             <Venue layout={layout} seatMap={seatMap} interactive={chapter === "venue"} />
           )}
-          <CameraRig
-            layout={layout}
-            focusBeacon={focusBeacon >= 0 ? focusBeacon : null}
-            diveBeacon={diveBeacon >= 0 ? diveBeacon : null}
-          />
+          <CameraRig layout={layout} focusBeacon={focusBeacon} diveBeacon={diveBeacon} />
           {/* Re-run on every cut so a venue's programs link behind the curtain, not on its first frame. */}
           <Preload all key={`${chapter}:${eventAddress ?? ""}`} />
         </Suspense>
