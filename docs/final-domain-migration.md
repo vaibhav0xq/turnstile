@@ -59,10 +59,16 @@ RPC rows and the `www` forward are still open (Alchemy keys, registrar):
       platform's business: link **only the apex** in Replit, and if `www` must resolve at all, use the
       registrar's URL forward (301 to `https://<apex>`) rather than a second linked host. `pnpm preflight`
       checks whatever answers on `www`.
-- [ ] RPC: `RPC_URL` = the Alchemy Monad testnet HTTPS URL (writes and reads), `RPC_FALLBACK_URLS` =
+- [x] RPC: `RPC_URL` = the Alchemy Monad testnet HTTPS URL (writes and reads), `RPC_FALLBACK_URLS` =
       `https://testnet-rpc.monad.xyz` (reads only fail over; transactions stay pinned to the primary),
       `PUBLIC_RPC_URL` = the browser-restricted Alchemy key, `PUBLIC_RPC_FALLBACK_URLS` = the public RPC.
       `/api/health` then reports `rpc.provider: "alchemy"` and the fallback host list.
+      **Done 15 Sep 2026 11:29 UTC:** `RPC_URL` and `PUBLIC_RPC_URL` are Replit *Secrets* (the Alchemy URL carries the
+      API key — never in files, never in this doc), the two fallback lists are plain production variables.
+      `/api/health` → `rpc.provider: "alchemy"`, one fallback, `latencyMs` ~40; the browser RPC from `/api/config`
+      answers `eth_blockNumber` with `access-control-allow-origin: https://turnstile.work`. Both variables hold the
+      same key for now; if a domain allowlist is ever added on the Alchemy side, split into a server key and a
+      browser key first (server calls carry no Origin header).
 - [x] Republish. Watch the relayer boot log: no `PUBLIC_ORIGIN is not set` warning. (15 Sep: republished
       with the variables above; the rehearsal host serves the same build and now also answers without the label.)
 
@@ -77,9 +83,9 @@ pnpm preflight -- --origin https://<final> --final
 `--final` additionally requires no environment label, `rpc.provider: "alchemy"` with a fallback, absolute
 canonical / `og:url` / `og:image` (so `VITE_SITE_URL` was set at build time) and the `www` → apex redirect.
 Without `--final` the same script checks staging (label allowed, platform hostname, relative OG). The manual
-equivalents, for when something fails and you want to look at it. **15 Sep 2026 11:05 UTC, after the republish:
-3 of 25 fail** — `rpc provider`, `rpc fallback configured` (Alchemy keys not set yet) and `www` (no registrar
-forward yet); everything else passes, so `baseURI` may move once §4 passes and the RPC rows are done.
+equivalents, for when something fails and you want to look at it. **15 Sep 2026 11:29 UTC, after the second republish (Alchemy RPC): 24 of 25 pass** — only `www` fails
+(no registrar forward yet; optional). At 11:05 UTC, before the RPC rows, it was 22 of 25. `baseURI` may move
+once §4 passes on `https://turnstile.work`.
 
 - [x] `curl -s https://<final>/api/health` → `ok: true`, `chainId: 10143`.
 - [x] `curl -s https://<final>/api/config | jq '.environmentLabel, .explorer'` → `null`, the explorer URL.
