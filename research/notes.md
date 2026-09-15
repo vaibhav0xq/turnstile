@@ -251,3 +251,12 @@ Exact rules text, team-size cap, KYC, video requirement, "Community Team" defini
   Row A · 14 (mint 0xf65af0…d318 305 ms, bind 720 ms, admit 0x3cbefd…a5fa 302 ms). Relayer 4.486 → 4.287
   MON, gate 4.890 → 4.853 MON for the pair. `baseURI` still points at the staging host until §5 is approved.
   The public RPC caps `eth_getLogs` at a 100-block range — page block windows when recovering tx hashes.
+- `baseURI` re-pointed to the final domain (15 Sep 2026 11:38 UTC, `SetBaseURI.s.sol`, `BASE_URI=
+  https://turnstile.work/api/events/`, `--slow` over the public RPC): club
+  0xe8a6e7e70bfcbcf995e127e0e3b1a781636584b0cc509c5f19fc34092189019a (block 62 735 461), theatre
+  0xc00f34006d95c6e8c6e973b4d30fdc02506b1dbd6cc4165ecb501eee4964a24c (block 62 735 468), 87 258 gas each at
+  103 gwei (≈ 0.018 MON; deployer 4.0681 → 4.0501 MON). Verified: `tokenURI(1)` →
+  `https://turnstile.work/api/events/1/tickets/1`, whose metadata `image` / `external_url` stay on the apex
+  and whose `image.svg` renders; storage slot 4 on both events = `0x59` (44 bytes) decoding to the new URIs;
+  `/api/health` unchanged (alchemy, 25 ms); final preflight still 24/25. Staging passkeys are dead on the new
+  origin by design; the front-row seats they hold stay sold.

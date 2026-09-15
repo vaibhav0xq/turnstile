@@ -23,7 +23,7 @@ judge runs must pass *before* the README claims the domain.
       name is possible but the web labels *any* `*.replit.app` host `staging` on its own
       (`apps/web/src/lib/environment.ts`, a rule the tests cover) — drop that rule in the commit that declares
       the origin final, skip §1, and still set §2's `PUBLIC_ORIGIN`.
-- [ ] Web and API stay same-origin (the relayer serves the built web from `STATIC_DIR`). Do not split them:
+- [x] Web and API stay same-origin (the relayer serves the built web from `STATIC_DIR`). Do not split them:
       passkeys are bound to the web origin and the API derives every absolute URL from `PUBLIC_ORIGIN`.
 
 ## 1. Domain (custom domain only)
@@ -120,7 +120,10 @@ at 4.0681 MON.
 
 ## 5. Re-point `baseURI` (two transactions, deployer key)
 
-Only after §3 and §4 pass. From `turnstile/packages/contracts`:
+Only after §3 and §4 pass. From `turnstile/packages/contracts`. **Done 15 Sep 2026 11:38 UTC** — club
+`0xe8a6e7e70bfcbcf995e127e0e3b1a781636584b0cc509c5f19fc34092189019a` (block 62 735 461), theatre
+`0xc00f34006d95c6e8c6e973b4d30fdc02506b1dbd6cc4165ecb501eee4964a24c` (block 62 735 468); 87 258 gas each
+at 103 gwei, deployer 4.0681 → 4.0501 MON. Broadcast file `broadcast/SetBaseURI.s.sol/10143/run-1789472334541.json`:
 
 ```sh
 export PATH="$HOME/workspace/.config/.foundry/bin:$PATH"   # sandbox path; skip on your machine
@@ -129,38 +132,41 @@ forge script script/SetBaseURI.s.sol --rpc-url monad_testnet --broadcast --slow 
   --private-key "$DEPLOYER_PRIVATE_KEY"        # or: --account deployer (keystore) on your machine
 ```
 
-- [ ] `BASE_URI` ends in `/api/events/` **with** the trailing slash (the script asserts it); each event's
+- [x] `BASE_URI` ends in `/api/events/` **with** the trailing slash (the script asserts it); each event's
       URI becomes `<BASE_URI><eventId>/tickets/`.
-- [ ] The broadcaster must hold `DEFAULT_ADMIN_ROLE` on both events (the deployer created them). Events it
+- [x] The broadcaster must hold `DEFAULT_ADMIN_ROLE` on both events (the deployer created them). Events it
       does not administer are skipped, not failed.
-- [ ] Two `BaseURIUpdated` logs; note both tx hashes in `research/notes.md`.
+- [x] Two `BaseURIUpdated` logs; note both tx hashes in `research/notes.md`.
 
 Verify on-chain:
 
-- [ ] `cast call 0x79a3e41Cbb8acd8c9A1A61a929bdBa302d3121B5 'tokenURI(uint256)(string)' 1 --rpc-url https://testnet-rpc.monad.xyz`
+- [x] `cast call 0x79a3e41Cbb8acd8c9A1A61a929bdBa302d3121B5 'tokenURI(uint256)(string)' 1 --rpc-url https://testnet-rpc.monad.xyz`
       → `https://<final>/api/events/1/tickets/1`.
-- [ ] The theatre has no tokens, so read its storage instead: `baseURI` is slot 4 of `TurnstileEvent`
+- [x] The theatre has no tokens, so read its storage instead: `baseURI` is slot 4 of `TurnstileEvent`
       (`cast storage 0x9c4b7a654680b5a4d382b22bdAA10FB05DC23029 4 --rpc-url …`; a long string lives at
       `keccak256(4)` — decode as in the staging notes) → `https://<final>/api/events/2/tickets/`.
-- [ ] `curl -s "$(cast call <club> 'tokenURI(uint256)(string)' 1 --rpc-url …)" | jq .image` → the SVG on
+      (15 Sep: slot 4 = `0x59` on both events → 44-byte string; the two slots from
+      `0x8a35acfb…6bd19b` decode to `…/events/1/tickets/` on the club and `…/events/2/tickets/` on the theatre.)
+- [x] `curl -s "$(cast call <club> 'tokenURI(uint256)(string)' 1 --rpc-url …)" | jq .image` → the SVG on
       `https://<final>`; open it.
 
 ## 6. Repo and docs
 
-- [ ] README: status paragraph (staging → final domain, date, the new judge-run numbers), the "Try it" link,
+- [x] README: status paragraph (staging → final domain, date, the new judge-run numbers), the "Try it" link,
       the deployment table's origin.
-- [ ] `docs/deploy-monad-testnet.md` §BASE_URI note: "re-pointed <date> to `<final>`".
-- [ ] `research/notes.md`: the two `SetBaseURI` hashes and the judge-run numbers.
+- [x] `docs/deploy-monad-testnet.md` §BASE_URI note: "re-pointed <date> to `<final>`".
+- [x] `research/notes.md`: the two `SetBaseURI` hashes and the judge-run numbers.
 - [ ] Storyboard: record the video on `<final>` (label off); `docs/demo-video-storyboard.md` already assumes it.
-- [ ] Gate (`pnpm verify`), commit as Vaibhav, push, CI green.
+- [x] Gate (`pnpm verify`), commit as Vaibhav, push, CI green.
 
 ## 7. Afterwards
 
-- [ ] Passkeys are per origin: the staging ones are dead on `<final>`; the front-row seats they hold on the
+- [x] Passkeys are per origin: the staging ones are dead on `<final>`; the front-row seats they hold on the
       club stay sold (chain state). Nothing to migrate.
-- [ ] Staging can keep running (nothing points at it any more) or be unpublished. If it stays up, leave
-      `ENVIRONMENT_LABEL=staging` on it so nobody mistakes it for the submission.
-- [ ] The hosted indexer (Envio) reads the chain, not the origin — no change needed there
+- [x] Staging can keep running (nothing points at it any more) or be unpublished. It is the same deployment
+      answering on the `*.replit.app` hostname, so it cannot carry its own `ENVIRONMENT_LABEL`; the web labels
+      any `*.replit.app` host `staging` on its own, which is enough.
+- [x] The hosted indexer (Envio) reads the chain, not the origin — no change needed there
       (`docs/envio-hosted-handoff.md`).
 - [ ] Any further web or relayer change needs a republish to reach `<final>`; the judge-run frames are the
       cheapest regression check after each one.

@@ -87,15 +87,17 @@ Deployed 14 Sep 2026 from block 62 312 597, all three contracts verified on Mona
 match). `packages/contracts/deployments/10143.json` is the source of truth for the relayer, the indexer and
 the web app — read it, do not copy addresses around. Runbook and gas figures: `docs/deploy-monad-testnet.md`.
 
-**Staging** (web + relayer on Monad testnet, not the final domain): <https://turnstile-michellecox8789.replit.app>
-— `/api/health` for the relayer, `pnpm smoke -- --relayer <origin> --rpc https://testnet-rpc.monad.xyz` runs
-the full buy → bind → resale → check-in path against it. Both seed events' `baseURI` point at this origin
-(`<origin>/api/events/<id>/tickets/`); `script/SetBaseURI.s.sol` re-points them when the host moves. The
-relayer labels a non-final origin with `ENVIRONMENT_LABEL=staging` (an amber chip in the header and a tab-title
-prefix; any `*.replit.app` host is labelled even without it) — passkeys created there are bound to that origin
-and will not carry over to the final domain. Token metadata carries an `image` (`…/tickets/<id>/image.svg`,
-a rendered card of the seat in its tier, amber until check-in, green after) and an `external_url`; both are
-built from `PUBLIC_ORIGIN` (set it on every deployed relayer), else from the request's own `Host`.
+**Live** (web + relayer on Monad testnet, the submission origin since 15 Sep 2026): <https://turnstile.work>
+— `/api/health` for the relayer, `pnpm smoke -- --relayer https://turnstile.work --rpc https://testnet-rpc.monad.xyz`
+runs the full buy → bind → resale → check-in path against it. Both seed events' `baseURI` point here
+(`https://turnstile.work/api/events/<id>/tickets/`, re-pointed 15 Sep 2026 with `script/SetBaseURI.s.sol`;
+`tokenURI(1)` of the club resolves to live metadata). The relayer reads and writes through the Alchemy Monad
+testnet RPC with the public RPC as read fallback (`/api/health` → `rpc.provider`). The same build also answers on
+the rehearsal host `turnstile-michellecox8789.replit.app`, which the web labels `staging` on its own (an amber
+chip in the header; any `*.replit.app` host gets it) — passkeys are per origin, so ones created there do not
+work on `turnstile.work`. Token metadata carries an `image` (`…/tickets/<id>/image.svg`, a rendered card of the
+seat in its tier, amber until check-in, green after) and an `external_url`; both are built from `PUBLIC_ORIGIN`
+(set it on every deployed relayer), else from the request's own `Host`.
 
 Two production knobs the relayer adds on top (`apps/relayer/.env.example`): `RPC_FALLBACK_URLS` /
 `PUBLIC_RPC_FALLBACK_URLS` turn the relayer's and the browser's RPC into a viem `fallback` — reads fail over
@@ -134,14 +136,15 @@ Judge mode (guided two-minute run, finale on chain truth) and SPEC v1.3/v1.4's d
 QR-alphanumeric, then `TS3:` with an RFC 9285 base45 blob: the ticket QR drops from 57 to 49 to 41 modules;
 `TS1|` and `TS2:` still decode). Venue tiers are now derived from the seat rows.
 Deployed to Monad testnet (`deployments/10143.json`, verified on MonadVision) with the two seed events; sales
-stay open until 13 Nov 2026. Web + relayer on a staging origin (above) with passports in Postgres; smoke,
-passport sync and token metadata verified there. Staging republished 14 Sep with the judge run, `TS3:` codes,
-the ticket image and the staging chip: `pnpm --filter @turnstile/web run judge -- --base <origin>` against it
-lands on a lit seat in 38 s / 6 taps / 2 passkey prompts with three testnet transactions; both seed events'
-`tokenURI` resolve to metadata whose `image.svg` renders. What remains before submission — public website,
-Envio-powered live layer, Alchemy RPC, final domain, device matrix, video — is ordered in
-`docs/remaining-work-plan.md`; the runbooks it points at are `docs/final-domain-migration.md`,
-`docs/envio-hosted-handoff.md` and `docs/demo-video-storyboard.md`.
+stay open until 13 Nov 2026. Web + relayer live on the final domain <https://turnstile.work> since 15 Sep 2026
+(custom domain, Alchemy RPC with public fallback, passports in Postgres, no environment label): the final-origin
+preflight passes 24/25 (only the optional `www` forward is missing), `pnpm smoke` runs the whole path there in
+13.2 s, and `pnpm --filter @turnstile/web run judge -- --base https://turnstile.work` lands on a lit seat in
+45.9 s / 6 taps / 2 passkey prompts with three testnet transactions; both seed events' `baseURI` were re-pointed
+the same day and `tokenURI` resolves to metadata whose `image.svg` renders. What remains before submission —
+public website, Envio-powered live layer, device matrix, video — is ordered in `docs/remaining-work-plan.md`;
+the runbooks it points at are `docs/final-domain-migration.md`, `docs/envio-hosted-handoff.md` and
+`docs/demo-video-storyboard.md`.
 
 ## License
 

@@ -22,7 +22,7 @@ feature a judge can see and poke, not a line in the README.
 | Web | One persistent R3F world: city → venue (club, theatre, generic) → seat → checkout → ticket (rotating `TS3:` QR) → gate → lit seat. Resale (list / delist / pass on), organiser publish, passport page with vault. Judge mode: 38 s / 6 taps / 2 passkey prompts on staging, three testnet transactions. | `pnpm --filter @turnstile/web run judge -- --base <origin>`; `apps/web/shots/judge-*.png` |
 | Indexer | Envio HyperIndex config + handlers for all seat-lifecycle events; `Event` / `Ticket` / `Fan` / `Activity` with derived counters, volumes, fees, handovers. **Not deployed, not consumed by the app.** | 5 handler tests; `packages/indexer/README.md` |
 | Devices | Android Chrome + Google Password Manager: account / door / vault green on a real phone; Windows laptop via hybrid QR (user-reported). | `docs/device-matrix.md` |
-| Ops | Staging republished from `de6bac9`; CI green; `baseURI` of both events points at staging metadata; migration and Envio checklists written. | `docs/final-domain-migration.md`, `docs/envio-hosted-handoff.md`, `docs/demo-video-storyboard.md` |
+| Ops | Final domain `https://turnstile.work` live since 15 Sep 2026 (custom domain, Alchemy RPC + public fallback, label off); final preflight 24/25 (optional `www` forward missing); smoke and judge run pass there; `baseURI` of both events re-pointed to it; CI green; Envio checklist written. | `docs/final-domain-migration.md`, `docs/envio-hosted-handoff.md`, `docs/demo-video-storyboard.md` |
 
 ## 2. Missing for a full website / product experience
 
@@ -40,7 +40,7 @@ unconditionally in `App.tsx`). It reads as a bug outside judge mode.
 **Envio is invisible.** Nothing in the app reads the indexer. Organisers see three counters from chain reads,
 fans see current seats only, nobody sees history, feeds or volumes. See §6.
 
-**Alchemy is absent.** No Alchemy service is used anywhere (RPC is `testnet-rpc.monad.xyz`). See §7/§11.
+**Alchemy is thin.** Since 15 Sep 2026 the relayer and the browser read and write through the Alchemy Monad testnet RPC (public RPC as read fallback), but nothing else of Alchemy's is used. See §7/§11.
 
 **States that are improvised.** No loader while the world compiles (blank canvas, then the city); no WebGL /
 low-power fallback; Event / Ticket / Gate render `null` while config loads or when the address is unknown;
