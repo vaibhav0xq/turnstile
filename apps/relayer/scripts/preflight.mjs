@@ -167,22 +167,34 @@ const isPlatform = /\.replit\.app$/.test(host);
 if (isPlatform) {
   console.log("  www redirect: not applicable on a platform hostname");
 } else {
+  // On the platform deployment page routes never reach the relayer, so `www` is answered by whatever the
+  // registrar forwards: accept a redirect to the apex over https, or over plain http when the forwarder has no
+  // certificate for `www` (a registrar URL forward). Either way one host owns the passkeys.
   const wwwHost = host.startsWith("www.") ? host.slice(4) : `www.${host}`;
   const started = performance.now();
-  try {
-    const res = await fetch(`https://${wwwHost}/e/x`, { redirect: "manual" });
-    const location = res.headers.get("location");
-    check(
-      (res.status === 301 || res.status === 308) && location === `${ORIGIN}/e/x`,
-      `${wwwHost} → ${host}`,
-      `status ${res.status} · location ${location ?? "—"} · ${Math.round(performance.now() - started)} ms`,
-    );
-  } catch (error) {
-    check(
-      false,
-      `${wwwHost} → ${host}`,
-      `unreachable (${String(error).split("\n")[0]}) — DNS or certificate not ready`,
-    );
+  const results = [];
+  for (const scheme of ["https", "http"]) {
+    try {
+      const res = await fetch(`${scheme}://${wwwHost}/e/x`, { redirect: "manual" });
+      const location = res.headers.get("location") ?? "";
+      results.push(`${scheme} ${res.status} → ${location || "—"}`);
+      if ([301, 302, 307, 308].includes(res.status) && location.startsWith(ORIGIN)) {
+        check(
+          true,
+          `${wwwHost} → ${host}`,
+          `${results.join(" · ")} · ${Math.round(performance.now() - started)} ms`,
+        );
+        break;
+      }
+    } catch (error) {
+      results.push(`${scheme} unreachable (${String(error).split("\n")[0]})`);
+    }
+    if (scheme === "http")
+      check(
+        false,
+        `${wwwHost} → ${host}`,
+        `${results.join(" · ")} — no forward to the apex yet (registrar URL forward, or DNS not ready)`,
+      );
   }
 }
 

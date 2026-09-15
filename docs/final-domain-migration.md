@@ -14,7 +14,9 @@ judge runs must pass *before* the README claims the domain.
       `<apex>` below mean `turnstile.work`. (`turnstile.show` was the first pick and was dropped as too
       expensive for the MVP.) Backups if it is gone at checkout: `turnstile.club`, then `turnstile.one`; the
       runbook is identical, only the name changes. Canonical host `https://turnstile.work`, `www` → apex,
-      `VITE_RP_ID=turnstile.work`. Hosting stays option A (single Replit origin, Reserved VM through judging).
+      RP ID = page hostname. Hosting stays option A (single Replit origin, Reserved VM through judging).
+      **Bought and linked 15 Sep 2026** (Namecheap BasicDNS: A `34.111.179.208`, TXT `replit-verify=…` —
+      keep the TXT for certificate renewals); Let's Encrypt certificate issued 09:55 UTC, `/api/health` 200.
       The domain is not bought or linked yet, so nothing below has run: no migration, no `baseURI` re-point,
       no final `PUBLIC_ORIGIN`; testing continues on the Replit staging URL.
 - [ ] (Only if the plan changes back to the platform name.) Final origin `https://<final>`. A custom domain is the clean case. Keeping the `.replit.app`
@@ -26,9 +28,9 @@ judge runs must pass *before* the README claims the domain.
 
 ## 1. Domain (custom domain only)
 
-- [ ] Replit → Publishing → Settings → *Link a domain* → enter `<final>`; add the **A** and **TXT** records
+- [x] Replit → Publishing → Settings → *Link a domain* → enter `<final>`; add the **A** and **TXT** records
       it prints at the registrar. The TXT record is permanent (certificate issuance and renewal).
-- [ ] Wait for the domain to verify (minutes usually; DNS can take up to 48 h). `curl -sI https://<final>/`
+- [x] Wait for the domain to verify (minutes usually; DNS can take up to 48 h). `curl -sI https://<final>/`
       must return `200` with a valid certificate before anything below.
 
 ## 2. Production environment
@@ -41,7 +43,7 @@ Set through the deployment's environment (the *Publishing* pane, production scop
 | `ENVIRONMENT_LABEL` | **remove** | the STAGING chip and the tab-title prefix go away |
 | `CORS_ORIGIN` | leave unset (`*`) — or `https://<final>` if you want it exact | same-origin web needs nothing; set it only if a second front-end origin appears |
 | `VITE_SITE_URL` | `https://<final>` (bare origin) | canonical link, `og:url` and absolute `og:image` / `twitter:image` in the built `index.html`; unset, the image URLs stay relative and link previews stay blank |
-| `VITE_RP_ID` | `<apex>` (e.g. `turnstile.example`, no scheme) | the passkey RP ID; must equal the page hostname or a registrable suffix of it — a wrong value breaks every passkey. The apex lets any future subdomain share credentials. Pair it with the `www` → apex redirect below; on a platform hostname (`*.replit.app`) leave it unset |
+| `VITE_RP_ID` | **leave unset** (revised 15 Sep) | the passkey RP ID defaults to the page hostname, which on the linked apex *is* `turnstile.work`; unset, the same build also keeps working on the `*.replit.app` hostname for rehearsals. Set it to the apex only if a subdomain must share credentials one day — a value that is not the page hostname or a registrable suffix of it breaks every passkey |
 | `CHAIN_ID`, `EXPLORER_URL`, keys, `GATE_TOKEN`, `DATABASE_URL` | unchanged | |
 
 - [ ] One canonical host: with `PUBLIC_ORIGIN=https://<apex>` the relayer already answers `www.<apex>` with a
