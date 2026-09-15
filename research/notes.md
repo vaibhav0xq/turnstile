@@ -241,3 +241,13 @@ Exact rules text, team-size cap, KYC, video requirement, "Community Team" defini
   409 / GET / clear verified against the production Postgres. `setBaseURI` on both events → this origin
   (`SetBaseURI.s.sol`, 110 350 gas each); `tokenURI(1)` of the club now resolves to live metadata that says
   "Checked in: true" for the smoke seat.
+- Final origin `https://turnstile.work` (15 Sep 2026): domain linked (Namecheap A + `replit-verify` TXT,
+  certificate 09:55 UTC), `PUBLIC_ORIGIN` / `VITE_SITE_URL` moved to the apex and the staging label dropped
+  (republished 11:05 UTC), relayer and browser RPC on the Alchemy Monad testnet app with the public RPC as
+  read fallback (the URLs live in Replit Secrets; republished 11:29 UTC, `/api/health` `latencyMs` ~40).
+  Final preflight 24/25 — only the optional `www` forward is missing. Smoke on the new origin passed in
+  13.2 s (club GA #4, seed `final-1`: buy 0x4be3e5…9602, bind, list, take, rebind, check-in 0x274ea4…dfb5;
+  relayer-side buy 732 ms, check-in 710 ms); headless judge run 45.9 s on the bar, 6 taps, 2 prompts, club
+  Row A · 14 (mint 0xf65af0…d318 305 ms, bind 720 ms, admit 0x3cbefd…a5fa 302 ms). Relayer 4.486 → 4.287
+  MON, gate 4.890 → 4.853 MON for the pair. `baseURI` still points at the staging host until §5 is approved.
+  The public RPC caps `eth_getLogs` at a 100-block range — page block windows when recovering tx hashes.

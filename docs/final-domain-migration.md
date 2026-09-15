@@ -101,13 +101,22 @@ once §4 passes on `https://turnstile.work`.
 
 From `turnstile/` with foundry on `PATH`:
 
-- [ ] `pnpm smoke -- --relayer https://<final> --rpc https://testnet-rpc.monad.xyz`
+- [x] `pnpm smoke -- --relayer https://<final> --rpc https://testnet-rpc.monad.xyz`
       (needs a free seat on a free tier and a funded relayer; `--seed <word>` for a fresh dev identity).
-- [ ] `pnpm --filter @turnstile/web run judge -- --base https://<final>` → `finished — <n> s on the bar`,
+      **Passed 15 Sep 2026 11:32 UTC** (`--seed final-1`): club · General Admission #4, 13.2 s end to end, no
+      retries; buy `0x4be3e5…9602` (block 62 734 100, relayer 732 ms), bind `0x00382e…57c3`, listed
+      `0x10fcba…eee9`, taken `0x528432…c025`, rebound `0xef9204…d8ec`, check-in `0x274ea4…dfb5` (relayer 710 ms).
+- [x] `pnpm --filter @turnstile/web run judge -- --base https://<final>` → `finished — <n> s on the bar`,
       three hashes, `judge-*.png` frames in `apps/web/shots/`. This burns one front-row seat (a throwaway
       passkey holds it) — acceptable; do not run it a dozen times.
-- [ ] Open the frames: the bar top-right in the room, bottom-left at the door, followspot with nothing in the
-      beam.
+      **Passed 15 Sep 2026 11:33 UTC:** 45.9 s on the bar, 6 taps, 2 passkey prompts, club Row A · 14
+      (token 14); mint 305 ms `0xf65af0…d318`, bind 720 ms `0x4e0d84…abf5`, admit 302 ms `0x3cbefd…a5fa`.
+- [x] Open the frames: the bar top-right in the room, bottom-left at the door, followspot with nothing in the
+      beam. (Checked on the 15 Sep frames — all three hold.)
+
+Wallets after both runs (15 Sep 11:35 UTC): relayer 4.4859 → 4.2870 MON (7 relayed calls at the gas limit,
+≈ 0.10 MON per full smoke + judge pair), gate signer 4.8898 → 4.8531 MON (2 check-ins), deployer unchanged
+at 4.0681 MON.
 
 ## 5. Re-point `baseURI` (two transactions, deployer key)
 

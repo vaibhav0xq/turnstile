@@ -292,7 +292,7 @@ if (!args["no-resale"]) {
   );
   log(
     "resale",
-    `over-cap ask refused · listed (${listed.body.gasUsed} gas) · self-buy refused · taken by ${taker.address} (${taken.body.gasUsed} gas, sponsored) · rebound · seller's code dead`,
+    `over-cap ask refused · listed ${listed.body.hash} (${listed.body.gasUsed} gas) · self-buy refused · taken by ${taker.address} ${taken.body.hash} (${taken.body.gasUsed} gas, sponsored) · rebound ${rebound.body.hash} · seller's code dead`,
   );
   holder = taker;
   holderDoor = takerDoor;
