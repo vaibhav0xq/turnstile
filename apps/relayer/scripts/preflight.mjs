@@ -247,34 +247,37 @@ const isPlatform = /\.replit\.app$/.test(host);
 if (isPlatform) {
   console.log("  www redirect: not applicable on a platform hostname");
 } else {
-  // On the platform deployment page routes never reach the relayer, so `www` is answered by whatever the
-  // registrar forwards: accept a redirect to the apex over https, or over plain http when the forwarder has no
-  // certificate for `www` (a registrar URL forward). Either way one host owns the passkeys.
+  // `www` is a second linked host with its own certificate. Page routes on it are served by the platform,
+  // never by the relayer, so the page itself carries the redirect: the build's first `<script>` sends
+  // `www` to the apex before anything else runs (`data-canonical-host` marks it). A server-side redirect to
+  // the apex is accepted too. `/api/*` on `www` does reach the relayer, which must answer with its own 301.
   const wwwHost = host.startsWith("www.") ? host.slice(4) : `www.${host}`;
   const started = performance.now();
-  const results = [];
-  for (const scheme of ["https", "http"]) {
-    try {
-      const res = await fetch(`${scheme}://${wwwHost}/e/x`, { redirect: "manual" });
-      const location = res.headers.get("location") ?? "";
-      results.push(`${scheme} ${res.status} → ${location || "—"}`);
-      if ([301, 302, 307, 308].includes(res.status) && location.startsWith(ORIGIN)) {
-        check(
-          true,
-          `${wwwHost} → ${host}`,
-          `${results.join(" · ")} · ${Math.round(performance.now() - started)} ms`,
-        );
-        break;
-      }
-    } catch (error) {
-      results.push(`${scheme} unreachable (${String(error).split("\n")[0]})`);
-    }
-    if (scheme === "http")
-      check(
-        false,
-        `${wwwHost} → ${host}`,
-        `${results.join(" · ")} — no forward to the apex yet (registrar URL forward, or DNS not ready)`,
-      );
+  const location = (res) => res.headers.get("location") ?? "";
+  const redirectsToApex = (res) =>
+    [301, 302, 307, 308].includes(res.status) && location(res).startsWith(ORIGIN);
+  const describe = (res) => `${res.status}${location(res) ? ` → ${location(res)}` : ""}`;
+  try {
+    const page = await fetch(`https://${wwwHost}/e/x`, { redirect: "manual" });
+    const html = page.status === 200 ? await page.text() : "";
+    const hasScript = html.includes(`data-canonical-host="${host}"`);
+    check(
+      redirectsToApex(page) || hasScript,
+      `https://${wwwHost} page lands on ${host}`,
+      `${describe(page)}${hasScript ? " · inline canonical-host redirect present" : ""}${
+        page.status === 200 && !hasScript
+          ? " — page has no canonical-host script (built without VITE_SITE_URL?)"
+          : ""
+      } · ${Math.round(performance.now() - started)} ms`,
+    );
+    const api = await fetch(`https://${wwwHost}/api/health`, { redirect: "manual" });
+    check(redirectsToApex(api), `https://${wwwHost}/api redirects to ${host}`, describe(api));
+  } catch (error) {
+    check(
+      false,
+      `https://${wwwHost} reachable`,
+      `${String(error).split("\n")[0]} — link ${wwwHost} in Publishing → Domains (A + TXT on host www) so it gets a certificate`,
+    );
   }
 }
 

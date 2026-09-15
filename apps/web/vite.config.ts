@@ -34,7 +34,24 @@ function siteOrigin(mode: string): string {
   return url.origin;
 }
 
-/** `%SITE_URL%` in index.html, plus canonical + og:url only when there is a real public origin. */
+/**
+ * One canonical host, enforced by the page itself. Passkeys are scoped to the host, so an app reachable as
+ * both `<apex>` and `www.<apex>` would grow two passkey populations. The relayer redirects `www` for `/api/*`
+ * (`apps/relayer/src/canonical-host.ts`), but on the published origin page routes are served by the
+ * platform's static hosting and never reach it — so the first bytes of the page send `www` to the apex,
+ * before any stylesheet, module or credential. Only `www.<apex>` is an alias here (the relayer's
+ * `REDIRECT_HOSTS` extras are API-only); every other host — localhost, the dev origin, the platform
+ * hostname — is left alone. `pnpm preflight` looks for the `data-canonical-host` marker on `www`.
+ */
+function canonicalHostScript(site: string): string {
+  const apex = new URL(site).hostname.toLowerCase();
+  return (
+    `(function(){if(location.hostname.toLowerCase()===${JSON.stringify(`www.${apex}`)})` +
+    `location.replace(${JSON.stringify(site)}+location.pathname+location.search+location.hash)})()`
+  );
+}
+
+/** `%SITE_URL%` in index.html, plus canonical + og:url and the `www` → apex script only when there is a real public origin. */
 function siteMeta(site: string): Plugin {
   return {
     name: "turnstile:site-meta",
@@ -45,6 +62,12 @@ function siteMeta(site: string): Plugin {
         html: html.replaceAll("%SITE_URL%", site),
         tags: site
           ? [
+              {
+                tag: "script",
+                attrs: { "data-canonical-host": new URL(site).hostname.toLowerCase() },
+                children: canonicalHostScript(site),
+                injectTo: "head-prepend",
+              },
               { tag: "link", attrs: { rel: "canonical", href: `${site}/` }, injectTo: "head" },
               { tag: "meta", attrs: { property: "og:url", content: `${site}/` }, injectTo: "head" },
             ]

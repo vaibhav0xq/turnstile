@@ -55,10 +55,15 @@ RPC rows and the `www` forward are still open (Alchemy keys, registrar):
       `location: https://<apex>/e/x`. This keeps apex and `www` from growing separate passkey populations.
       **Caveat (found 15 Sep):** on the current Replit deployment the web is a static site served by the
       platform and only `/api/*` reaches the relayer (the asset headers prove it: lowercase charsets,
-      `accept-ranges`), so the relayer's redirect covers API paths only. Page routes on `www` are the
-      platform's business: link **only the apex** in Replit, and if `www` must resolve at all, use the
-      registrar's URL forward (301 to `https://<apex>`) rather than a second linked host. `pnpm preflight`
-      checks whatever answers on `www`.
+      `accept-ranges`), so the relayer's redirect covers API paths only. Page routes on `www` are served by
+      the platform as-is, and a registrar URL forward cannot answer `https://www` (no certificate), so
+      `www` is linked as a **second host** in Publishing → Domains (A + `replit-verify` TXT on host `www`;
+      the TXT stays for renewals) and the page redirects itself: with `VITE_SITE_URL` set, the build's
+      first `<script data-canonical-host="<apex>">` sends `www.<apex>` to the same path on the apex before
+      any stylesheet, module or credential (`apps/web/vite.config.ts`). Only `www` is an alias there — a
+      backup domain in `REDIRECT_HOSTS` is redirected for `/api/*` only, so do not point one at the
+      deployment without adding it to the script too. `pnpm preflight --final` checks both: the `www` page
+      redirects or carries the marker, and `https://www.<apex>/api/health` answers `301` to the apex.
 - [x] RPC: `RPC_URL` = the Alchemy Monad testnet HTTPS URL (writes and reads), `RPC_FALLBACK_URLS` =
       `https://testnet-rpc.monad.xyz` (reads only fail over; transactions stay pinned to the primary),
       `PUBLIC_RPC_URL` = the browser-restricted Alchemy key, `PUBLIC_RPC_FALLBACK_URLS` = the public RPC.

@@ -104,7 +104,8 @@ Two production knobs the relayer adds on top (`apps/relayer/.env.example`): `RPC
 to the next provider, transactions stay pinned to the primary so nonces never split across providers — and
 `/api/health` reports the provider label, host and latency. With a custom `PUBLIC_ORIGIN`, `www.<apex>` and
 any `REDIRECT_HOSTS` alias are redirected (301, 308 for non-GET) to the apex before anything is served, so
-passkeys — which are scoped to the page's host — only ever exist on one host.
+passkeys — which are scoped to the page's host — only ever exist on one host. Where the pages are served by
+a static host instead of the relayer, the build does the same from its first `<script>` (set `VITE_SITE_URL`).
 
 The relayer also brakes on its own spend (`docs/deploy-monad-testnet.md` §3a): a reserve floor per wallet
 (sponsorship pauses before the relayer or gate wallet is drained), rolling hourly and daily budgets per action
