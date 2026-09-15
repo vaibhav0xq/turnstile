@@ -35,7 +35,9 @@ judge runs must pass *before* the README claims the domain.
 
 ## 2. Production environment
 
-Set through the deployment's environment (the *Publishing* pane, production scope), then republish:
+Set through the deployment's environment (the *Publishing* pane, production scope), then republish. **Done 15 Sep 2026
+11:05 UTC** for `PUBLIC_ORIGIN`, `ENVIRONMENT_LABEL` (removed) and `VITE_SITE_URL`; `VITE_RP_ID` left unset; the
+RPC rows and the `www` forward are still open (Alchemy keys, registrar):
 
 | Variable | Set to | Why |
 |----------|--------|-----|
@@ -61,7 +63,8 @@ Set through the deployment's environment (the *Publishing* pane, production scop
       `https://testnet-rpc.monad.xyz` (reads only fail over; transactions stay pinned to the primary),
       `PUBLIC_RPC_URL` = the browser-restricted Alchemy key, `PUBLIC_RPC_FALLBACK_URLS` = the public RPC.
       `/api/health` then reports `rpc.provider: "alchemy"` and the fallback host list.
-- [ ] Republish. Watch the relayer boot log: no `PUBLIC_ORIGIN is not set` warning.
+- [x] Republish. Watch the relayer boot log: no `PUBLIC_ORIGIN is not set` warning. (15 Sep: republished
+      with the variables above; the rehearsal host serves the same build and now also answers without the label.)
 
 ## 3. Verify the origin
 
@@ -74,17 +77,19 @@ pnpm preflight -- --origin https://<final> --final
 `--final` additionally requires no environment label, `rpc.provider: "alchemy"` with a fallback, absolute
 canonical / `og:url` / `og:image` (so `VITE_SITE_URL` was set at build time) and the `www` → apex redirect.
 Without `--final` the same script checks staging (label allowed, platform hostname, relative OG). The manual
-equivalents, for when something fails and you want to look at it:
+equivalents, for when something fails and you want to look at it. **15 Sep 2026 11:05 UTC, after the republish:
+3 of 25 fail** — `rpc provider`, `rpc fallback configured` (Alchemy keys not set yet) and `www` (no registrar
+forward yet); everything else passes, so `baseURI` may move once §4 passes and the RPC rows are done.
 
-- [ ] `curl -s https://<final>/api/health` → `ok: true`, `chainId: 10143`.
-- [ ] `curl -s https://<final>/api/config | jq '.environmentLabel, .explorer'` → `null`, the explorer URL.
-- [ ] `https://<final>/` loads the city; no STAGING chip; the tab title is `Turnstile — access that follows
+- [x] `curl -s https://<final>/api/health` → `ok: true`, `chainId: 10143`.
+- [x] `curl -s https://<final>/api/config | jq '.environmentLabel, .explorer'` → `null`, the explorer URL.
+- [x] `https://<final>/` loads the city; no STAGING chip; the tab title is `Turnstile — access that follows
       you` with no `[staging]` prefix.
-- [ ] Metadata already answers on the new origin (nothing on-chain points here yet, that is fine):
+- [x] Metadata already answers on the new origin (nothing on-chain points here yet, that is fine):
       `curl -s https://<final>/api/events/1/tickets/1 | jq '.image, .external_url'` → both on `https://<final>`.
       Spoof check: `curl -s -H 'X-Forwarded-Host: evil.example' https://<final>/api/events/1/tickets/1 | jq .image`
       still on `https://<final>`.
-- [ ] `https://<final>/api/events/1/tickets/1/image.svg` renders (the footer reads `0x79a3…21B5 · 1 of 300`).
+- [x] `https://<final>/api/events/1/tickets/1/image.svg` renders (the footer reads `0x79a3…21B5 · 1 of 300`).
 
 ## 4. Smoke and judge path on the new origin
 
