@@ -251,32 +251,44 @@ if (isPlatform) {
   // never by the relayer, so the page itself carries the redirect: the build's first `<script>` sends
   // `www` to the apex before anything else runs (`data-canonical-host` marks it). A server-side redirect to
   // the apex is accepted too. `/api/*` on `www` does reach the relayer, which must answer with its own 301.
-  const wwwHost = host.startsWith("www.") ? host.slice(4) : `www.${host}`;
+  // Hostname, not host: the build's marker carries the bare hostname, and the alias keeps the origin's port.
+  const { hostname } = new URL(ORIGIN);
+  const www = new URL(ORIGIN);
+  www.hostname = hostname.startsWith("www.") ? hostname.slice(4) : `www.${hostname}`;
+  const wwwUrl = (path) => new URL(path, www).href;
   const started = performance.now();
   const location = (res) => res.headers.get("location") ?? "";
-  const redirectsToApex = (res) =>
-    [301, 302, 307, 308].includes(res.status) && location(res).startsWith(ORIGIN);
+  // Exact origin and the same path — a prefix match would accept `<origin>.example` or a redirect to `/`.
+  const redirectsToApex = (res, path) => {
+    if (![301, 302, 307, 308].includes(res.status)) return false;
+    try {
+      const target = new URL(location(res), res.url);
+      return target.origin === ORIGIN && target.pathname + target.search === path;
+    } catch {
+      return false;
+    }
+  };
   const describe = (res) => `${res.status}${location(res) ? ` → ${location(res)}` : ""}`;
   try {
-    const page = await fetch(`https://${wwwHost}/e/x`, { redirect: "manual" });
+    const page = await fetch(wwwUrl("/e/x"), { redirect: "manual" });
     const html = page.status === 200 ? await page.text() : "";
-    const hasScript = html.includes(`data-canonical-host="${host}"`);
+    const hasScript = html.includes(`data-canonical-host="${hostname}"`);
     check(
-      redirectsToApex(page) || hasScript,
-      `https://${wwwHost} page lands on ${host}`,
+      redirectsToApex(page, "/e/x") || hasScript,
+      `${www.origin} page lands on ${hostname}`,
       `${describe(page)}${hasScript ? " · inline canonical-host redirect present" : ""}${
         page.status === 200 && !hasScript
           ? " — page has no canonical-host script (built without VITE_SITE_URL?)"
           : ""
       } · ${Math.round(performance.now() - started)} ms`,
     );
-    const api = await fetch(`https://${wwwHost}/api/health`, { redirect: "manual" });
-    check(redirectsToApex(api), `https://${wwwHost}/api redirects to ${host}`, describe(api));
+    const api = await fetch(wwwUrl("/api/health"), { redirect: "manual" });
+    check(redirectsToApex(api, "/api/health"), `${www.origin}/api redirects to ${hostname}`, describe(api));
   } catch (error) {
     check(
       false,
-      `https://${wwwHost} reachable`,
-      `${String(error).split("\n")[0]} — link ${wwwHost} in Publishing → Domains (A + TXT on host www) so it gets a certificate`,
+      `${www.origin} reachable`,
+      `${String(error).split("\n")[0]} — link ${www.hostname} in Publishing → Domains (A + TXT on host www) so it gets a certificate`,
     );
   }
 }

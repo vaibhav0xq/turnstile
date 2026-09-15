@@ -37,7 +37,7 @@ judge runs must pass *before* the README claims the domain.
 
 Set through the deployment's environment (the *Publishing* pane, production scope), then republish. **Done 15 Sep 2026
 11:05 UTC** for `PUBLIC_ORIGIN`, `ENVIRONMENT_LABEL` (removed) and `VITE_SITE_URL`; `VITE_RP_ID` left unset; the
-RPC rows and the `www` forward are still open (Alchemy keys, registrar):
+RPC rows followed at 11:29 UTC and `www` was linked as a second host at 15:12 UTC (see the canonical-host item):
 
 | Variable | Set to | Why |
 |----------|--------|-----|
@@ -48,11 +48,13 @@ RPC rows and the `www` forward are still open (Alchemy keys, registrar):
 | `VITE_RP_ID` | **leave unset** (revised 15 Sep) | the passkey RP ID defaults to the page hostname, which on the linked apex *is* `turnstile.work`; unset, the same build also keeps working on the `*.replit.app` hostname for rehearsals. Set it to the apex only if a subdomain must share credentials one day — a value that is not the page hostname or a registrable suffix of it breaks every passkey |
 | `CHAIN_ID`, `EXPLORER_URL`, keys, `GATE_TOKEN`, `DATABASE_URL` | unchanged | |
 
-- [ ] One canonical host: with `PUBLIC_ORIGIN=https://<apex>` the relayer already answers `www.<apex>` with a
+- [x] One canonical host: with `PUBLIC_ORIGIN=https://<apex>` the relayer already answers `www.<apex>` with a
       301 (308 for non-GET) to the same path on the apex, before static files or the API (`apps/relayer/src/
       canonical-host.ts`); add any other purchased alias (for example the backup domains, if bought) to
-      `REDIRECT_HOSTS` as a comma-separated list. Check: `curl -sI https://www.<apex>/e/x` → `301` with
-      `location: https://<apex>/e/x`. This keeps apex and `www` from growing separate passkey populations.
+      `REDIRECT_HOSTS` as a comma-separated list. Check: `curl -sI https://www.<apex>/api/health` → `301` with
+      `location: https://<apex>/api/health`; `curl -s https://www.<apex>/e/x` → `200` whose first `<script>` is
+      `data-canonical-host="<apex>"` (a browser then lands on `https://<apex>/e/x`, query and hash kept — verified
+      15 Sep 2026 with a headless Chromium trace). This keeps apex and `www` from growing separate passkey populations.
       **Caveat (found 15 Sep):** on the current Replit deployment the web is a static site served by the
       platform and only `/api/*` reaches the relayer (the asset headers prove it: lowercase charsets,
       `accept-ranges`), so the relayer's redirect covers API paths only. Page routes on `www` are served by
@@ -89,7 +91,8 @@ pnpm preflight -- --origin https://<final> --final
 canonical / `og:url` / `og:image` (so `VITE_SITE_URL` was set at build time) and the `www` → apex redirect.
 Without `--final` the same script checks staging (label allowed, platform hostname, relative OG). The manual
 equivalents, for when something fails and you want to look at it. **15 Sep 2026 11:29 UTC, after the second republish (Alchemy RPC): 24 of 25 pass** — only `www` fails
-(no registrar forward yet; optional). At 11:05 UTC, before the RPC rows, it was 22 of 25. `baseURI` may move
+(not linked yet). At 11:05 UTC, before the RPC rows, it was 22 of 25. **16:10 UTC, after linking `www` and
+republishing with the canonical-host script: 34 of 34** (the `www` item is now two checks, page and `/api`). `baseURI` may move
 once §4 passes on `https://turnstile.work`.
 
 - [x] `curl -s https://<final>/api/health` → `ok: true`, `chainId: 10143`.

@@ -22,7 +22,7 @@ feature a judge can see and poke, not a line in the README.
 | Web | One persistent R3F world: city → venue (club, theatre, generic) → seat → checkout → ticket (rotating `TS3:` QR) → gate → lit seat. Resale (list / delist / pass on), organiser publish, passport page with vault. Judge mode: 38 s / 6 taps / 2 passkey prompts on staging, three testnet transactions. | `pnpm --filter @turnstile/web run judge -- --base <origin>`; `apps/web/shots/judge-*.png` |
 | Indexer | Envio HyperIndex config + handlers for all seat-lifecycle events; `Event` / `Ticket` / `Fan` / `Activity` with derived counters, volumes, fees, handovers. **Not deployed, not consumed by the app.** | 5 handler tests; `packages/indexer/README.md` |
 | Devices | Android Chrome + Google Password Manager: account / door / vault green on a real phone; Windows laptop via hybrid QR (user-reported). | `docs/device-matrix.md` |
-| Ops | Final domain `https://turnstile.work` live since 15 Sep 2026 (custom domain, Alchemy RPC + public fallback, label off); final preflight 24/25 (optional `www` forward missing); smoke and judge run pass there; `baseURI` of both events re-pointed to it; CI green; Envio checklist written. | `docs/final-domain-migration.md`, `docs/envio-hosted-handoff.md`, `docs/demo-video-storyboard.md` |
+| Ops | Final domain `https://turnstile.work` live since 15 Sep 2026 (custom domain, Alchemy RPC + public fallback, label off); final preflight 34/34 (`www` linked, page and `/api` land on the apex); smoke and judge run pass there; `baseURI` of both events re-pointed to it; CI green; Envio checklist written. | `docs/final-domain-migration.md`, `docs/envio-hosted-handoff.md`, `docs/demo-video-storyboard.md` |
 
 ## 2. Missing for a full website / product experience
 
@@ -230,7 +230,9 @@ Credentials are scoped to the RP ID and are unusable from any other: staging pas
 final domain must be the one judges use from the first day of judging. On a platform subdomain
 (`*.replit.app`, `*.vercel.app`) the RP ID is the full hostname (the current default). On a custom domain the
 rule is **one canonical host**: the apex serves the app, the relayer redirects `www.<apex>` to it with a 301
-before any page loads (small middleware; the host allowlist already exists for `PUBLIC_ORIGIN`), and
+before any page loads (small middleware; the host allowlist already exists for `PUBLIC_ORIGIN`; on the Replit
+deployment page routes are static-hosted, so the build's first script does the page-level redirect and the
+relayer's 301 covers `/api/*` — see `docs/final-domain-migration.md`), and
 `VITE_RP_ID=<apex>` is set explicitly so a future subdomain (a dedicated gate host, say) shares the same
 credentials. Without the redirect, apex and `www` would grow two separate passkey populations even with the
 apex RP ID. The relayer never verifies WebAuthn origins (only EIP-712 / EIP-191 signatures), so the API origin

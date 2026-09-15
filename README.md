@@ -149,7 +149,7 @@ QR-alphanumeric, then `TS3:` with an RFC 9285 base45 blob: the ticket QR drops f
 Deployed to Monad testnet (`deployments/10143.json`, verified on MonadVision) with the two seed events; sales
 stay open until 13 Nov 2026. Web + relayer live on the final domain <https://turnstile.work> since 15 Sep 2026
 (custom domain, Alchemy RPC with public fallback, passports in Postgres, no environment label): the final-origin
-preflight passes 24/25 (only the optional `www` forward is missing), `pnpm smoke` runs the whole path there in
+preflight passes 34/34 (`www` is linked and lands on the apex), `pnpm smoke` runs the whole path there in
 13.2 s, and `pnpm --filter @turnstile/web run judge -- --base https://turnstile.work` lands on a lit seat in
 45.9 s / 6 taps / 2 passkey prompts with three testnet transactions; both seed events' `baseURI` were re-pointed
 the same day and `tokenURI` resolves to metadata whose `image.svg` renders. What remains before submission —
