@@ -1,6 +1,5 @@
 import { type RefObject, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
-import { useTour } from "../../app/tour";
 import { useNightsOn } from "../../app/use-nights-on";
 import type { AppConfig } from "../../chain/config";
 import { chainName } from "../../chain/config";
@@ -25,7 +24,6 @@ export function Story({
   overlay: RefObject<HTMLDivElement | null>;
 }) {
   const navigate = useNavigate();
-  const startTour = useTour((s) => s.start);
   const sections = useRef<(HTMLElement | null)[]>([]);
   const tonight = useRef<HTMLElement>(null);
   const setActive = useFlight((s) => s.setActive);
@@ -60,10 +58,6 @@ export function Story({
 
   const lit = useNightsOn(config).length;
   const enterCity = () => navigate("/city");
-  const watchTour = () => {
-    navigate("/city");
-    startTour({ autoplay: true });
-  };
   const litLine = !config
     ? "Lighting the beacons…"
     : lit === 0
@@ -93,18 +87,11 @@ export function Story({
             <em className="text-amber">Every door in the city.</em>
           </h1>
           <p className="fade-up-late mt-6 max-w-lg text-base text-paper/80 sm:text-lg">
-            It buys the seat and it opens the door. No wallet, no app — the code on your phone is signed by a
-            key made for tonight's door alone.
+            Buy a seat and open its door with one passkey. No wallet or app.
           </p>
           <div className="fade-up-late mt-7 flex flex-wrap items-center gap-3">
             <Button variant="primary" onClick={enterCity} data-testid="enter-city">
               Enter the city
-            </Button>
-            <Button variant="ghost" onClick={watchTour} data-testid="tour-watch">
-              <span aria-hidden="true" className="text-amber">
-                ▶
-              </span>
-              Watch the tour · 2 min
             </Button>
           </div>
         </div>
@@ -164,7 +151,7 @@ export function Story({
             {litLine}
           </h2>
           <p className="mt-4 text-sm text-paper/75 sm:text-base">
-            Pick a night below, or walk in and choose from the city itself — each beacon is a door.
+            Choose a night below or enter the city. Each beacon is a door.
           </p>
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <Button variant="primary" onClick={enterCity}>

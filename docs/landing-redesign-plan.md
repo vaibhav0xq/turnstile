@@ -17,7 +17,9 @@ Build notes (14 Sep 2026):
   (density 0.0014 → 0.0021 by frame I) so the far skyline reads from up high. Beacon labels stay hidden
   until the flight has nearly landed.
 - Story: the frames replaced the programme's "How it works" section; copy is in `src/ui/site/copy.ts`.
-- Judge links (`/?tour=auto`, `/?event=`) redirect to `/city` with the query intact.
+- Developer links (`/?tour=auto`, `/?event=`) redirect to `/city` with the query intact.
+- Decision 17 Sep 2026: public guided-run controls were removed at the owner's request after freezes on a
+  Redmi Note 11. The route remains developer tooling and is not a required product path.
 
 ## 0. What the staging screenshots were actually showing
 
@@ -53,7 +55,7 @@ Fixed canvas behind a scrolling overlay, exactly as today. Top to bottom:
 | # | Section (height) | Words | World (camera key) |
 |---|---|---|---|
 | 0 | Header (fixed) | Wordmark · environment chip · Passport. "Enter the city →" fades in on the right once the hero scrolls out. No "New passkey" on the landing (it stays on product routes). | — |
-| 1 | Hero (100dvh) | Left column, vertically centred: kicker, two-line headline, one subline, primary "Enter the city" + ghost "Watch the 2-minute tour". Bottom-left: "Scroll to descend ↓". Bottom-right mono status from config: "Monad testnet · 2 nights lit · free seats sponsored". No bill, no beacon labels. | High and far: `p(−40,150,430) t(0,40,0) fov 36`. City reveal (points assembling) plays here as today. |
+| 1 | Hero (100dvh) | Left column, vertically centred: kicker, two-line headline, one subline and primary "Enter the city". The original ghost guided-run control was removed on 17 Sep 2026. Bottom-left: "Scroll to descend ↓". Bottom-right mono status from config: "Monad testnet · 2 nights lit · free seats sponsored". No bill, no beacon labels. | High and far: `p(−40,150,430) t(0,40,0) fov 36`. City reveal (points assembling) plays here as today. |
 | 2 | Frame I (90dvh) | Right-aligned block: "The venue is the seat map." + one line, the `pick.jpg` still as a film-frame card with numeral I. | Descending toward the club beacon: `p(−120,58,190) t(−38,14,−22) fov 38`. |
 | 3 | Frame II (90dvh) | Left block: "One prompt. Your passkey signs." + one line, `sign.jpg`. | Low orbit past the club plaza, halo on the right edge: `p(−80,30,30) t(−38,16,−22) fov 40`. |
 | 4 | Frame III (90dvh) | Right block: "The door reads a code that goes stale in a minute." + one line, `door.jpg`. Optional (phase B): a live sample door code ring, labelled "sample". | Crossing downtown to the theatre beacon: `p(20,44,90) t(44,18,12) fov 40`. |
@@ -75,7 +77,7 @@ camera is (the director already allows a dive from the city chapter once the rev
   28 px / 11 px. "New passkey" lives on the Passport page, where the create/sign-in action already exists.
   On `/e/*`, `/t/*`, `/gate/*`: an icon-only `←` chip + Passport. Nothing wraps at 360 px.
 - First screen (100dvh): kicker · headline at `clamp(40px, 11vw, 56px)` (two lines) · one 15 px line ·
-  primary CTA · text link "2-minute tour". The block is anchored at ~58 % height so the top of the screen is
+  primary CTA. The original guided-run text link was removed on 17 Sep 2026. The block is anchored at ~58 % height so the top of the screen is
   beacons and haze, with the bottom scrim under the copy. No cards on the first screen.
 - Frames I–III: 70dvh each, copy bottom-anchored on the scrim, the still below it as a full-width 16:10 card
   (lazy). Camera keys use the same targets at 1.25× the distance with fov 48 so the beacon stays in frame.
@@ -166,27 +168,26 @@ Frames (one line each, bodies trimmed from today's `FRAMES`):
 Tonight: kicker "Tonight in the city" · "Two nights are lit." (count from config; "The city is dark
 tonight." when empty) · cards · "Enter the city" · "Host your own night →".
 
-CTAs: primary "Enter the city" (→ `/city`); ghost "Watch the 2-minute tour" (→ `/city?tour=auto`). The
-"Judge mode · 2-minute tour" chip stays on `/city` for judges, unchanged. All claims stay inside the product
-rules: about a minute of validity, never "screenshots don't work"; notes private, attendance public.
+CTA: primary "Enter the city" (→ `/city`). The original public guided-run controls were removed on
+17 Sep 2026. `/city?tour=auto` remains available to the developer script only. All claims stay inside the
+product rules: about a minute of validity, never "screenshots don't work"; notes private, attendance public.
 
 ## 7. CTA flow into the city and booking
 
 ```
 /  (landing: flight + programme)
- ├─ Enter the city ──────────────► /city  (product surface: bill, beacons, labels, judge chip)
+ ├─ Enter the city ──────────────► /city  (product surface: bill, beacons, labels)
  │                                   ├─ card / beacon ─► dive → flash → descent ─► /e/<address>
  │                                   │                     seat → checkout → /t/… → /gate/…
- │                                   └─ Judge mode / ?tour=… (unchanged)
+ │                                   └─ developer script / ?tour=…
  ├─ Tonight card ─────────────────► /e/<address> directly (dive from the landing's current pose)
- ├─ Watch the 2-minute tour ──────► /city?tour=auto
  └─ Host your own night ──────────► /organise
 ```
 
 - `/` → `/city` is a same-chapter cut: no curtain, the words swap, the camera eases to the city pose if it
   is not there already.
-- `/?tour=…&event=…` redirects to `/city` with the same query so every judge link in the README keeps
-  working; `scripts/judge-run.mjs` shoots `/city`.
+- `/?tour=…&event=…` redirects to `/city` with the same query for developer tooling.
+  `scripts/judge-run.mjs` shoots `/city`.
 - Wordmark and `← City` go to `/city` from product routes; the landing is reachable from the footer
   ("About Turnstile") and from the wordmark on `/city`.
 

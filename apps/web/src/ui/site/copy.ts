@@ -21,20 +21,20 @@ export interface Frame {
 export const FRAMES: Frame[] = [
   {
     numeral: "I",
-    title: "The venue is the seat map.",
-    body: "Tap a seat in the room and the card tells you the row, the price and whether it is yours, taken or listed.",
+    title: "Choose from the room.",
+    body: "Every seat shows its row, price and live availability.",
     still: { src: "/site/pick.jpg", alt: "The theatre in 3D with one seat selected and its card open" },
   },
   {
     numeral: "II",
-    title: "Your passkey signs. Nothing to install.",
-    body: "The seat is minted to an address derived from your passkey — no wallet, no seed phrase. Free seats and door keys are sponsored by the relayer; a paid seat is paid from your own account.",
+    title: "Your passkey is the account.",
+    body: "Free actions are relayed. Paid seats use your Monad account. No wallet or app.",
     still: { src: "/site/sign.jpg", alt: "The checkout panel: passkey, seat, door key, one button" },
   },
   {
     numeral: "III",
-    title: "The door reads a code that goes stale in a minute.",
-    body: "Codes rotate every 30 seconds, signed by a key derived for this door alone. A seat admits once, so a copy is worth at most one early entry — never a second person inside.",
+    title: "The door checks a rotating code.",
+    body: "A per-event door key signs each code. Every seat can check in once.",
     still: {
       src: "/site/door.jpg",
       alt: "A ticket with its rotating door code and the seconds left in the slot",
@@ -50,29 +50,29 @@ export interface Point {
 /** Why identity-bound — the honest version of each claim. */
 export const WHY: Point[] = [
   {
-    title: "A copied code goes stale within a minute.",
-    body: "Codes rotate every 30 seconds and the door accepts the current slot and one either side. A seat admits once. So a screenshot is worth at most one early entry — which the holder sees on their own ticket — never a second person inside.",
+    title: "Copied codes expire.",
+    body: "Codes rotate every 30 seconds and remain valid for about a minute. Each seat admits once.",
   },
   {
-    title: "Only the passkey that holds the seat can produce the code.",
-    body: "The door key is derived from your passkey for that event alone and bound to the seat on-chain. A forwarded code is stale within a minute, and the ticket itself cannot leave your account except through resale — so there is nothing to sell twice.",
+    title: "The holder produces the code.",
+    body: "A separate per-event door key is derived from the holder's passkey and bound on-chain.",
   },
   {
-    title: "Resale on the organiser's terms.",
-    body: "A listing can ask at most the organiser's cap (a percentage of face value), and a fee from every resale goes back to them. When a seat sells, the old door key is dropped and the buyer's passkey binds its own.",
+    title: "Resale follows organiser terms.",
+    body: "The contract caps prices and returns the organiser's fee. Buyers bind a new door key.",
   },
   {
     title: "Private notes, public attendance.",
-    body: "Your passport notes live in a vault encrypted with a key only your passkey can derive; the relayer stores the blob and cannot read it. Your attendance is on-chain like any ticket, and the Live layer shows it by address.",
+    body: "Passport notes are passkey-encrypted. Ticket ownership and attendance remain public on-chain by address.",
   },
 ];
 
 export const ORGANISER_POINTS = [
-  "Publish from a passkey — the same prompt fans use; no wallet extension on the box-office laptop.",
-  "Choose a room: the club or the theatre. Seats, rows and tiers come with it.",
-  "Set tiers, prices, capacity, the resale cap and your fee. Free doors are fine.",
-  "Hand the door a gate key. Scanning runs in any browser; check-ins land on-chain.",
-  "Watch the door board fill in live: inside, sold, resales, last check-in.",
+  "Publish from a passkey. No wallet extension is required.",
+  "Choose the club or theatre with its seats, rows and tiers.",
+  "Set prices, capacity, the resale cap and your fee.",
+  "Use the gate key in any browser. Check-ins land on-chain.",
+  "Follow attendance, sales and resales on the live door board.",
 ];
 
 export interface Faq {
@@ -83,26 +83,26 @@ export interface Faq {
 export const FAQ: Faq[] = [
   {
     q: "Is this a wallet?",
-    a: "No. A passkey is your account. It lives in your phone's or laptop's authenticator and syncs the way your passwords do; Turnstile derives keys from it and you never see a seed phrase. Underneath, every seat is an on-chain ticket held by an address only your passkey controls.",
+    a: "No. Your passkey is the account. It controls the address holding each on-chain ticket without a wallet, app or seed phrase.",
   },
   {
     q: "What if I lose my phone?",
-    a: "If your passkey syncs through your platform account (iCloud Keychain, Google Password Manager, a password manager), sign in on the new device and the same passkey derives the same keys: same account, same seats, same vault. A device-bound passkey that never synced is lost with the device, like any key — so use a syncing authenticator for seats you care about. The relayer keeps nothing that only the old phone had.",
+    a: "A synced passkey restores the same account, seats and vault on another device. A device-bound passkey that was never synced is lost with that device.",
   },
   {
     q: "What happens if someone copies my QR?",
-    a: "The code changes every 30 seconds and the door accepts the current slot and one either side, so a copy is useful for about a minute. A seat admits once: if a copy gets in first, your own ticket shows the seat as already inside. A copied code is one early entry at most, never two people on one seat.",
+    a: "Codes rotate every 30 seconds and remain valid for about a minute. Each seat admits once, so a copy cannot admit a second person.",
   },
   {
     q: "What does the venue see?",
-    a: "At the door: that the code was produced by the key bound to a valid seat for tonight, and whether that seat is already inside. On the board: counts and check-ins by seat. Never your notes — those are encrypted with a key the relayer cannot derive. Your on-chain history is public by address, as with any ticket contract.",
+    a: "The venue sees valid seats, check-ins and public on-chain history by address. It cannot read passport notes encrypted under your vault key.",
   },
   {
     q: "Can I resell?",
-    a: "If the organiser allows it. List from your ticket at up to the organiser's cap on face value; the organiser's fee comes off the sale; the buyer's passkey becomes the holder and binds a new door key. Outside of resale the ticket cannot be transferred at all — that is what identity-bound means.",
+    a: "If enabled, list within the organiser's price cap. The contract returns their fee. The buyer becomes the holder and binds a new door key.",
   },
   {
     q: "Does it cost gas?",
-    a: "Mostly not. Free seats and every holder action — binding the door key, listing, delisting, walking in — go through an ERC-2771 forwarder: your passkey signs, the relayer submits and pays the gas. A paid seat is bought from your passkey's own account, so it costs its face value in MON plus that one transaction's gas; on the testnet a small drip funds a first purchase.",
+    a: "The relayer sponsors free seats, door keys, resale actions and check-ins. Paid seats cost their MON price plus transaction gas from your passkey account.",
   },
 ];

@@ -1,12 +1,15 @@
 # Demo video — storyboard and capture plan
 
-Target: **under two minutes**. One continuous run of judge mode against the Monad testnet deployment is the
-A-roll; a short cold open, a few cutaways and a closing card are the rest. Everything shown is real: three
-transactions land on testnet during the take.
+Target: **under two minutes**. One continuous developer-guided run against the Monad testnet deployment is
+the A-roll. A short cold open, a few cutaways and a closing card complete it. Everything shown is real:
+three transactions land on testnet during the take.
+
+The guided route is developer tooling only. The public product has no button for it as of 17 Sep 2026.
+Capture starts through the script or by opening `/city?tour=auto` directly.
 
 ## What the run measures
 
-Judge mode against the deployed origin (14 Sep 2026, `pnpm --filter @turnstile/web run judge -- --base
+Developer run against the deployed origin (14 Sep 2026, `pnpm --filter @turnstile/web run judge -- --base
 <origin>`, real WebAuthn through a virtual authenticator):
 
 | Step | Bar reads | What happened |
@@ -61,7 +64,7 @@ handle it, pick one before recording:
 | # | Cut | Take | On screen | Voice-over (≈2.4 words/s) |
 |---|-----|------|-----------|---------------------------|
 | 1 | 0:00–0:08 | B-roll | Cold open: the city at night, beacons rising, camera drifting in. No UI (record `/` without `?tour` and trim, or `exit` the bar). | "Every beacon is a contract on Monad. Each one is a venue, and every seat in it is a ticket." |
-| 2 | 0:08–0:16 | 0:00–0:03 + hold | Landing → `Judge mode` → the bar appears top-right, the free event's beacon pulses, cut into the club. | "Turnstile is identity-bound access: no wallet, no app, one passkey. This is the path a judge takes, timed on the bar." |
+| 2 | 0:08–0:16 | 0:00–0:03 + hold | The developer route opens at the city, the bar appears top-right, the free event's beacon pulses, cut into the club. | "Turnstile is identity-bound access: no wallet, no app, one passkey. This measured path starts in the city." |
 | 3 | 0:16–0:26 | 0:03–0:15 | Room overview — booths on the bottom edge, LED wall filling the top. Legend: amber open, cyan yours, green inside. The tier chip pulses, the front-row seat card says *Take this seat*. | "Amber is open. The chip finds the front row, nearest the centre." |
 | 4 | 0:26–0:46 | 0:15–0:30 | Checkout panel bottom-left. **Passkey prompt 1** (buy). Receipt: `mint 800 ms` + hash on the bar. **Passkey prompt 2** (bind a door key). `bind 650 ms` + hash. Cutaway (3 s): the mint tx on the explorer. | "The passkey *is* the account. It signs the purchase; the relayer pays the gas. A second prompt binds a door key that exists only for tonight." |
 | 5 | 0:46–1:02 | 0:30–0:38 + B-roll | The ticket: 41×41 QR, slot countdown ring beside it, `TS3:` code under it. Cutaway: one 30-second rollover (time-lapse B-roll, the code visibly changes), then the rendered ticket image from the metadata. | "The code re-signs itself every thirty seconds with that door key. A screenshot dies with the slot; a forward can't sign the next one." |

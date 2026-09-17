@@ -88,13 +88,13 @@ function friendly(code: string, fallback: string): string {
     case "SeatTaken":
       return "Someone took that seat a moment ago.";
     case "NotListed":
-      return "That seat isn't listed any more — someone may have just taken it.";
+      return "That seat is no longer listed. Someone may have taken it.";
     case "SalesClosed":
       return "Sales for this event have closed.";
     case "SeatNotInAnyTier":
       return "That seat isn't on sale.";
     case "WrongPrice":
-      return "The price changed under us — try again.";
+      return "The price changed. Try again.";
     case "CEREMONY_FAILED":
       return "The passkey prompt was cancelled.";
     case "DIFFERENT_PASSKEY":
@@ -125,7 +125,7 @@ function friendly(code: string, fallback: string): string {
     case "NETWORK":
     case "TypeError":
     case "HttpRequestError":
-      return "Couldn't reach the relayer. Check your connection and try again — nothing was charged.";
+      return "Could not reach the relayer. Check your connection and try again. Nothing was charged.";
     case "RATE_LIMITED":
     case "BUSY":
       return "The relayer is busy right now. Wait a few seconds and try again.";
@@ -140,7 +140,7 @@ function friendly(code: string, fallback: string): string {
       return "The relayer hit an error. Try again in a moment; if it keeps happening the chain may be congested.";
     case "WaitForTransactionReceiptTimeoutError":
     case "TimeoutError":
-      return "The chain is slow to confirm. Your seat may still land — give it a moment before retrying.";
+      return "The chain is slow to confirm. Wait before retrying because your seat may still confirm.";
     case "BAD_FORWARD_REQUEST":
     case "BAD_DEADLINE":
       return "The signed request went stale before it was relayed. Try again.";

@@ -105,7 +105,7 @@ once §4 passes on `https://turnstile.work`.
       still on `https://<final>`.
 - [x] `https://<final>/api/events/1/tickets/1/image.svg` renders (the footer reads `0x79a3…21B5 · 1 of 300`).
 
-## 4. Smoke and judge path on the new origin
+## 4. Smoke and developer guided path on the new origin
 
 From `turnstile/` with foundry on `PATH`:
 

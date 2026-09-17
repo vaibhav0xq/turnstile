@@ -54,8 +54,7 @@ export function ResaleControls({ config, event, tokenId, state }: ResaleProps) {
           <div>
             <div className="text-sm">Listed for {formatMon(state.listingPrice)}</div>
             <div className="mt-1 text-xs text-muted">
-              It shows on the map as a resale seat. Your entry code keeps working until someone buys it;
-              walking in cancels the listing.
+              Your code works until sale. Check-in cancels the listing.
             </div>
           </div>
           <Button
@@ -107,14 +106,12 @@ export function ResaleControls({ config, event, tokenId, state }: ResaleProps) {
     <div className="w-full rounded-2xl border border-line p-4" data-testid="resale-form">
       <div className="text-sm">{face === 0n ? "Pass this seat on" : "List for resale"}</div>
       {face === 0n ? (
-        <div className="mt-1 text-xs text-muted">
-          Free tickets pass on for free. Whoever takes it binds their own door key and yours stops working.
-        </div>
+        <div className="mt-1 text-xs text-muted">The new holder binds a door key. Yours stops working.</div>
       ) : (
         <>
           <div className="mt-1 text-xs text-muted">
-            Cap {formatMon(cap)} ({event.resaleCapBps / 100}% of face). The organiser keeps{" "}
-            {event.resaleFeeBps / 100}% of the sale; the rest lands in your account the moment it sells.
+            Cap {formatMon(cap)} ({event.resaleCapBps / 100}% of face). Organiser fee:{" "}
+            {event.resaleFeeBps / 100}%.
           </div>
           <label className="mt-3 flex items-center gap-3">
             <input

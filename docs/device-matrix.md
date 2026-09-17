@@ -49,6 +49,10 @@ Run 1 (`delicate-bienenstitch-69f66f.netlify.app`, spike v1) failed on the first
 
 ## Decisions this matrix feeds
 
+- Renderer defaults are device-based. Phones start at `min` with no post-processing. Integrated GPUs,
+  tablets and small machines start at `low`. Only discrete GPUs and Apple GPUs start at `high`.
+- The `?perf=1` overlay and `/city?tour=auto` guided run are developer tools. The guided run is not a required
+  device-matrix path as of 17 Sep 2026. The public control was removed after freezes on a Redmi Note 11.
 - Which providers the onboarding copy names as "works" vs "use your phone". **Now known:** Android Chrome + Google Password Manager works end to end; Windows laptops work through the phone-QR sheet with that passkey.
 - Whether `createPasskeyWithPrfOutput` costs 1 or 2 prompts on the demo phone (affects the time-to-first-transaction number we put on screen). **Still open** — prompt counts not reported.
 - Whether the judge's second-device test should be shown with a synced passkey (same Apple/Google account) or with the hybrid QR sheet — pick the one that passed cleanly here. **Decided:** hybrid QR sheet with the phone as authenticator (passed; and it is the only path that works on a judge's laptop, which never shares your Google account).

@@ -51,7 +51,7 @@ export function LiveChip({ chainId, className = "" }: { chainId: number | undefi
 export function LiveOff({ what }: { what: string }) {
   return (
     <div className="text-xs text-muted" data-testid="live-off">
-      {what} unavailable — this deployment has no indexer configured.
+      {what} unavailable. This deployment has no indexer configured.
     </div>
   );
 }
@@ -59,7 +59,7 @@ export function LiveOff({ what }: { what: string }) {
 export function LiveFail({ error, retry }: { error: Error; retry: () => void }) {
   return (
     <div className="flex flex-wrap items-center gap-2 text-xs text-red" data-testid="live-fail">
-      <span>{error.message} — nothing is shown rather than stale numbers.</span>
+      <span>{error.message}. No stale values are shown.</span>
       <button type="button" className="chip mono hover:bg-ink-2" onClick={retry}>
         Retry
       </button>

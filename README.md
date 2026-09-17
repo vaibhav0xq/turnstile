@@ -1,10 +1,19 @@
 # Turnstile
 
 Identity-bound tickets and access on Monad. One passkey buys the ticket, opens the door and holds the
-private passport — no seed phrase, no wallet app, no screenshot that can be resold.
+private passport. There is no seed phrase, wallet app or screenshot that can be resold.
 
-Built solo for **Monad Metropolis** (1 Sep – 13 Oct 2026), Track 3 · Social, Attention & Culture.
-Bounty targets: Mera UX, Mera "One Passkey, Many Keys", Envio, Alchemy.
+Built solo for **Monad Metropolis** from 1 September to 13 October 2026.
+
+## Monad Metropolis submission
+
+- **Track 03: Social, Attention & Culture**
+- **Best Mera-Powered UX on Monad** (Monad Foundation): Mera passkeys create the account and approve product actions without a wallet app.
+- **Mera: One Passkey, Many Keys** (Monad Foundation): one passkey derives separate account, per-event door and encrypted vault keys.
+- **Best Use of Envio** (Envio HyperIndex): the hosted indexer powers the live board, city pulse, attendance history and seat provenance.
+- **Best Projects using Alchemy** (Alchemy, credits): the relayer and browser use the Alchemy RPC with a public read fallback.
+- **Network:** Monad testnet, chain ID `10143`
+- **Live site:** <https://turnstile.work>
 
 ## How it works
 
@@ -65,13 +74,13 @@ pnpm smoke                              # optional: buy → bind → resale roun
 pnpm seed:night                         # optional: a crowd, two booths, a resale and check-ins on the newest event
 ```
 
-**Judge mode** — the button on the city page (`/city`, or `/city?tour=auto`) walks the whole thing in about two
-minutes: city → seat → checkout → ticket → door → your seat lit green under a followspot, with the mint /
-bind / admit transaction hashes on the last card. The tour only advances when the chain says the seat is
-checked in; it presses the buttons for you except the one that opens the passkey prompt, which is yours.
-`pnpm --filter @turnstile/web run judge -- --base <origin>` runs that path headless (a virtual platform
-authenticator answers the prompts; `--seed x` uses a dev identity on dev builds) and prints the per-step
-timings; frames land in `apps/web/shots/`. The demo video follows it: `docs/demo-video-storyboard.md`.
+### Developer verification
+
+The guided run is developer tooling and is not linked from the public product. Run
+`pnpm --filter @turnstile/web run judge -- --base <origin>` to drive headless Chromium through
+`/city?tour=auto`. A virtual platform authenticator answers the prompts. The script prints per-step timings
+and writes frames to `apps/web/shots/`. The demo video capture plan is in
+[`docs/demo-video-storyboard.md`](docs/demo-video-storyboard.md).
 
 On a small machine (≤ 2 GB) build the web app with `pnpm --filter @turnstile/web build:lite` and let the
 relayer serve it (`STATIC_DIR=../web/dist-lite`); `apps/web/README.md` has the details and the headless
@@ -143,9 +152,9 @@ dashboard is). It synced the factory's history from block 62 312 967 in under th
 Live layer reads it — organiser live board, city pulse, attendance record, seat provenance, each with an
 "Envio · in sync" freshness chip that compares the indexer's head with the relayer's — and says
 "unavailable" rather than inventing rows when the endpoint is missing or behind.
-Judge mode (guided two-minute run, finale on chain truth) and SPEC v1.3/v1.4's denser entry codes (`TS2:`
-QR-alphanumeric, then `TS3:` with an RFC 9285 base45 blob: the ticket QR drops from 57 to 49 to 41 modules;
-`TS1|` and `TS2:` still decode). Venue tiers are now derived from the seat rows.
+The developer guided run ends on confirmed chain state. SPEC v1.3 and v1.4 add denser entry codes (`TS2:`
+QR-alphanumeric then `TS3:` with an RFC 9285 base45 blob). The ticket QR drops from 57 to 49 to 41 modules.
+`TS1|` and `TS2:` still decode. Venue tiers are now derived from the seat rows.
 Deployed to Monad testnet (`deployments/10143.json`, verified on MonadVision) with the two seed events; sales
 stay open until 13 Nov 2026. Web + relayer live on the final domain <https://turnstile.work> since 15 Sep 2026
 (custom domain, Alchemy RPC with public fallback, passports in Postgres, no environment label): the final-origin

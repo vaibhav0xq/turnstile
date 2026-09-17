@@ -38,8 +38,8 @@ export function Gate({ config, seatMap }: { config: AppConfig | undefined; seatM
           <Stat label="Capacity" value={event.capacity} />
         </div>
         <p className="fade-up-late mt-3 max-w-xs text-xs text-muted">
-          The relayer recovers the signer from the code, checks it against the bound door key on-chain, then
-          submits <span className="mono">checkIn</span> from the gate wallet.
+          The relayer verifies the signed code and bound door key then submits{" "}
+          <span className="mono">checkIn</span>.
         </p>
         {!config.gateProtected ? (
           <div
@@ -47,7 +47,7 @@ export function Gate({ config, seatMap }: { config: AppConfig | undefined; seatM
             data-testid="gate-demo"
           >
             <span className="chip mono shrink-0 text-amber">open door · demo</span>
-            <span>Anyone with this link works the door tonight. A real door carries an operator token.</span>
+            <span>This link operates the demo door. Production doors require an operator token.</span>
           </div>
         ) : null}
       </div>

@@ -59,7 +59,7 @@ export function TopBar({ config, onSignIn }: { config: AppConfig | undefined; on
   const envLabel = environmentLabel(config?.environmentLabel, window.location.hostname);
   // A rehearsal origin says so in the tab as well as the header — the staging URL is not the product's home.
   useEffect(() => {
-    const base = "Turnstile — one passkey, every door";
+    const base = "Turnstile: one passkey, every door";
     document.title = envLabel ? `[${envLabel}] ${base}` : base;
   }, [envLabel]);
 
@@ -69,11 +69,11 @@ export function TopBar({ config, onSignIn }: { config: AppConfig | undefined; on
       <Link
         to={city ? "/" : "/city"}
         className="pointer-events-auto flex min-w-0 items-center gap-2 sm:gap-3"
-        aria-label={city ? "Turnstile — about" : "Turnstile — the city"}
+        aria-label={city ? "Turnstile: about" : "Turnstile: the city"}
       >
         <span
           className="relative grid h-9 w-9 shrink-0 place-items-center rounded-full border border-line bg-ink-2/70"
-          title={envLabel ? `${envLabel} — internal rehearsal origin, not the final host` : undefined}
+          title={envLabel ? `${envLabel}: internal rehearsal origin, not the final host` : undefined}
         >
           <svg width="18" height="18" viewBox="0 0 64 64" aria-hidden>
             <circle cx="32" cy="32" r="17" fill="none" stroke="#ffb457" strokeWidth="4" />
@@ -98,7 +98,7 @@ export function TopBar({ config, onSignIn }: { config: AppConfig | undefined; on
           <span className="hidden sm:contents">
             <span
               className="chip mono shrink-0 border-amber/60 bg-amber/10 text-[10px] uppercase tracking-[0.2em] text-amber"
-              title="Internal rehearsal origin — not the final host. Passkeys made here stay here."
+              title="Internal rehearsal origin. Passkeys made here stay here."
               data-testid="environment-label"
             >
               {envLabel}
@@ -273,7 +273,7 @@ export function ConnectionNotice({ error }: { error: Error | null }) {
     <div className="fixed inset-x-0 top-20 z-40 flex justify-center px-4">
       <div className="glass flex items-center gap-3 rounded-2xl px-4 py-3 text-sm">
         <Dot tone="red" />
-        Can't reach the relayer — is <span className="mono">apps/relayer</span> running?
+        Cannot reach the relayer. Is <span className="mono">apps/relayer</span> running?
       </div>
     </div>
   );

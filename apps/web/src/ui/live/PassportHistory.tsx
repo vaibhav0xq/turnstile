@@ -63,7 +63,7 @@ function HistoryBody({ config, address }: { config: AppConfig; address: string }
   if (!fan) {
     return (
       <div className="text-sm text-muted" data-testid="passport-history-empty">
-        Nothing on chain yet for this passkey — the first seat you take starts the record.
+        No on-chain history for this passkey yet.
       </div>
     );
   }

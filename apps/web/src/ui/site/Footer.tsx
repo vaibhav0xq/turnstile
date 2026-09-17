@@ -10,8 +10,7 @@ export function Footer({ config }: { config: AppConfig | undefined }) {
         <div>
           <div className="display text-2xl text-paper">Turnstile</div>
           <div className="mt-1 max-w-sm">
-            Identity-bound tickets and access on Monad. Built for Monad Metropolis — Social, Attention &
-            Culture.
+            Identity-bound tickets on Monad. Built for Monad Metropolis 2026 · Monad testnet.
           </div>
         </div>
         <ul className="mono flex flex-wrap gap-x-5 gap-y-2 text-[11px] uppercase tracking-[0.16em]">

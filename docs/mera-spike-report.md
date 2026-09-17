@@ -60,7 +60,9 @@ Rules: derived bytes are zeroised after use; nothing derived is ever persisted; 
 - All WebAuthn calls inside a user gesture (iOS Safari requirement) — never on mount.
 - Sessions in a module-scoped store (Zustand outside React state); UI reads only `address`/`expiresAt`; every signing path catches `SESSION_ENDED` → re-prompt sheet, never a dead button.
 - Stateless by construction: state = chain (via Envio) + encrypted blobs. Blob store API: `GET /vault/:address` unauthenticated (ciphertext is safe to serve); `PUT /vault/:address` requires an EIP-191 signature from the account over `keccak(blob) || nonce` so strangers cannot overwrite.
-- Judge mode panel: TTFT readout (taps + ms from first paint to receipt), "wipe storage & reload", "open on second device" QR — lifted from spike step 6.
+- The original proposal included a public guided-run panel with TTFT, reset and second-device controls.
+  Decision 17 Sep 2026: the public control was removed after freezes on a Redmi Note 11. The guided run
+  remains developer tooling and is not a required product path.
 - Capability pre-check with `getClientCapabilities()`; designed `PRF_UNAVAILABLE` state: "This browser can't hold a Turnstile passkey — use your phone, or sign in to Google Password Manager".
 - Bundle: viem alone is ~240 KB minified — import from `viem` subpaths / rely on Next.js tree-shaking; keep Mera + viem out of the 3D landing chunk.
 

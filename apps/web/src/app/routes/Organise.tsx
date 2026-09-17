@@ -22,8 +22,8 @@ import {
 import { useOrganise } from "../organise";
 
 const VENUES: Array<{ id: EventDraft["venue"]; label: string; hint: string }> = [
-  { id: "club", label: "Club", hint: "1st tier fills the floor, 2nd the booths, the rest the gallery." },
-  { id: "theatre", label: "Theatre", hint: "Tiers become stalls, circle and balcony in that order." },
+  { id: "club", label: "Club", hint: "Tiers fill the floor, booths and gallery." },
+  { id: "theatre", label: "Theatre", hint: "Tiers become stalls, circle and balcony." },
 ];
 
 const STEP_COPY: Record<string, string> = {
@@ -95,9 +95,8 @@ export function Organise({ config }: { config: AppConfig | undefined }) {
           <Kicker>Organiser</Kicker>
           <div className="display mt-1 text-3xl">Host a night</div>
           <p className="mt-1 text-sm text-muted">
-            Publish an event from your passkey. Fans take seats with one tap; the door checks them in with
-            this deployment's gate key. Publishing is the one thing here that costs gas — on testnet the
-            relayer tops you up.
+            Publish with your passkey. The deployment gate key checks fans in. Testnet publishing gas is
+            topped up by the relayer.
           </p>
 
           {created && config ? (
@@ -164,7 +163,7 @@ export function Organise({ config }: { config: AppConfig | undefined }) {
             <Field
               label="Doors open"
               issue={issueFor("startsAt")}
-              hint="Resale closes at doors; sales too, unless you set an earlier cut-off later."
+              hint="Resale and sales close when doors open."
             >
               <input
                 className="field"
@@ -178,10 +177,7 @@ export function Organise({ config }: { config: AppConfig | undefined }) {
               />
             </Field>
 
-            <Field
-              label="Tiers"
-              hint="Seat numbers run 1…, 1001…, 2001… per tier. Price 0 makes a tier free and fully gasless for fans."
-            >
+            <Field label="Tiers" hint="Price 0 makes a tier free with sponsored gas.">
               <div className="flex flex-col gap-2">
                 {draft.tiers.map((tier, index) => (
                   <div key={tier.key} className="flex flex-col gap-1">
@@ -260,7 +256,7 @@ export function Organise({ config }: { config: AppConfig | undefined }) {
             <Field
               label="Resale"
               issue={issueFor("resale")}
-              hint="Cap is a percentage of face value; 0 % turns resale off. The fee is your cut of every resale."
+              hint="Set the price cap and organiser fee. Zero disables resale."
             >
               <div className="flex gap-2">
                 <label className="relative flex-1">
@@ -290,10 +286,7 @@ export function Organise({ config }: { config: AppConfig | undefined }) {
               </div>
             </Field>
 
-            <Field
-              label="Door"
-              hint="Whoever opens /gate/<event> on this deployment checks people in with this key. More gates can be granted on-chain later."
-            >
+            <Field label="Door" hint="This deployment key submits door check-ins.">
               <div className="mono text-xs text-paper/80">{config ? config.gate : "…"}</div>
             </Field>
 
@@ -392,8 +385,7 @@ function Published({
         </button>
       </div>
       <p className="mt-2 text-xs text-muted">
-        Its beacon is lit in the city. Send fans the room; open the door link on the phone or tablet that
-        works the gate; the live board below follows the night.
+        Share the room and door links. The live board follows the event.
       </p>
       {warning ? (
         <p className="mt-2 text-xs text-amber" data-testid="organise-warning">

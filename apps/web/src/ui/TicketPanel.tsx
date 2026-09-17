@@ -144,8 +144,7 @@ export function TicketPanel({
           <div className="rounded-2xl border border-line p-4 text-sm">
             <div>Seat {tokenId} hasn't been taken yet.</div>
             <div className="mt-1 text-xs text-muted">
-              {tier ? `${tier.name} · ${formatMon(tierPrice(tier))} — ` : ""}pick it in the room to make it
-              yours.
+              {tier ? `${tier.name} · ${formatMon(tierPrice(tier))}. ` : ""}Choose it from the room.
             </div>
             <Link
               to={`/e/${event.address}`}
@@ -168,8 +167,8 @@ export function TicketPanel({
             </div>
             <div className="mt-1 text-xs text-muted">
               {fan
-                ? "Entry codes only appear for the passkey that holds the seat. If this is your ticket, sign in with the passkey that bought it."
-                : "Entry codes only appear for the passkey that holds the seat. Sign in to show yours."}
+                ? "Use the passkey that bought this ticket."
+                : "Sign in with the passkey holding this ticket."}
             </div>
             {!fan ? (
               <Button
@@ -181,18 +180,13 @@ export function TicketPanel({
               </Button>
             ) : null}
             {state.listed && !checkedIn ? (
-              <div className="mono mt-2 text-[11px] text-muted">
-                Pick it from the room to buy it — the listing is filled from the seat map.
-              </div>
+              <div className="mono mt-2 text-[11px] text-muted">Buy this listing from the room.</div>
             ) : null}
           </div>
         ) : !bound ? (
           <div className="rounded-2xl border border-amber/30 bg-amber/10 p-4">
             <div className="text-sm">Bind your door key</div>
-            <div className="mt-1 text-xs text-muted">
-              One more passkey prompt derives a key that only exists for this event. It never leaves the
-              device.
-            </div>
+            <div className="mt-1 text-xs text-muted">Your passkey derives a separate key for this event.</div>
             <Button
               variant="amber"
               className="mt-3"
@@ -207,7 +201,7 @@ export function TicketPanel({
           <div className="rounded-2xl border border-line p-4">
             <div className="text-sm">Show your entry code</div>
             <div className="mt-1 text-xs text-muted">
-              A passkey prompt re-derives the door key for this event. Codes rotate every 30 seconds.
+              Re-derive this event's door key. Codes rotate every 30 seconds.
             </div>
             <Button
               variant="primary"
@@ -220,8 +214,7 @@ export function TicketPanel({
             </Button>
             {door && !doorMatches ? (
               <div className="mono mt-2 text-[11px] text-red">
-                This device derives a different door key than the one bound. Re-bind from the passkey that
-                bought it.
+                Different door key. Use the passkey that bought this ticket.
               </div>
             ) : null}
           </div>
@@ -338,10 +331,7 @@ function CodeView({
             {Math.ceil(remaining / 1000)}
           </span>
         </span>
-        <span>
-          Rotates every 30 s and is accepted for about a minute. A screenshot goes stale; a forward can't sign
-          the next one.
-        </span>
+        <span>Rotates every 30 seconds. Valid for about a minute.</span>
       </div>
       <div
         className={`mono mt-2 break-all text-[10px] leading-relaxed ${big ? "max-w-[86vw] text-ink/70" : "text-muted"}`}
@@ -372,16 +362,14 @@ function CodeView({
             {copied ? "Copied" : "Copy code"}
           </Button>
           <span className="text-[11px] text-muted">
-            {gateOpen
-              ? "One device? The door view opens with this code."
-              : "At the door, tap the code to fill the screen and hold it to the scanner."}
+            {gateOpen ? "The door view opens with this code." : "Show this code to the scanner."}
           </span>
         </div>
       ) : null}
       {big ? (
         <>
           <div className="mt-4 text-center text-sm text-ink/70">
-            Show this at the door. Brightness up; the code keeps renewing while this is open.
+            Show this at the door. The code renews while open.
           </div>
           <Button variant="ghost" className="mt-4 !border-ink/20 !text-ink" onClick={onToggle}>
             Done

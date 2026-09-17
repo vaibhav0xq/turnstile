@@ -20,8 +20,7 @@ export function UnderTheHood({ config }: { config: AppConfig | undefined }) {
   return (
     <dl className="grid gap-x-10 gap-y-8 sm:grid-cols-2 lg:grid-cols-3" data-testid="under-the-hood">
       <Credit term="Monad" detail={config ? chainName(config.chainId) : "connecting…"}>
-        Every seat, door key and check-in is a transaction. The fan path in the demo is three of them — mint,
-        bind the door key, check in — each confirmed in about a second.
+        Seats, door keys and check-ins are on-chain transactions.
       </Credit>
       <Credit
         term="One passkey, many keys"
@@ -31,16 +30,14 @@ export function UnderTheHood({ config }: { config: AppConfig | undefined }) {
           </a>
         }
       >
-        The WebAuthn PRF extension turns one passkey into an account key (Mera's default salt, so it is the
-        same account in any Mera app), a presence key for the door and a vault key — each under its own salt.
+        Mera derives separate account, door and vault keys from one passkey using distinct salts.
       </Credit>
       <Credit
         term="Sponsored transactions"
         detail={config ? <Addr config={config} address={config.forwarder} label="forwarder" /> : null}
       >
-        An ERC-2771 forwarder: your passkey signs the request, the relayer submits it and pays the gas, and
-        the contract still sees your address as the sender. Free seats, door keys, listings and check-ins go
-        this way; a paid seat is sent from your own account.
+        The ERC-2771 relayer sponsors free seats, door keys, resale actions and check-ins. Paid seats use your
+        account.
       </Credit>
       <Credit
         term="Envio HyperIndex"
@@ -54,8 +51,7 @@ export function UnderTheHood({ config }: { config: AppConfig | undefined }) {
           )
         }
       >
-        Powers the Live layer: the organiser's door board, the city pulse on this page, a seat's provenance
-        and your passport history — all read from the indexer, never invented client-side.
+        Indexes contracts for live door boards, city activity, seat provenance and passport history.
       </Credit>
       <Credit
         term="RPC"
@@ -65,8 +61,7 @@ export function UnderTheHood({ config }: { config: AppConfig | undefined }) {
             : "connecting…"
         }
       >
-        The browser reads the chain directly — seat maps refresh every few seconds, confirmations are polled
-        several times a second — and falls over to the next endpoint on its own when one errors.
+        The browser reads the chain through this provider. The relayer submits through it too.
       </Credit>
       <Credit
         term="Contracts & source"
@@ -82,8 +77,16 @@ export function UnderTheHood({ config }: { config: AppConfig | undefined }) {
           </span>
         }
       >
-        A factory deploys one event contract per night — ERC-721 seats that only move through the capped
-        resale — plus the forwarder. Foundry tests, shared test vectors and the indexer live in the same repo.
+        The factory deploys an ERC-721 event contract. Identity-bound seats move only through capped resale.
+      </Credit>
+      <Credit term="Monad Metropolis" detail="Monad testnet · 10143">
+        <ul className="flex flex-col gap-1">
+          <li>Track: Social, Attention &amp; Culture.</li>
+          <li>Best Mera-Powered UX on Monad: passkey account. No wallet or app.</li>
+          <li>Mera: One Passkey, Many Keys: separate account, door and vault keys from one passkey.</li>
+          <li>Envio HyperIndex: indexes contracts and feeds door board, city pulse and seat provenance.</li>
+          <li>Best Projects using Alchemy: Monad RPC for the browser and relayer.</li>
+        </ul>
       </Credit>
     </dl>
   );

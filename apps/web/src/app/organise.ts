@@ -173,7 +173,7 @@ export const useOrganise = create<OrganiseState>()((set) => ({
           warning = {
             code: "BASE_URI",
             message:
-              "The event is live, but its metadata prefix could not be set; ticket images will not load until the organiser runs script/SetBaseURI.s.sol.",
+              "The event is live. Its metadata prefix could not be set. Ticket images require script/SetBaseURI.s.sol.",
           };
         }
       }

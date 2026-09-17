@@ -77,12 +77,12 @@ export function Me({ config }: { config: AppConfig | undefined }) {
             ? `session live · ${formatCountdown(live.expiresAt - Date.now())} left`
             : knownCredentialId
               ? "passkey known on this device · signed out"
-              : "one passkey becomes your account, your door key and your private vault"}
+              : "one passkey · separate account, door and vault keys"}
         </div>
         {live ? (
           <p className="mt-1 text-[11px] text-muted">
-            Buying keeps working for {Math.round(ACCOUNT_SESSION_TTL_MS / 60_000)} minutes after a prompt;
-            after that the next tap asks your passkey again. Nothing is lost when it lapses.
+            Session: {Math.round(ACCOUNT_SESSION_TTL_MS / 60_000)} minutes. Your passkey is requested again
+            after expiry.
           </p>
         ) : null}
 
@@ -106,7 +106,7 @@ export function Me({ config }: { config: AppConfig | undefined }) {
           {knownCredentialId ? (
             <Button
               onClick={forgetDevice}
-              title="Stateless test: forget everything this device knows; the passkey stays in the platform"
+              title="Forget local account details. The platform keeps the passkey."
             >
               Forget this device
             </Button>
@@ -124,21 +124,9 @@ export function Me({ config }: { config: AppConfig | undefined }) {
             </span>
           </summary>
           <div className="mt-2 flex flex-col gap-2 text-xs text-muted">
-            <p>
-              A key your phone or laptop makes and keeps — unlocked with your face, fingerprint or device PIN.
-              There is no password to remember and nothing to install. Most password managers (Apple, Google,
-              Microsoft) sync it between your own devices; a security key or a locked-down manager keeps it on
-              one.
-            </p>
-            <p>
-              Here one passkey does three jobs. It signs as your account on Monad, so a seat is minted to you
-              with no wallet. It derives a door key that exists for one event only, which signs the code you
-              show at the gate. And it opens your private vault, which only that passkey can read.
-            </p>
-            <p>
-              You will see a prompt when you buy, once more when the door key is made, and again after a
-              session lapses. A prompt on someone else's device does nothing: the key never leaves yours.
-            </p>
+            <p>Your device stores the passkey. Face, fingerprint or PIN approval replaces a password.</p>
+            <p>Mera derives separate account, per-event door and private vault keys from it.</p>
+            <p>Synced passkeys can restore the same keys on your other devices.</p>
           </div>
         </details>
 
@@ -220,8 +208,7 @@ export function Me({ config }: { config: AppConfig | undefined }) {
             </div>
           ) : (
             <p className="mt-2 text-xs text-muted">
-              A name and a line about each night, readable only after a passkey prompt — on any device, after
-              a wipe. The relayer keeps the ciphertext and cannot open it.
+              Passkey-encrypted notes. The relayer stores ciphertext it cannot read.
             </p>
           )}
           {passport.error ? (

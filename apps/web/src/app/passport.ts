@@ -28,7 +28,7 @@ export interface PassportState {
 
 function explain(error: unknown): string {
   if (error instanceof ApiError) {
-    if (error.code === "REPLAYED") return "Another device saved a newer passport — reopen to pick it up.";
+    if (error.code === "REPLAYED") return "Another device saved a newer passport. Reopen to load it.";
     if (error.code === "STALE") return "This device's clock is off by more than five minutes.";
     return `${error.code}: ${error.message}`;
   }

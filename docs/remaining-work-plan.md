@@ -6,7 +6,7 @@ are still unpublished (`research/sources/official-09-dashboard-status.md`). Stag
 submission: the plan below takes it to a public website and a product a judge can use unassisted, then to the
 video.
 
-Strategy stays as selected — **Track: Social, Attention & Culture**; bounties **Best Mera-Powered UX**,
+Strategy stays as selected: **Track 03: Social, Attention & Culture**; bounties **Best Mera-Powered UX on Monad**,
 **Mera: One Passkey, Many Keys**, **Best Use of Envio**, **Best Projects using Alchemy**. Envio has to be a
 feature a judge can see and poke, not a line in the README.
 
@@ -19,7 +19,7 @@ feature a judge can see and poke, not a line in the README.
 | Contracts | `TurnstileFactory` + `TurnstileEvent` (ERC-721 seats, tiers, capped resale + fee, door-key binding, slot-bound EIP-712 entry codes, ERC-2771). Deployed and verified on Monad testnet with two seed events. | 62 Foundry tests, gas snapshot, ABI export check in CI; `packages/contracts/deployments/10143.json`; `docs/deploy-monad-testnet.md` |
 | Identity | Mera 0.2.0 PRF namespaces: account (BIP-32 from PRF), per-event door keys (HKDF, chain + event in `info`), vault (AES-256-GCM). 15-min account session, 60-min door session, no keys persisted. | 54 tests, 17 vectors checked in CI; `docs/mera-spike-report.md` |
 | Relayer | ERC-2771 relay with EIP-712 verification, gate lookup / check-in, passport ciphertext sync (Postgres, replay-safe), testnet drip, token metadata + `image.svg`, static SPA serving. | `pnpm smoke` end-to-end on testnet; `/api/health` on staging |
-| Web | One persistent R3F world: city → venue (club, theatre, generic) → seat → checkout → ticket (rotating `TS3:` QR) → gate → lit seat. Resale (list / delist / pass on), organiser publish, passport page with vault. Judge mode: 38 s / 6 taps / 2 passkey prompts on staging, three testnet transactions. | `pnpm --filter @turnstile/web run judge -- --base <origin>`; `apps/web/shots/judge-*.png` |
+| Web | One persistent R3F world: city → venue (club, theatre, generic) → seat → checkout → ticket (rotating `TS3:` QR) → gate → lit seat. Resale (list / delist / pass on), organiser publish, passport page with vault. Developer guided run: 38 s / 6 taps / 2 passkey prompts on staging, three testnet transactions. | `pnpm --filter @turnstile/web run judge -- --base <origin>`; `apps/web/shots/judge-*.png` |
 | Indexer | Envio HyperIndex config + handlers for all seat-lifecycle events; `Event` / `Ticket` / `Fan` / `Activity` with derived counters, volumes, fees, handovers. **Not deployed, not consumed by the app.** | 5 handler tests; `packages/indexer/README.md` |
 | Devices | Android Chrome + Google Password Manager: account / door / vault green on a real phone; Windows laptop via hybrid QR (user-reported). | `docs/device-matrix.md` |
 | Ops | Final domain `https://turnstile.work` live since 15 Sep 2026 (custom domain, Alchemy RPC + public fallback, label off); final preflight 34/34 (`www` linked, page and `/api` land on the apex); smoke and judge run pass there; `baseURI` of both events re-pointed to it; CI green; Envio checklist written. | `docs/final-domain-migration.md`, `docs/envio-hosted-handoff.md`, `docs/demo-video-storyboard.md` |
@@ -28,14 +28,14 @@ feature a judge can see and poke, not a line in the README.
 
 Grouped by what a judge would hit first.
 
-**Public website (none today).** `/` is a hero, a judge-mode button, two event cards and an organiser link over
+**Public website (none today).** `/` is a hero, two event cards and an organiser link over
 the city. There is no explanation of how it works, who it is for, what the venue sees, why a passkey and not a
 wallet, what runs on Monad, or where the code is. No footer, no GitHub / contract / explorer links, no FAQ, no
 Open Graph card (a submission link unfurls with no image), no 404 page.
 
-**Judge-only chrome shown to everyone.** The top-centre stopwatch (`landing · 0 taps · 20.1 s · sponsored by
+**Developer chrome shown to everyone.** The top-centre stopwatch (`landing · 0 taps · 20.1 s · sponsored by
 relayer`) renders for every desktop visitor on every route (`apps/web/src/ui/Shell.tsx` `Readout`, mounted
-unconditionally in `App.tsx`). It reads as a bug outside judge mode.
+unconditionally in `App.tsx`). It reads as a bug outside the developer guided run.
 
 **Envio is invisible.** Nothing in the app reads the indexer. Organisers see three counters from chain reads,
 fans see current seats only, nobody sees history, feeds or volumes. See §6.
@@ -70,8 +70,9 @@ scroll. Same route, same world; DOM sections below the fold, the camera holds th
 
 1. **Hero.** Keep *Access that follows you.* Add a two-line sub-claim that names the mechanism: "One passkey
    is your account, your door key and your private vault. Nothing to install, nothing to screenshot." Primary
-   CTA **Enter the city** (scrolls the camera into the beacon list / focuses the first event); secondary pill
-   **Judge mode · 2 minutes** kept prominent through 14 Oct. Move the stopwatch into judge mode only.
+   CTA **Enter the city** (scrolls the camera into the beacon list / focuses the first event). The original plan
+   kept a public guided-run pill through 14 Oct. That path was removed from the public product on 17 Sep 2026
+   after freezes on a Redmi Note 11. It remains developer tooling and is not a required path.
 2. **Tonight in the city.** Existing cards, plus live numbers under each (inside · sold · last check-in ago)
    from Envio (§6), and a one-line **pulse ticker** of the latest activity across events.
 3. **How it works — three frames.** *Pick a seat* (the venue in 3D, tap once) · *Your passkey signs* (one
@@ -138,14 +139,14 @@ Ordered by what appears on the judge path.
    sparkles or volumetric cones mounted — and every cut links its shader programs behind the flash or the
    curtain (`scene/CompileGate.tsx`), so the link stalls the Redmi Note 11 showed on drawn frames (2.3 s at
    boot, 2.0 s at the city → room cut) happen under the overlay. `?perf=1` overlays fps, worst frame, draw
-   calls and compile time; the judge-mode chip is hidden on phones. Open: steady-state fps on the Redmi
+    calls and compile time. The public guided-run chip was later removed on all devices. Open: steady-state fps on the Redmi
    from the overlay, then the light budget at `min`.
 9. **Verification.** Re-run the judge frames after each step; keep `shots/judge-*.png` as the reference set.
 
 ## 5. UI/UX fixes on current surfaces
 
 Shell
-- Stopwatch `Readout` only when the tour is active or was completed this session.
+- Stopwatch `Readout` only during a developer guided run or after one was completed this session.
 - Header at < 640 px: wordmark returns as icon + "Turnstile", actions collapse to Passport + one primary; no
   wrapping at 390 px on `/e/*` and `/gate/*`.
 - Scrim behind route headers over bright scene content (LED wall on mobile).
@@ -162,7 +163,7 @@ Checkout
 - Failure copy for: passkey prompt cancelled (nothing charged), seat taken during checkout (auto-pick the next
   seat with a one-tap confirm), relayer rate-limited or unreachable (retry with backoff, plain sentence), tx
   reverted (show the reason from simulation).
-- A visible receipt line (block, ms) after mint — already computed for judge mode; show it to everyone.
+- A visible receipt line (block, ms) after mint. It is already computed for the developer guided run. Show it to everyone.
 
 Ticket
 - Non-owner view: "Seat 1 · General Admission — held by 0xFaD3…1BEE · checked in 11:46 PM", no "You're in.".
@@ -326,7 +327,7 @@ prompt counts, timings and the JSON from the device page.
 |---|---|---|---|
 | 1 | Domain + hosting: buy `turnstile.work`, link apex + `www`, Alchemy keys, `VITE_RP_ID`, Reserved VM, migration §8 steps 1–4 (not `baseURI` yet). Code side done 14 Sep: `www` → apex redirect middleware (`REDIRECT_HOSTS`), viem `fallback` transports in relayer and browser (`RPC_FALLBACK_URLS`, `PUBLIC_RPC_FALLBACK_URLS`), `/api/health` `rpc` block and `/api/config.rpcProvider` | 1.5 days + DNS wait | 16 Sep |
 | 2 | Envio: deploy indexer, schema additions (`Stats`, `EventMinute`, `Handover`), client + four surfaces, freshness chip. Code side done 14 Sep: schema additions, `apps/web/src/live/` client + hooks, organiser live board, city pulse, attendance record, seat provenance, freshness chip against `/api/health`, `scripts/mock-indexer.mjs` for UI work. Left: the hosted deploy and `VITE_ENVIO_GRAPHQL_URL` in production | 3 days | 20 Sep |
-| 3 | App surface fixes (§5) — done 14 Sep: judge-only stopwatch, mobile header, scrims, 404 / loading / unknown-seat states, non-owner and unsold ticket copy, checkout failure copy, gate operator token, tour target (newest free event + `?event=`) | 2 days | 22 Sep |
+| 3 | App surface fixes (§5). Done 14 Sep: developer-only stopwatch, mobile header, scrims, 404 / loading / unknown-seat states, non-owner and unsold ticket copy, checkout failure copy, gate operator token, guided-run target (newest free event + `?event=`) | 2 days | 22 Sep |
 | 3b | Portal gate: submission fields open — read requirements, enter repo, re-confirm track + bounties, adjust this plan | 0.5 day | 22–23 Sep |
 | 4 | 3D fixes on the judge path (§4.1, 4.4, 4.5, 4.6, 4.8) — done 14 Sep: loader + flat fallback with a DOM seat list, theatre reframe, followspot wash, quality tiers (mobile) | 3 days | 25 Sep |
 | 5 | Landing / website (§3) — done 14 Sep: hero CTA + sub-claim, programme sections 01–05 with stills from the judge run, FAQ, footer, OG / manifest / robots / icons, scene chunk split (lazy `World`, 877 kB app + 1.2 MB scene). Left: `VITE_SITE_URL` on the final origin (absolute OG URLs + canonical), Lighthouse pass on the final host, city pulse numbers need the hosted Envio | 3 days | 29 Sep |
@@ -348,6 +349,7 @@ domain and Alchemy are your accounts — I prepare the exact steps and verify af
 | Hosting | **Option A** — Replit single origin + custom domain, **Reserved VM** through judging (fallback: Autoscale with max machines = 1) | No `VITE_API_URL`, no CORS. The relayer stays single-process, which its tx queue, rate limits and drip cooldown assume. |
 | Mainnet | **Testnet-only judged submission**, mainnet-ready architecture documented | Envio config keeps chain `10143` only; entity ids are chain-qualified so `143` can be added without a re-index of ids. README/write-up state the testnet deployment plainly. No mainnet keys, funds or deployments before the deadline. |
 | Demo video event | **Fresh "Opening Night" club event**, seeded the day before capture | Capture uses `?event=<address>` to target it; the judge default (no parameter) is the newest event that still has a free seat, so the seeded night is also what a judge lands on. Seed script + storyboard dry run stay in step 8. |
+| Public guided run | **Removed 17 Sep 2026. Developer tooling only.** | The owner requested removal after freezes on a Redmi Note 11. It is not a required product path. `scripts/judge-run.mjs` may still open `/city?tour=auto` for verification and capture. |
 
 Still yours to do when ready (each has an exact runbook): buy and link the domain (§8 steps 1–4), create the
 Alchemy app and keys, deploy the indexer to Envio hosted and hand back `VITE_ENVIO_GRAPHQL_URL`, publish.

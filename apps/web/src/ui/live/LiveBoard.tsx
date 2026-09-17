@@ -26,7 +26,7 @@ export function LiveBoard({ config, event }: { config: AppConfig; event: EventIn
   if (!row) {
     return (
       <div className="text-xs text-muted" data-testid="live-board-empty">
-        The indexer has not seen this night yet — it appears a few seconds after publishing.
+        The indexer has not seen this event yet. It appears after publishing.
       </div>
     );
   }
@@ -50,7 +50,7 @@ export function LiveBoard({ config, event }: { config: AppConfig; event: EventIn
       <div>
         <div className="mono text-[10px] uppercase tracking-[0.16em] text-muted">Door feed</div>
         {board.data.Activity.length === 0 ? (
-          <div className="mt-1 text-xs text-muted">Quiet so far — the first seat taken shows up here.</div>
+          <div className="mt-1 text-xs text-muted">No activity yet.</div>
         ) : (
           <ul className="mt-1.5 flex flex-col gap-1.5" data-testid="live-board-feed">
             {board.data.Activity.map((a) => (

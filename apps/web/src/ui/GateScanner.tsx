@@ -194,7 +194,7 @@ export function GateScanner({
               {camera === "idle" ? (
                 "Starting camera…"
               ) : camera === "denied" ? (
-                "No camera access. Allow it in the browser's site settings, or type the fan's code below."
+                "Camera blocked. Allow access or enter the code below."
               ) : camera === "off" ? (
                 <button
                   type="button"
@@ -207,7 +207,7 @@ export function GateScanner({
                   Start camera
                 </button>
               ) : (
-                "No camera on this device — paste a code below."
+                "No camera on this device. Enter a code below."
               )}
             </div>
           ) : null}
@@ -235,8 +235,8 @@ export function GateScanner({
           <Kicker>Operator token</Kicker>
           <p className="mt-1 text-xs text-muted">
             {unauthorised
-              ? "The relayer rejected the last token. Enter the door's operator token to admit fans."
-              : "This door is protected: enter the operator token before admitting fans."}
+              ? "Token rejected. Enter the correct operator token."
+              : "Enter the operator token before admitting fans."}
           </p>
           <div className="mt-2 flex gap-2">
             <input

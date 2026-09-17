@@ -33,12 +33,7 @@ export function SiteSections({ config }: { config: AppConfig | undefined }) {
         </ul>
       </nav>
 
-      <Section
-        id="why"
-        index={1}
-        kicker="Why identity-bound"
-        title="A ticket that is also the proof it is yours."
-      >
+      <Section id="why" index={1} kicker="Why identity-bound" title="The ticket proves who holds it.">
         <ul className="grid gap-x-10 gap-y-8 md:grid-cols-2">
           {WHY.map((point) => (
             <li key={point.title}>
@@ -49,7 +44,7 @@ export function SiteSections({ config }: { config: AppConfig | undefined }) {
         </ul>
       </Section>
 
-      <Section id="organisers" index={2} kicker="For organisers" title="Host a night in five decisions.">
+      <Section id="organisers" index={2} kicker="For organisers" title="Set the terms. Run the door.">
         <div className="grid gap-8 md:grid-cols-[1fr_auto] md:items-end">
           <ol className="flex flex-col gap-3">
             {ORGANISER_POINTS.map((line, i) => (
@@ -65,11 +60,11 @@ export function SiteSections({ config }: { config: AppConfig | undefined }) {
         </div>
       </Section>
 
-      <Section id="hood" index={3} kicker="Under the hood" title="What the demo is actually running on.">
+      <Section id="hood" index={3} kicker="Under the hood" title="The live stack.">
         <UnderTheHood config={config} />
       </Section>
 
-      <Section id="faq" index={4} kicker="FAQ" title="House rules.">
+      <Section id="faq" index={4} kicker="FAQ" title="Key details.">
         <div className="faq divide-y divide-line border-y border-line">
           {FAQ.map((item) => (
             <details key={item.q} className="group py-4">

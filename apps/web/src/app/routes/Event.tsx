@@ -125,7 +125,7 @@ export function Event({ config, seatMap }: { config: AppConfig | undefined; seat
         <Kicker className="fade-up">{formatDate(event.startsAt)}</Kicker>
         <h1 className="display fade-up mt-1 text-3xl sm:text-5xl">{event.name}</h1>
         <p className="fade-up-late mt-1.5 text-[13px] text-paper/75 sm:mt-2 sm:text-sm">
-          Pick a seat. No wallet. No app.{" "}
+          Choose a seat. No wallet or app.{" "}
           {seatMap ? `${event.capacity - [...seatMap.values()].length} left.` : ""}
         </p>
         <div className="chips-compact fade-up-late mt-3 flex flex-wrap gap-2 sm:mt-4">
@@ -137,11 +137,7 @@ export function Event({ config, seatMap }: { config: AppConfig | undefined; seat
               disabled={!seatMap || free === 0}
               onClick={() => pickNext(tier.index)}
               data-tour={seatMap && tier.index === tourTier ? "pick" : undefined}
-              title={
-                seatMap && free === 0
-                  ? "Every seat in this tier is taken"
-                  : "Pick the next available seat in this tier"
-              }
+              title={seatMap && free === 0 ? "This tier is sold out" : "Choose the next available seat"}
             >
               {tier.name} · {formatMon(tierPrice(tier))} ·{" "}
               {!seatMap ? "…" : free === 0 ? "sold out" : `${free} left`}
@@ -154,7 +150,7 @@ export function Event({ config, seatMap }: { config: AppConfig | undefined; seat
             aria-pressed={listOpen}
             aria-controls="seat-list"
             onClick={() => setListOpen((o) => !o)}
-            title="Every seat as a list, for keyboards and machines without 3D"
+            title="Seat list for keyboards and devices without 3D"
           >
             {listOpen ? "Hide list" : "Seat list"}
           </button>

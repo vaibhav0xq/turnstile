@@ -19,9 +19,9 @@ interface CheckoutProps {
 }
 
 const STEPS: Array<{ key: CheckoutStep; label: string; detail: string }> = [
-  { key: "identity", label: "Passkey", detail: "One prompt. It is your account." },
-  { key: "buying", label: "Seat", detail: "Minted to your identity on Monad." },
-  { key: "binding", label: "Door key", detail: "A second prompt proves you're here." },
+  { key: "identity", label: "Passkey", detail: "Your passkey is the account." },
+  { key: "buying", label: "Seat", detail: "Minted to your account on Monad." },
+  { key: "binding", label: "Door key", detail: "Derived separately for this event." },
 ];
 
 function rank(step: CheckoutStep): number {
@@ -184,9 +184,7 @@ export function Checkout({ config, event, layout, seatMap }: CheckoutProps) {
             Take {seatLabel(nextSpec)} instead
           </Button>
         ) : gone ? (
-          <div className="text-sm text-muted">
-            {tier.name} is sold out now. Close this and pick from another tier.
-          </div>
+          <div className="text-sm text-muted">{tier.name} is sold out. Choose another tier.</div>
         ) : step === "idle" || (step === "error" && !buyHash) ? (
           <Button
             variant="amber"
@@ -199,8 +197,8 @@ export function Checkout({ config, event, layout, seatMap }: CheckoutProps) {
               : live
                 ? "Confirm seat"
                 : knownAddress
-                  ? "Sign in & take seat"
-                  : "Create passkey & take seat"}
+                  ? "Sign in and take seat"
+                  : "Create passkey and take seat"}
           </Button>
         ) : null}
         {step === "error" && buyHash && tokenId != null && !bindHash ? (
@@ -234,7 +232,7 @@ export function Checkout({ config, event, layout, seatMap }: CheckoutProps) {
           <TxLine label="mint" hash={buyHash} block={buyBlock} config={config} />
           {bindHash ? <TxLine label="bind" hash={bindHash} block={bindBlock} config={config} /> : null}
           {step === "done" ? (
-            <span className="text-green">yours in {formatMs(total)} of chain time</span>
+            <span className="text-green">yours after {formatMs(total)} on-chain</span>
           ) : null}
         </div>
       ) : null}

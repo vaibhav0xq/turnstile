@@ -60,7 +60,7 @@ last beat, which is the hand-over.
 
 | Beat | Scroll | Camera | 3D on screen | UI / copy |
 | --- | --- | --- | --- | --- |
-| **0 · Hero — The Door** | 0 | 1.7 m up, 9 m from a gate line at the club's plaza, fov 34, slight tilt up | Three turnstile gates (matte posts, glass wing, amber light bar, glowing scanner panel showing tonight's code), wet plaza with reflections, the beacon column rising behind, skyline with lit façades | Headline top-left over the sky: **One passkey. / Every door in the city.** One sentence. Primary **Enter the city →**, secondary **Watch the tour (2 min)** as a real button. A quiet proof line: _Live on Monad testnet · Passkeys · Relayed free seats · Envio indexing_ |
+| **0 · Hero: The Door** | 0 | 1.7 m up, 9 m from a gate line at the club's plaza, fov 34, slight tilt up | Three turnstile gates (matte posts, glass wing, amber light bar, glowing scanner panel showing tonight's code), wet plaza with reflections, the beacon column rising behind, skyline with lit façades | Headline top-left over the sky: **One passkey. / Every door in the city.** One sentence. Primary **Enter the city →**. The proposed secondary guided-run button was removed on 17 Sep 2026. A quiet proof line: _Live on Monad testnet · Passkeys · Relayed free seats · Envio indexing_ |
 | **I · Pick a night, pick a seat** | 0.25 | pulls back and up to 12 m, the plaza and venue façade fill the lower frame | Venue building with marquee/signage at the column's foot; traffic streaks on the avenue | The real seat map in a device frame, anchored to the venue with a leader line. _Every night is a contract on Monad. Pick a seat; it is minted to you._ |
 | **II · Your passkey signs** | 0.5 | rises along the column to 40 m | The column, rooftops, crowns; a second door lights across the grid | The passkey sheet (stylised OS prompt). _The passkey is the account. Free seats are relayed; a paid one is sent from your own account._ |
 | **III · The door reads a code** | 0.75 | swings to the theatre's plaza at 20 m, looking down at its gates | The theatre's gate line, code panels rotating | The ticket with the live code in a device frame. _Codes rotate every 30 s, signed by a key derived for this door alone. A copy is stale within a minute; a seat admits once._ |
@@ -83,7 +83,7 @@ the scene.
   landing, picker, demo video. A second, separate hero scene would split three weeks of art budget and
   guarantee the two surfaces look unrelated.
 - Give the picker a distinct **console** treatment so it stops looking like a dimmer landing: labels and
-  leader lines, the bill, judge mode, a legend/compass, and a short title; no story copy.
+  leader lines, the bill, a legend/compass and a short title. There is no public guided-run control.
 
 ### 3.3 What 3D upgrades are realistic before 13 Oct?
 
@@ -111,7 +111,7 @@ motion, and atmosphere.
 | `/` — the landing | `/city` — the picker |
 | --- | --- |
 | Hero + beats I–IV, _Tonight in the city_ (bill as preview), footer | Map at `CITY_POSE`, beacon labels + leader lines, the bill as the working list |
-| Primary CTA **Enter the city →**, secondary **Watch the tour** → `/city?tour=auto` | Judge mode chip, _Host your own night_, env chip, account actions |
+| Primary CTA **Enter the city →**. The proposed guided-run CTA was removed on 17 Sep 2026. | _Host your own night_, env chip, account actions. The guided run remains developer tooling only. |
 | No env chip, no account actions, no picker chrome, no labels until beat IV | No story copy; title _Pick a night._ and one line |
 | Redirects `?tour` / `?event` to `/city` (unchanged) | Direct entry for judges and return visits; `← City` from every product route (unchanged) |
 
