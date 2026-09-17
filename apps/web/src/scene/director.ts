@@ -95,6 +95,7 @@ export function pinnedQuality(search: string): Quality | null {
 export interface DeviceHints {
   coarse: boolean;
   width: number;
+  height: number;
   cores: number;
   /** `navigator.deviceMemory` in GiB where the browser exposes it. */
   memory: number | null;
@@ -103,21 +104,26 @@ export interface DeviceHints {
 }
 
 const SOFTWARE_GPU = /swiftshader|llvmpipe|softpipe|software|basic render|mesa offscreen/i;
+/** Discrete parts that share a vendor word with an integrated line: never "low" on the name alone. */
+const DISCRETE_GPU = /\barc\b|iris(\(r\))? xe max|\brx\b|\brtx\b|\bgtx\b|geforce|quadro|radeon pro/i;
 const INTEGRATED_GPU =
-  /intel|iris|uhd|hd graphics|mali|adreno|powervr|vega|radeon\(tm\) graphics|radeon graphics/i;
+  /\b(uhd|hd) graphics|\biris\b|\bmali\b|adreno|powervr|radeon\(tm\) graphics|radeon graphics|\bvega (3|6|7|8|10|11)\b/i;
+/** Below this short side (CSS px, either orientation) a coarse-pointer device is a phone, not a tablet. */
+const PHONE_SHORT_SIDE = 600;
 
 /**
  * Starting tier; the PerformanceMonitor only ever steps it down. Phones begin at `min`: no composer at all
  * (MSAA instead of SMAA, DPR ≤ 1.25), so a mobile GPU never compiles the post chain or a second variant
- * of every material for it — on a Redmi Note 11 that compile was the multi-second freeze, not the frame
+ * of every material for it: on a Redmi Note 11 that compile was the multi-second freeze, not the frame
  * rate. A software renderer is `min` too. Tablets, integrated GPUs and small-core or low-memory machines
  * begin at `low`: the monitor would take them there anyway, after seconds of jank and a second compile.
+ * A phone is told by its short side, so a landscape phone stays `min` and a portrait tablet stays `low`.
  */
 export function classifyQuality(h: DeviceHints): Quality {
-  if (h.coarse && h.width < 900) return "min";
   if (SOFTWARE_GPU.test(h.gpu)) return "min";
+  if (h.coarse && Math.min(h.width, h.height) < PHONE_SHORT_SIDE) return "min";
   if (h.coarse) return "low";
-  if (INTEGRATED_GPU.test(h.gpu)) return "low";
+  if (!DISCRETE_GPU.test(h.gpu) && INTEGRATED_GPU.test(h.gpu)) return "low";
   if (h.cores <= 4 || (h.memory !== null && h.memory <= 4)) return "low";
   return "high";
 }
@@ -127,6 +133,7 @@ export function initialQuality(): Quality {
   return classifyQuality({
     coarse: window.matchMedia("(pointer: coarse)").matches,
     width: window.innerWidth,
+    height: window.innerHeight,
     cores: navigator.hardwareConcurrency ?? 8,
     memory: (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? null,
     gpu: gpuName(),
@@ -135,16 +142,17 @@ export function initialQuality(): Quality {
 
 /** The GPU behind the page, read from a throwaway context that is released at once; "" without WebGL. */
 function gpuName(): string {
+  let gl: WebGLRenderingContext | WebGL2RenderingContext | null = null;
   try {
     const canvas = document.createElement("canvas");
-    const gl = canvas.getContext("webgl2") ?? canvas.getContext("webgl");
+    gl = canvas.getContext("webgl2") ?? canvas.getContext("webgl");
     if (!gl) return "";
     const info = gl.getExtension("WEBGL_debug_renderer_info");
-    const name = String(gl.getParameter(info ? info.UNMASKED_RENDERER_WEBGL : gl.RENDERER) ?? "");
-    gl.getExtension("WEBGL_lose_context")?.loseContext();
-    return name;
+    return String(gl.getParameter(info ? info.UNMASKED_RENDERER_WEBGL : gl.RENDERER) ?? "");
   } catch {
     return "";
+  } finally {
+    gl?.getExtension("WEBGL_lose_context")?.loseContext();
   }
 }
 

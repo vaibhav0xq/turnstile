@@ -257,6 +257,7 @@ test("the starting tier follows the device: phones and software GPUs min, tablet
   const desktop = {
     coarse: false,
     width: 1440,
+    height: 900,
     cores: 8,
     memory: 16,
     gpu: "ANGLE (NVIDIA GeForce RTX 3060)",
@@ -268,16 +269,30 @@ test("the starting tier follows the device: phones and software GPUs min, tablet
     "low",
   );
   assert.equal(classifyQuality({ ...desktop, gpu: "AMD Radeon(TM) Graphics" }), "low");
+  assert.equal(classifyQuality({ ...desktop, gpu: "AMD Radeon Vega 8 Graphics" }), "low");
+  // discrete parts that share a word with an integrated line keep high
+  assert.equal(classifyQuality({ ...desktop, gpu: "ANGLE (Intel, Intel(R) Arc(TM) A770 Graphics)" }), "high");
+  assert.equal(classifyQuality({ ...desktop, gpu: "AMD Radeon RX Vega 64" }), "high");
+  assert.equal(classifyQuality({ ...desktop, gpu: "Intel(R) Iris(R) Xe MAX Graphics" }), "high");
   assert.equal(classifyQuality({ ...desktop, cores: 4 }), "low");
   assert.equal(classifyQuality({ ...desktop, memory: 4 }), "low");
   assert.equal(classifyQuality({ ...desktop, gpu: "Google SwiftShader" }), "min");
   assert.equal(classifyQuality({ ...desktop, gpu: "" }), "high");
   assert.equal(
-    classifyQuality({ coarse: true, width: 390, cores: 8, memory: 4, gpu: "Adreno (TM) 610" }),
+    classifyQuality({ coarse: true, width: 390, height: 844, cores: 8, memory: 4, gpu: "Adreno (TM) 610" }),
+    "min",
+  );
+  // a landscape phone is still a phone; a portrait tablet is still a tablet
+  assert.equal(
+    classifyQuality({ coarse: true, width: 932, height: 430, cores: 6, memory: null, gpu: "Apple GPU" }),
     "min",
   );
   assert.equal(
-    classifyQuality({ coarse: true, width: 1024, cores: 8, memory: null, gpu: "Apple GPU" }),
+    classifyQuality({ coarse: true, width: 820, height: 1180, cores: 8, memory: null, gpu: "Apple GPU" }),
+    "low",
+  );
+  assert.equal(
+    classifyQuality({ coarse: true, width: 1024, height: 768, cores: 8, memory: null, gpu: "Apple GPU" }),
     "low",
   );
 });

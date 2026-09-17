@@ -23,7 +23,7 @@ passkey ──PRF──┬── account namespace ──▶ secp256k1 account (
                └── vault namespace ────▶ AES-256-GCM passport key            encrypts the private stub archive
 ```
 
-- **Buy** — one passkey prompt opens a 15-minute session; the relayer sponsors the calls.
+- **Buy**: one passkey prompt opens a 15-minute session. The relayer sponsors free seats and holder actions. Paid seats are sent from the passkey account and pay their price plus gas.
 - **Enter** — a fresh biometric at the door derives a key that can only produce entry codes for that event.
   The code rotates every 30 s; `checkIn` consumes it once, on-chain.
 - **Passport** — a name and a line about each night, encrypted client-side with the vault key and parked with
@@ -161,8 +161,8 @@ stay open until 13 Nov 2026. Web + relayer live on the final domain <https://tur
 preflight passes 34/34 (`www` is linked and lands on the apex), `pnpm smoke` runs the whole path there in
 13.2 s, and `pnpm --filter @turnstile/web run judge -- --base https://turnstile.work` lands on a lit seat in
 45.9 s / 6 taps / 2 passkey prompts with three testnet transactions; both seed events' `baseURI` were re-pointed
-the same day and `tokenURI` resolves to metadata whose `image.svg` renders. What remains before submission —
-public website, Envio-powered live layer, device matrix, video — is ordered in `docs/remaining-work-plan.md`;
+the same day and `tokenURI` resolves to metadata whose `image.svg` renders. The public website and the Envio-powered live layer shipped
+since. What remains before submission (device matrix, video) is ordered in `docs/remaining-work-plan.md`;
 the runbooks it points at are `docs/final-domain-migration.md`, `docs/envio-hosted-handoff.md` and
 `docs/demo-video-storyboard.md`.
 
