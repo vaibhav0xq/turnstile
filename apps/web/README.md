@@ -4,12 +4,13 @@ The fan-facing app and the door, in one Vite SPA: a cinematic 3D city → venue 
 Fiber, with the passkey ceremonies from `@turnstile/identity` and the sponsored calls from `apps/relayer`.
 
 ```
-/                 the city — one beacon per event
-/e/:address       the room — pick a seat, one passkey prompt, seat minted + door key bound
-/t/:address/:id   the ticket — rotating 30 s entry code (QR + text), "view from your seat", sell / pass on
-/gate/:address    the door — camera scanner (or paste a code) → relayer verifies → checkIn on-chain
-/me               the passport — session, tickets across events, the private vault, "forget this device"
-/organise         the organiser — publish an event from your passkey, see sold / inside, copy the door link
+/                 the city: one beacon per event
+/e/:address       the room: pick a seat, one passkey prompt, seat minted + door key bound
+/t/:address/:id   the ticket: rotating 30 s entry code (QR + text), "view from your seat", sell / pass on
+/gate/:address    the door: camera scanner (or paste a code) → relayer verifies → checkIn on-chain
+/me               the passport: session, tickets across events, the private vault, "forget this device"
+/organise         the organiser: publish an event from your passkey, see sold / inside, copy the door link
+/pulse            the pulse: totals, throughput, feed, door feed and handovers from the Envio indexer, with the query it runs
 ```
 
 No wallet, no app: the account, the per-event door key and the vault key are all derived from the passkey's
@@ -18,8 +19,8 @@ are paid from the passkey account itself (the relayer's testnet drip tops up bra
 
 Publishing an event is the one action that costs the user gas: `TurnstileFactory.createEvent` takes
 `msg.sender` as the organiser, so the passkey account signs it directly (topped up by the testnet drip when
-needed). The form maps tiers onto the venue templates in order — club: floor, booths, gallery; theatre:
-stalls, circle, balcony — numbers seats 1…, 1001…, 2001… per tier, grants the deployment's gate key
+needed). The form maps tiers onto the venue templates in order (club: floor, booths, gallery; theatre:
+stalls, circle, balcony), numbers seats 1…, 1001…, 2001… per tier, grants the deployment's gate key
 `GATE_ROLE` so `/gate/<event>` works from the first minute, and points `baseURI` at the relayer's metadata
 (`/api/events/<eventId>/tickets/`). The call is simulated first, so a bad configuration comes back by name
 (`InvalidConfig`, `InvalidTiers`) instead of as a failed transaction. Right after a top-up the send is
@@ -35,20 +36,20 @@ the AES-256-GCM passport key (`packages/identity/SPEC.md` §2.3), fetches the bl
 this account (`GET /api/passport/:address`) and decrypts it in memory: a name the passport calls you and a
 private line under each ticket. *Save passport* encrypts the new plaintext, signs
 `turnstile/passport-sync/v1 · address · keccak256(blob) · issuedAt` with the account key and `PUT`s it back
-(SPEC §4.6) — the relayer checks the signature and the watermark and stores ciphertext it cannot open. The
+(SPEC §4.6). The relayer checks the signature and the watermark and stores ciphertext it cannot open. The
 stateless test is the point: *Forget this device*, sign in on anything, open the vault, and the same name
 and notes come back. `/me` also shows every seat bound to the passkey across events, with a dot per state
 (green inside, cyan bound, amber not yet bound).
 
 One device is enough to walk the whole loop: the ticket's *Walk up to the door →* opens
-`/gate/<event>#code=<current code>` — the door view reads the code once, drops it from the URL, looks it up
+`/gate/<event>#code=<current code>`. The door view reads the code once, drops it from the URL, looks it up
 straight away and leaves the camera off until asked. The operator (or the judge) taps *Admit*; the relayer
 verifies and checks in exactly as it would for a scanned QR. *Copy code* is there for a second tab.
 
 Resale is capped by the organiser (`resaleCapBps` of face) and closes at doors. From the ticket a holder
 lists at or under the cap or delists (both relayed); a listed seat shows on the map as *Resale · price* with
 *Buy resale* (paid from the buyer's account, seller and organiser paid in the same transaction), or as
-*Passed on · Free* with *Take this seat* when the ask is 0 — that path is sponsored end to end, so a friend
+*Passed on · Free* with *Take this seat* when the ask is 0. That path is sponsored end to end, so a friend
 with no MON can take a free ticket. Either way the sale clears the seller's door key; the new holder binds
 their own and the seller's codes stop verifying.
 
@@ -57,8 +58,8 @@ their own and the seller's codes stop verifying.
 ```bash
 anvil --chain-id 31337 --port 8545          # terminal 1
 pnpm dev:chain                              # deploy + seed two events, writes deployments/31337.json
-pnpm dev:relayer                            # terminal 2 — apps/relayer/.env has the anvil keys
-pnpm dev:web                                # terminal 3 — http://127.0.0.1:5173 (proxies /api → relayer)
+pnpm dev:relayer                            # terminal 2: apps/relayer/.env has the anvil keys
+pnpm dev:web                                # terminal 3: http://127.0.0.1:5173 (proxies /api → relayer)
 ```
 
 Set `VITE_API_URL` when the relayer is not proxied by the dev server and `VITE_RP_ID` when the origin's
@@ -67,14 +68,14 @@ Behind a proxied preview (a tunnel, a cloud IDE) the dev server is reached under
 `VITE_ALLOWED_HOSTS=all` (or a comma-separated list of host names) to let those requests through.
 
 **Live layer.** `src/live/` reads the Envio indexer's GraphQL endpoint (`VITE_ENVIO_GRAPHQL_URL`, build-time)
-for the four surfaces RPC reads cannot give: the organiser live board (`/organise` → Live), the city pulse on
-the landing, the attendance record on `/me` and a seat's provenance on `/t/<event>/<seat>`. Every one polls
+for the surfaces RPC reads cannot give: the public pulse page (`/pulse`), the organiser live board (`/organise` → Live),
+the city pulse card, the attendance record on `/me` and a seat's provenance on `/t/<event>/<seat>`. Every one polls
 every 8 s and carries the freshness chip: the indexer's block and the relayer's `/api/health` block, read in
 the same tick (polled apart they drift a poll's worth, which on 0.4 s blocks looks like lag), with tones set
-by time — in sync to 5 s, amber to a minute, red beyond. With the
+by time: in sync to 5 s, amber to a minute, red beyond. With the
 variable unset they render an explicit "unavailable" line, never fabricated rows. For UI work without Docker
-or a hosted indexer, `node scripts/mock-indexer.mjs [--lag N] [--fail]` answers the five named operations
-with deterministic fake rows on `http://127.0.0.1:8790/v1/graphql` — local only, never point a deployment at it.
+or a hosted indexer, `node scripts/mock-indexer.mjs [--lag N] [--fail]` answers the named operations
+with deterministic fake rows on `http://127.0.0.1:8790/v1/graphql`, local only, never point a deployment at it.
 
 In development a **dev identity** (`/me` → dev identity, or `?dev=<seed>`) replaces the WebAuthn prompt with
 a deterministic PRF so the whole flow can run in a headless browser; production builds do not include it.
@@ -124,7 +125,7 @@ src/scene       Canvas, City (point-cloud downtown + beacons), Venue (stage, rig
                 Seats (instanced, one draw call per section), CameraRig, director store (chapters, cuts)
 src/venues      deterministic layouts from the on-chain venue id (club: GA arcs + booths; theatre: stalls,
                 circle, balcony); seat ids ↔ positions ↔ labels
-src/identity    zustand wrapper over @turnstile/identity — sessions, door keys, dev identity
+src/identity    zustand wrapper over @turnstile/identity: sessions, door keys, dev identity
 src/chain       relayer config, viem clients, seatStates polling
 src/relayer     ForwardRequest signing + /api/relay, direct paid buys, gate lookup / check-in, drip
 src/app         routes + the checkout flow (passkey → buy → bind, resumable)

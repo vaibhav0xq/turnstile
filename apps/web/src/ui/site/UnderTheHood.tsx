@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Link } from "react-router";
 import { type AppConfig, chainName, explorerAddress } from "../../chain/config";
 import { shortAddress } from "../../lib/format";
 import { LIVE_URL } from "../../live/client";
@@ -43,15 +44,20 @@ export function UnderTheHood({ config }: { config: AppConfig | undefined }) {
         term="Envio HyperIndex"
         detail={
           LIVE_URL ? (
-            <a href={LIVE_URL} className="link" target="_blank" rel="noreferrer">
-              GraphQL endpoint →
-            </a>
+            <span className="flex flex-wrap gap-x-3">
+              <Link to="/pulse" className="link">
+                pulse →
+              </Link>
+              <a href={LIVE_URL} className="link" target="_blank" rel="noreferrer">
+                GraphQL endpoint →
+              </a>
+            </span>
           ) : (
             <span data-testid="live-unconfigured">no indexer on this deployment</span>
           )
         }
       >
-        Indexes contracts for live door boards, city activity, seat provenance and passport history.
+        Indexes the contracts for the public pulse, live door boards, seat provenance and passport history.
       </Credit>
       <Credit
         term="RPC"
@@ -84,7 +90,9 @@ export function UnderTheHood({ config }: { config: AppConfig | undefined }) {
           <li>Track: Social, Attention &amp; Culture.</li>
           <li>Best Mera-Powered UX on Monad: passkey account. No wallet or app.</li>
           <li>Mera: One Passkey, Many Keys: separate account, door and vault keys from one passkey.</li>
-          <li>Envio HyperIndex: indexes contracts and feeds door board, city pulse and seat provenance.</li>
+          <li>
+            Best Use of Envio: HyperIndex feeds the pulse, door boards, seat provenance and passport history.
+          </li>
           <li>Best Projects using Alchemy: Monad RPC for the browser and relayer.</li>
         </ul>
       </Credit>

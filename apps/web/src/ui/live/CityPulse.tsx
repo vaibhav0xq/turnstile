@@ -1,3 +1,4 @@
+import { Link } from "react-router";
 import type { AppConfig } from "../../chain/config";
 import { liveEnabled } from "../../live/client";
 import { useCityPulse, useNow } from "../../live/hooks";
@@ -21,7 +22,9 @@ export function CityPulse({ config }: { config: AppConfig | undefined }) {
         className="glass flex items-center justify-between gap-2 rounded-2xl px-4 py-2"
         data-testid="city-pulse"
       >
-        <span className="text-xs text-muted">City pulse</span>
+        <Link to="/pulse" className="text-xs text-muted hover:text-paper">
+          City pulse →
+        </Link>
         <LiveChip chainId={config.chainId} />
       </div>
     );
@@ -55,9 +58,12 @@ export function CityPulse({ config }: { config: AppConfig | undefined }) {
           ))}
         </ul>
       ) : null}
-      {lastAt > 0 ? (
-        <div className="mono mt-1.5 text-[10px] text-muted">last activity {timeAgo(lastAt, now)}</div>
-      ) : null}
+      <div className="mono mt-1.5 flex items-center justify-between gap-2 text-[10px] text-muted">
+        <span>{lastAt > 0 ? `last activity ${timeAgo(lastAt, now)}` : ""}</span>
+        <Link to="/pulse" className="hover:text-paper" data-testid="city-pulse-more">
+          full pulse →
+        </Link>
+      </div>
     </div>
   );
 }

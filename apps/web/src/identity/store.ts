@@ -143,6 +143,11 @@ export interface IdentityState {
   /** Sign in if a passkey is known on this device, otherwise create one. */
   ensureFan(): Promise<FanSession>;
   ensureDoor(event: EventRef): Promise<DoorKeySession>;
+  /**
+   * Derive this event's door key again (one passkey prompt) and replace the current session, expired or
+   * not. The old session is kept until the new one exists, so a cancelled prompt loses nothing.
+   */
+  renewDoor(event: EventRef): Promise<DoorKeySession>;
   /** Vault ceremony (one more passkey prompt): the passport key stays open until `closeVault` or sign-out. */
   ensureVault(): Promise<VaultSession>;
   closeVault(): void;
@@ -271,6 +276,11 @@ export const useIdentity = create<IdentityState>()((set, get) => ({
   async ensureDoor(event) {
     const live = get().liveDoor(event);
     if (live) return live;
+    return get().renewDoor(event);
+  },
+
+  async renewDoor(event) {
+    const key = eventKey(event);
     const { devSeed, rpId } = get();
     const fan = get().liveFan();
     set({ busy: "door", error: null });
@@ -292,7 +302,9 @@ export const useIdentity = create<IdentityState>()((set, get) => ({
           end: () => session.end(),
         };
       }
-      set((s) => ({ doors: { ...s.doors, [eventKey(event)]: door } }));
+      // Swap only once the new key exists: a cancelled prompt keeps whatever is left of the old session.
+      get().doors[key]?.end();
+      set((s) => ({ doors: { ...s.doors, [key]: door } }));
       return door;
     } catch (error) {
       set({ error: describe(error) });

@@ -21,6 +21,7 @@ import { Landing } from "./routes/Landing";
 import { Me } from "./routes/Me";
 import { NotFound } from "./routes/NotFound";
 import { Organise } from "./routes/Organise";
+import { PulsePage } from "./routes/PulsePage";
 import { Ticket } from "./routes/Ticket";
 import { useTour } from "./tour";
 
@@ -98,6 +99,7 @@ function Frame() {
         <Route path="/gate/:address" element={<Gate config={config.data} seatMap={seats.data} />} />
         <Route path="/me" element={<Me config={config.data} />} />
         <Route path="/organise" element={<Organise config={config.data} />} />
+        <Route path="/pulse" element={<PulsePage config={config.data} />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
       {judging ? <Readout config={config.data} /> : null}

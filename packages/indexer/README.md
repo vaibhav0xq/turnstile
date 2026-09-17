@@ -1,6 +1,6 @@
 # packages/indexer
 
-Envio HyperIndex for Turnstile. One factory, every night it creates, every seat, every fan — as a GraphQL API
+Envio HyperIndex for Turnstile. One factory, every night it creates, every seat, every fan, as a GraphQL API
 the organiser page, the door feed and the passport can read without an RPC in sight.
 
 ## What it indexes
@@ -9,12 +9,12 @@ the organiser page, the door feed and the passport can read without an RPC in si
 | ---------- | ---------------------------- | ---------------------------------------------------------------------------------------- |
 | `Event`    | event contract address       | organiser, name, venue, doors; sold / comps / inside / listed / resales; primary & resale volume, fees |
 | `Ticket`   | `<event>-<tokenId>`          | tier, holder, face value, current door key, listing price, check-in time, handovers      |
-| `Fan`      | passkey account address      | seats held, seats ever taken, nights attended, first / last seen — the attendance record behind the passport |
+| `Fan`      | passkey account address      | seats held, seats ever taken, nights attended, first / last seen: the attendance record behind the passport |
 | `Activity` | `<chain>-<block>-<logIndex>` | the live feed: `MINT · BIND · LIST · DELIST · RESALE · CHECKIN`, actor, counterparty, amount, tx |
 
 `TurnstileFactory.EventCreated` registers each clone dynamically (`context.chain.TurnstileEvent.add`), so a
 night published from `/organise` is indexed from its first block. `DoorKeyCleared` (emitted inside a resale)
-updates the seat without a feed row — the `RESALE` row tells that story.
+updates the seat without a feed row. The `RESALE` row tells that story.
 
 ## Layout
 
@@ -33,7 +33,7 @@ pnpm codegen       # regenerate .envio/ types from config.yaml + schema.graphql
 pnpm sync-config   # point config.yaml at the deployed factory (run after every deployment)
 pnpm typecheck     # sync-config --check, codegen, tsc
 pnpm test          # 5 tests, no Docker: createTestIndexer() runs the handlers in-process
-pnpm dev           # local HyperIndex + Hasura (needs Docker — not part of the sandbox loop)
+pnpm dev           # local HyperIndex + Hasura (needs Docker, not part of the sandbox loop)
 ```
 
 ## Deployment

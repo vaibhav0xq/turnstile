@@ -1,8 +1,10 @@
-# Final-domain migration — checklist
+# Final-domain migration: checklist
+
+Status: The migration completed on 15 Sep 2026 and https://turnstile.work is the live origin. This checklist is kept as the runbook that was followed.
 
 Staging runs at `https://turnstile-michellecox8789.replit.app` with `ENVIRONMENT_LABEL=staging`, and both
 seed events' `baseURI` point at it. This is the ordered list for moving to the submission domain. Nothing in
-it is done yet; **do not re-point `baseURI` until the final domain is chosen** — every switch is two testnet
+it is done yet; **do not re-point `baseURI` until the final domain is chosen**. Every switch is two testnet
 transactions and a metadata cache to outlive.
 
 Order matters: the new origin must serve metadata *before* the contracts point at it, and the smoke and
@@ -10,18 +12,18 @@ judge runs must pass *before* the README claims the domain.
 
 ## 0. Decide
 
-- [x] Final origin chosen (14 Sep 2026, revised the same day): **`https://turnstile.work`** — `<final>` and
+- [x] Final origin chosen (14 Sep 2026, revised the same day): **`https://turnstile.work`**. `<final>` and
       `<apex>` below mean `turnstile.work`. (`turnstile.show` was the first pick and was dropped as too
       expensive for the MVP.) Backups if it is gone at checkout: `turnstile.club`, then `turnstile.one`; the
       runbook is identical, only the name changes. Canonical host `https://turnstile.work`, `www` → apex,
       RP ID = page hostname. Hosting stays option A (single Replit origin, Reserved VM through judging).
-      **Bought and linked 15 Sep 2026** (Namecheap BasicDNS: A `34.111.179.208`, TXT `replit-verify=…` —
+      **Bought and linked 15 Sep 2026** (Namecheap BasicDNS: A `34.111.179.208`, TXT `replit-verify=…`,
       keep the TXT for certificate renewals); Let's Encrypt certificate issued 09:55 UTC, `/api/health` 200.
       The domain is not bought or linked yet, so nothing below has run: no migration, no `baseURI` re-point,
       no final `PUBLIC_ORIGIN`; testing continues on the Replit staging URL.
 - [ ] (Only if the plan changes back to the platform name.) Final origin `https://<final>`. A custom domain is the clean case. Keeping the `.replit.app`
       name is possible but the web labels *any* `*.replit.app` host `staging` on its own
-      (`apps/web/src/lib/environment.ts`, a rule the tests cover) — drop that rule in the commit that declares
+      (`apps/web/src/lib/environment.ts`, a rule the tests cover). Drop that rule in the commit that declares
       the origin final, skip §1, and still set §2's `PUBLIC_ORIGIN`.
 - [x] Web and API stay same-origin (the relayer serves the built web from `STATIC_DIR`). Do not split them:
       passkeys are bound to the web origin and the API derives every absolute URL from `PUBLIC_ORIGIN`.
@@ -43,9 +45,9 @@ RPC rows followed at 11:29 UTC and `www` was linked as a second host at 15:12 UT
 |----------|--------|-----|
 | `PUBLIC_ORIGIN` | `https://<final>` (no trailing slash) | metadata `image` / `external_url`, ticket image links; the relayer refuses to trust `X-Forwarded-Host` |
 | `ENVIRONMENT_LABEL` | **remove** | the STAGING chip and the tab-title prefix go away |
-| `CORS_ORIGIN` | leave unset (`*`) — or `https://<final>` if you want it exact | same-origin web needs nothing; set it only if a second front-end origin appears |
+| `CORS_ORIGIN` | leave unset (`*`), or `https://<final>` if you want it exact | same-origin web needs nothing; set it only if a second front-end origin appears |
 | `VITE_SITE_URL` | `https://<final>` (bare origin) | canonical link, `og:url` and absolute `og:image` / `twitter:image` in the built `index.html`; unset, the image URLs stay relative and link previews stay blank |
-| `VITE_RP_ID` | **leave unset** (revised 15 Sep) | the passkey RP ID defaults to the page hostname, which on the linked apex *is* `turnstile.work`; unset, the same build also keeps working on the `*.replit.app` hostname for rehearsals. Set it to the apex only if a subdomain must share credentials one day — a value that is not the page hostname or a registrable suffix of it breaks every passkey |
+| `VITE_RP_ID` | **leave unset** (revised 15 Sep) | the passkey RP ID defaults to the page hostname, which on the linked apex *is* `turnstile.work`; unset, the same build also keeps working on the `*.replit.app` hostname for rehearsals. Set it to the apex only if a subdomain must share credentials one day. A value that is not the page hostname or a registrable suffix of it breaks every passkey |
 | `CHAIN_ID`, `EXPLORER_URL`, keys, `GATE_TOKEN`, `DATABASE_URL` | unchanged | |
 
 - [x] One canonical host: with `PUBLIC_ORIGIN=https://<apex>` the relayer already answers `www.<apex>` with a
@@ -53,7 +55,7 @@ RPC rows followed at 11:29 UTC and `www` was linked as a second host at 15:12 UT
       canonical-host.ts`); add any other purchased alias (for example the backup domains, if bought) to
       `REDIRECT_HOSTS` as a comma-separated list. Check: `curl -sI https://www.<apex>/api/health` → `301` with
       `location: https://<apex>/api/health`; `curl -s https://www.<apex>/e/x` → `200` whose first `<script>` is
-      `data-canonical-host="<apex>"` (a browser then lands on `https://<apex>/e/x`, query and hash kept — verified
+      `data-canonical-host="<apex>"` (a browser then lands on `https://<apex>/e/x`, query and hash kept, verified
       15 Sep 2026 with a headless Chromium trace). This keeps apex and `www` from growing separate passkey populations.
       **Caveat (found 15 Sep):** on the current Replit deployment the web is a static site served by the
       platform and only `/api/*` reaches the relayer (the asset headers prove it: lowercase charsets,
@@ -62,7 +64,7 @@ RPC rows followed at 11:29 UTC and `www` was linked as a second host at 15:12 UT
       `www` is linked as a **second host** in Publishing → Domains (A + `replit-verify` TXT on host `www`;
       the TXT stays for renewals) and the page redirects itself: with `VITE_SITE_URL` set, the build's
       first `<script data-canonical-host="<apex>">` sends `www.<apex>` to the same path on the apex before
-      any stylesheet, module or credential (`apps/web/vite.config.ts`). Only `www` is an alias there — a
+      any stylesheet, module or credential (`apps/web/vite.config.ts`). Only `www` is an alias there. A
       backup domain in `REDIRECT_HOSTS` is redirected for `/api/*` only, so do not point one at the
       deployment without adding it to the script too. `pnpm preflight --final` checks both: the `www` page
       redirects or carries the marker, and `https://www.<apex>/api/health` answers `301` to the apex.
@@ -71,7 +73,7 @@ RPC rows followed at 11:29 UTC and `www` was linked as a second host at 15:12 UT
       `PUBLIC_RPC_URL` = the browser-restricted Alchemy key, `PUBLIC_RPC_FALLBACK_URLS` = the public RPC.
       `/api/health` then reports `rpc.provider: "alchemy"` and the fallback host list.
       **Done 15 Sep 2026 11:29 UTC:** `RPC_URL` and `PUBLIC_RPC_URL` are Replit *Secrets* (the Alchemy URL carries the
-      API key — never in files, never in this doc), the two fallback lists are plain production variables.
+      API key, never in files or in this doc), the two fallback lists are plain production variables.
       `/api/health` → `rpc.provider: "alchemy"`, one fallback, `latencyMs` ~40; the browser RPC from `/api/config`
       answers `eth_blockNumber` with `access-control-allow-origin: https://turnstile.work`. Both variables hold the
       same key for now; if a domain allowlist is ever added on the Alchemy side, split into a server key and a
@@ -90,14 +92,14 @@ pnpm preflight -- --origin https://<final> --final
 `--final` additionally requires no environment label, `rpc.provider: "alchemy"` with a fallback, absolute
 canonical / `og:url` / `og:image` (so `VITE_SITE_URL` was set at build time) and the `www` → apex redirect.
 Without `--final` the same script checks staging (label allowed, platform hostname, relative OG). The manual
-equivalents, for when something fails and you want to look at it. **15 Sep 2026 11:29 UTC, after the second republish (Alchemy RPC): 24 of 25 pass** — only `www` fails
+equivalents, for when something fails and you want to look at it. **15 Sep 2026 11:29 UTC, after the second republish (Alchemy RPC): 24 of 25 pass**. Only `www` fails
 (not linked yet). At 11:05 UTC, before the RPC rows, it was 22 of 25. **16:10 UTC, after linking `www` and
 republishing with the canonical-host script: 34 of 34** (the `www` item is now two checks, page and `/api`). `baseURI` may move
 once §4 passes on `https://turnstile.work`.
 
 - [x] `curl -s https://<final>/api/health` → `ok: true`, `chainId: 10143`.
 - [x] `curl -s https://<final>/api/config | jq '.environmentLabel, .explorer'` → `null`, the explorer URL.
-- [x] `https://<final>/` loads the city; no STAGING chip; the tab title is `Turnstile — access that follows
+- [x] `https://<final>/` loads the city; no STAGING chip; the tab title is `Turnstile: access that follows
       you` with no `[staging]` prefix.
 - [x] Metadata already answers on the new origin (nothing on-chain points here yet, that is fine):
       `curl -s https://<final>/api/events/1/tickets/1 | jq '.image, .external_url'` → both on `https://<final>`.
@@ -114,13 +116,13 @@ From `turnstile/` with foundry on `PATH`:
       **Passed 15 Sep 2026 11:32 UTC** (`--seed final-1`): club · General Admission #4, 13.2 s end to end, no
       retries; buy `0x4be3e5…9602` (block 62 734 100, relayer 732 ms), bind `0x00382e…57c3`, listed
       `0x10fcba…eee9`, taken `0x528432…c025`, rebound `0xef9204…d8ec`, check-in `0x274ea4…dfb5` (relayer 710 ms).
-- [x] `pnpm --filter @turnstile/web run judge -- --base https://<final>` → `finished — <n> s on the bar`,
+- [x] `pnpm --filter @turnstile/web run judge -- --base https://<final>` → `finished: <n> s on the bar`,
       three hashes, `judge-*.png` frames in `apps/web/shots/`. This burns one front-row seat (a throwaway
-      passkey holds it) — acceptable; do not run it a dozen times.
+      passkey holds it), which is acceptable; do not run it a dozen times.
       **Passed 15 Sep 2026 11:33 UTC:** 45.9 s on the bar, 6 taps, 2 passkey prompts, club Row A · 14
       (token 14); mint 305 ms `0xf65af0…d318`, bind 720 ms `0x4e0d84…abf5`, admit 302 ms `0x3cbefd…a5fa`.
 - [x] Open the frames: the bar top-right in the room, bottom-left at the door, followspot with nothing in the
-      beam. (Checked on the 15 Sep frames — all three hold.)
+      beam. (Checked on the 15 Sep frames; all three hold.)
 
 Wallets after both runs (15 Sep 11:35 UTC): relayer 4.4859 → 4.2870 MON (7 relayed calls at the gas limit,
 ≈ 0.10 MON per full smoke + judge pair), gate signer 4.8898 → 4.8531 MON (2 check-ins), deployer unchanged
@@ -128,7 +130,7 @@ at 4.0681 MON.
 
 ## 5. Re-point `baseURI` (two transactions, deployer key)
 
-Only after §3 and §4 pass. From `turnstile/packages/contracts`. **Done 15 Sep 2026 11:38 UTC** — club
+Only after §3 and §4 pass. From `turnstile/packages/contracts`. **Done 15 Sep 2026 11:38 UTC**: club
 `0xe8a6e7e70bfcbcf995e127e0e3b1a781636584b0cc509c5f19fc34092189019a` (block 62 735 461), theatre
 `0xc00f34006d95c6e8c6e973b4d30fdc02506b1dbd6cc4165ecb501eee4964a24c` (block 62 735 468); 87 258 gas each
 at 103 gwei, deployer 4.0681 → 4.0501 MON. Broadcast file `broadcast/SetBaseURI.s.sol/10143/run-1789472334541.json`:
@@ -152,7 +154,7 @@ Verify on-chain:
       → `https://<final>/api/events/1/tickets/1`.
 - [x] The theatre has no tokens, so read its storage instead: `baseURI` is slot 4 of `TurnstileEvent`
       (`cast storage 0x9c4b7a654680b5a4d382b22bdAA10FB05DC23029 4 --rpc-url …`; a long string lives at
-      `keccak256(4)` — decode as in the staging notes) → `https://<final>/api/events/2/tickets/`.
+      `keccak256(4)`, decoded as in the staging notes) → `https://<final>/api/events/2/tickets/`.
       (15 Sep: slot 4 = `0x59` on both events → 44-byte string; the two slots from
       `0x8a35acfb…6bd19b` decode to `…/events/1/tickets/` on the club and `…/events/2/tickets/` on the theatre.)
 - [x] `curl -s "$(cast call <club> 'tokenURI(uint256)(string)' 1 --rpc-url …)" | jq .image` → the SVG on
@@ -174,7 +176,7 @@ Verify on-chain:
 - [x] Staging can keep running (nothing points at it any more) or be unpublished. It is the same deployment
       answering on the `*.replit.app` hostname, so it cannot carry its own `ENVIRONMENT_LABEL`; the web labels
       any `*.replit.app` host `staging` on its own, which is enough.
-- [x] The hosted indexer (Envio) reads the chain, not the origin — no change needed there
+- [x] The hosted indexer (Envio) reads the chain, not the origin, so no change is needed there
       (`docs/envio-hosted-handoff.md`).
 - [ ] Any further web or relayer change needs a republish to reach `<final>`; the judge-run frames are the
       cheapest regression check after each one.

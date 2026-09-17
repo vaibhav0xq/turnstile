@@ -161,6 +161,62 @@ async function answer(operation, v) {
         Activity: activityRows(6, { eventName: "Opening Night", address: addresses[0] ?? "0x", chainId }),
       };
     }
+    case "Pulse": {
+      const events = [
+        "0x1000000000000000000000000000000000000001",
+        "0x1000000000000000000000000000000000000002",
+      ];
+      const feed = activityRows(30, { eventName: "Opening Night", address: events[0], chainId });
+      return {
+        Stats: [
+          {
+            events: 2,
+            sold: 128,
+            comps: 9,
+            checkedIn: 61,
+            resales: 11,
+            fans: 97,
+            primaryVolume: price(5 * 100),
+            resaleVolume: price(7 * 11),
+            resaleFees: price(5),
+            lastActivityAt: String(now() - 40),
+            lastBlock: String(500_000),
+          },
+        ],
+        Event: events.map((address, i) => ({
+          id: `${chainId}-${address}`,
+          chainId,
+          address,
+          name: i === 0 ? "Opening Night" : "Second Night",
+          startsAt: String(now() + 3600 * (i + 1)),
+          createdAt: String(now() - 86_400 * (i + 1)),
+          sold: 41 - i * 10,
+          comps: 3,
+          checkedIn: 17 - i * 5,
+          listed: 2,
+          resales: 4,
+          primaryVolume: price(5 * 30),
+          resaleVolume: price(7 * 4),
+          resaleFees: price(2),
+        })),
+        feed,
+        doors: feed.filter((row) => row.kind === "CHECKIN"),
+        Handover: feed
+          .filter((row) => row.kind === "RESALE")
+          .map((row) => ({
+            id: row.id,
+            seller: row.actor,
+            buyer: row.counterparty,
+            price: row.amount,
+            fee: price(1),
+            timestamp: row.timestamp,
+            txHash: row.txHash,
+            event: row.event,
+            ticket: row.ticket,
+          })),
+        EventMinute: minuteRows(60),
+      };
+    }
     case "TicketProvenance": {
       const rows = activityRows(5, {
         eventName: "Opening Night",

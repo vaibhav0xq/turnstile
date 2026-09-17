@@ -70,32 +70,45 @@ export function Me({ config }: { config: AppConfig | undefined }) {
             ? passport.data.name
             : address
               ? shortAddress(address, 6)
-              : "No passkey yet"}
+              : "No passkey on this device"}
         </div>
         <div className="mono mt-1 text-xs text-muted">
           {live
             ? `session live · ${formatCountdown(live.expiresAt - Date.now())} left`
-            : knownCredentialId
-              ? "passkey known on this device · signed out"
-              : "one passkey · separate account, door and vault keys"}
+            : fan
+              ? "session expired"
+              : knownCredentialId
+                ? "passkey known on this device · signed out"
+                : "one passkey · separate account, door and vault keys"}
         </div>
         {live ? (
           <p className="mt-1 text-[11px] text-muted">
             Session: {Math.round(ACCOUNT_SESSION_TTL_MS / 60_000)} minutes. Your passkey is requested again
             after expiry.
           </p>
+        ) : fan ? (
+          <p className="mt-1 text-[11px] text-amber" data-testid="session-expired">
+            Session expired. Sign again to continue.
+          </p>
         ) : null}
 
         <div className="mt-4 flex flex-wrap gap-2">
-          {!live && knownCredentialId ? (
-            <Button variant="primary" onClick={() => void signIn()} disabled={busy !== null}>
+          {!live ? (
+            // Sign-in is a discoverable ceremony: it works on a device that remembers nothing, which is how a
+            // forgotten or fresh device gets its account back instead of a second passkey.
+            <Button
+              variant={knownCredentialId ? "primary" : "ghost"}
+              onClick={() => void signIn().catch(() => undefined)}
+              disabled={busy !== null}
+              data-testid="passport-sign-in"
+            >
               {busy === "signin" ? <Spinner /> : null} Sign in
             </Button>
           ) : null}
           {!live ? (
             <Button
               variant={knownCredentialId ? "ghost" : "primary"}
-              onClick={() => void create()}
+              onClick={() => void create().catch(() => undefined)}
               disabled={busy !== null}
             >
               {busy === "create" ? <Spinner /> : null} {knownCredentialId ? "New passkey" : "Create passkey"}
@@ -106,12 +119,18 @@ export function Me({ config }: { config: AppConfig | undefined }) {
           {knownCredentialId ? (
             <Button
               onClick={forgetDevice}
-              title="Forget local account details. The platform keeps the passkey."
+              title="Forget local account details. The passkey provider keeps the passkey."
+              data-testid="forget-device"
             >
               Forget this device
             </Button>
           ) : null}
         </div>
+        <p className="mt-2 text-[11px] text-muted" data-testid="recovery-note">
+          {knownCredentialId
+            ? "Forget this device clears the account details stored here. The passkey stays with your passkey provider. Signing in again restores the same account, seats and vault."
+            : "Already have a Turnstile passkey? Sign in restores the same account, seats and vault on this device. Nothing else needs to be kept."}
+        </p>
 
         <details
           className="group mt-3 rounded-xl border border-line px-3 py-2"

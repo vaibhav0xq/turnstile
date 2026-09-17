@@ -12,6 +12,8 @@ import {
   type OrganiserBoardData,
   PASSPORT_HISTORY,
   type PassportHistoryData,
+  PULSE,
+  type PulseData,
   TICKET_PROVENANCE,
   type TicketProvenanceData,
 } from "./queries";
@@ -61,6 +63,24 @@ export function useCityPulse(chainId: number | undefined, eventAddresses: readon
     ["pulse", chainId, addresses.join(",")],
     CITY_PULSE,
     { chainId, addresses },
+    chainId !== undefined,
+  );
+}
+
+/** The pulse page shows this many one-minute buckets. */
+export const PULSE_MINUTES = 60;
+
+/**
+ * The public pulse page's single query. `since` steps every 30 minutes rather than every minute so the query
+ * key, and with it the cached rows, survive between polls; the window is filled client-side from the rows.
+ */
+export function usePulse(chainId: number | undefined) {
+  const now = useNow(60_000);
+  const since = Math.floor(now / 1_800_000) * 1_800 - PULSE_MINUTES * 60;
+  return useLive<PulseData>(
+    ["pulse-page", chainId, since],
+    PULSE,
+    { chainId, since: String(since) },
     chainId !== undefined,
   );
 }

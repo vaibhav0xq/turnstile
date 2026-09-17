@@ -118,6 +118,82 @@ query CityPulse($chainId: Int!, $addresses: [String!]!) {
   }
 }`;
 
+export interface HandoverRow {
+  id: string;
+  seller: string;
+  buyer: string;
+  price: string | number;
+  fee: string | number;
+  timestamp: string | number;
+  txHash: string;
+  event: { name: string; address: string };
+  ticket: { tokenId: string | number; tier: number };
+}
+
+export interface PulseEventRow extends EventRow {
+  startsAt: string | number;
+  createdAt: string | number;
+}
+
+export interface PulseData {
+  Stats: StatsRow[];
+  Event: PulseEventRow[];
+  feed: ActivityRow[];
+  doors: ActivityRow[];
+  Handover: HandoverRow[];
+  EventMinute: MinuteRow[];
+}
+
+/**
+ * The public pulse page: the whole chain in one round trip. Totals, the nights the indexer knows, the last
+ * thirty things that happened, the door feed, resale handovers and per-minute throughput since `$since`
+ * (unix seconds, a BigInt column so it travels as `numeric`).
+ */
+export const PULSE = /* GraphQL */ `
+query Pulse($chainId: Int!, $since: numeric!) {
+  Stats(where: { chainId: { _eq: $chainId } }, limit: 1) {
+    events sold comps checkedIn resales fans primaryVolume resaleVolume resaleFees lastActivityAt lastBlock
+  }
+  Event(where: { chainId: { _eq: $chainId } }, order_by: { createdAt: desc }, limit: 12) {
+    id chainId address name startsAt createdAt sold comps checkedIn listed resales
+    primaryVolume resaleVolume resaleFees
+  }
+  feed: Activity(
+    where: { chainId: { _eq: $chainId } }
+    order_by: [{ timestamp: desc }, { block: desc }]
+    limit: 30
+  ) {
+    id kind actor counterparty amount timestamp txHash
+    event { name address }
+    ticket { tokenId tier }
+  }
+  doors: Activity(
+    where: { chainId: { _eq: $chainId }, kind: { _eq: "CHECKIN" } }
+    order_by: [{ timestamp: desc }, { block: desc }]
+    limit: 8
+  ) {
+    id kind actor counterparty amount timestamp txHash
+    event { name address }
+    ticket { tokenId tier }
+  }
+  Handover(
+    where: { chainId: { _eq: $chainId } }
+    order_by: [{ timestamp: desc }, { block: desc }]
+    limit: 6
+  ) {
+    id seller buyer price fee timestamp txHash
+    event { name address }
+    ticket { tokenId tier }
+  }
+  EventMinute(
+    where: { chainId: { _eq: $chainId }, minute: { _gte: $since } }
+    order_by: { minute: desc }
+    limit: 2000
+  ) {
+    minute mints checkIns resales volume
+  }
+}`;
+
 export interface TicketProvenanceData {
   Activity: ActivityRow[];
 }

@@ -54,5 +54,13 @@ derived from the seat rows.
 
 Public website and copy pass. Phones start on the `min` quality tier and tiers only step down, which
 removed the shader-compile freezes measured on a Redmi Note 11. The guided run is developer tooling only
-and has no entry point in the product. What remains before submission (device matrix rows, demo video) is
-ordered in `remaining-work-plan.md`.
+and has no entry point in the product. The demo video is handled outside this repo. Device matrix rows beyond
+the verified Android and Windows hybrid paths are optional confirmation, not a blocker.
+
+## 18 September 2026
+
+Submission cleanup. A public pulse page at `/pulse` reads totals, throughput, the latest activity, the
+door feed and handovers from the hosted Envio indexer and shows the query it runs. The ticket tells the
+holder when the door key is about to end, when it has expired and when the shown code is stale, each with
+one action. The passport page explains what **Forget this device** clears and what a sign in restores. The
+planning docs are marked as records and the README describes the sessions and the recovery path.

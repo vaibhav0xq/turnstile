@@ -8,7 +8,7 @@ Live facts checked on 12 Sep 2026: chain id `10143`, base fee **100 gwei** (prot
 priority fee 2 gwei, block gas limit 150M, client `Monad/0.16.2`, MonadVision Sourcify API answering for chains
 143 and 10143 (v1 and v2 endpoints).
 
-Done on 14 Sep 2026 — addresses, blocks and what was actually charged are in `packages/contracts/README.md`
+Done on 14 Sep 2026. Addresses, blocks and what was actually charged are in `packages/contracts/README.md`
 and `research/notes.md`; the deployer key was read from a secret store (`--private-key "$VAR"`) instead of a
 keystore because the deploy ran on a shared sandbox disk. Kept here as the procedure for mainnet/redeploys.
 
@@ -30,19 +30,19 @@ Two Monad rules shape everything below:
 | **deployer** | Foundry keystore (`cast wallet import`), password-protected | `~/.foundry/keystores/deployer` on your machine only | Sends the 3 deployment txs. Also the **organiser** of the two seed events (`msg.sender` of `createEvent` gets `DEFAULT_ADMIN_ROLE` and receives ticket proceeds) |
 | **relayer** | Hot EOA (`cast wallet new`) | Replit Secrets as `RELAYER_PRIVATE_KEY` when `packages/relayer` exists; password manager until then | Calls `ERC2771Forwarder.execute` for fans (`buy` on free tiers, `bindDoorKey`, `list`, `delist`). No on-chain role |
 | **gate** | Hot EOA (`cast wallet new`) | Replit Secrets as `GATE_SIGNER_PRIVATE_KEY`; password manager until then | Holds `GATE_ROLE` on each event; calls `checkIn` / `checkInWithBind` |
-| **demo buyer** (optional) | Any wallet you control (MetaMask on Monad testnet, or a second keystore) | your wallet | Buys paid tiers directly for demos — paid tiers are not relayed (the relayer would have to front the MON) |
+| **demo buyer** (optional) | Any wallet you control (MetaMask on Monad testnet, or a second keystore) | your wallet | Buys paid tiers directly for demos. Paid tiers are not relayed (the relayer would have to front the MON) |
 
 Not needed: an organiser wallet separate from the deployer (testnet), a multisig, a Privy/embedded wallet.
 Fan accounts are passkey-derived keys and never hold MON.
 
 Rules: never paste a private key into a `.env` that could be committed; the repo `.gitignore` covers `.env` but
-not your shell history. Keystores and hot keys are chain identities, unrelated to git identity — commits stay
+not your shell history. Keystores and hot keys are chain identities, unrelated to git identity. Commits stay
 under `vaibhav0xq` as always.
 
 ### Create them
 
 ```bash
-# deployer: fresh key straight into an encrypted keystore (prompts for a password — keep it)
+# deployer: fresh key straight into an encrypted keystore (prompts for a password, so keep it)
 cast wallet import deployer --private-key $(cast wallet new | grep 'Private key:' | awk '{print $3}')
 cast wallet address --account deployer            # → DEPLOYER address; write it down
 
@@ -52,7 +52,7 @@ cast wallet new                                   # → RELAYER address + key
 cast wallet new                                   # → GATE address + key
 ```
 
-Optional but useful — the three contract addresses are known before you deploy (CREATE, deployer nonce 0/1/2):
+Optional but useful: the three contract addresses are known before you deploy (CREATE, deployer nonce 0/1/2):
 
 ```bash
 D=$(cast wallet address --account deployer)
@@ -91,11 +91,11 @@ change its nonce.)
   `req.gas` inside the signed request should be the direct-call figure plus margin (`buy` 147k → 200 000,
   `bindDoorKey` 76k → 110 000, `list` 64k → 90 000, `delist` 21k → 40 000); the outer tx limit is the column above.
   The forwarder insists on `gasleft ≥ req.gas × 64/63` at the inner call and burns everything otherwise, so the
-  outer limit must stay ≥ `req.gas × 64/63 + ~50k` — true for every pair above.
+  outer limit must stay ≥ `req.gas × 64/63 + ~50k`, which is true for every pair above.
 - Simulates before sending (`eth_call` the exact `execute`), because OZ's `ERC2771Forwarder.execute` reports an
   inner revert only as `FailedCall()`.
 - Uses `eth_maxPriorityFeePerGas` (2 gwei today) and `max_fee = base_fee + tip`, not forge's 2× bid.
-- Balance alert at 1 MON; never let it reach 0 mid-demo — and it cannot: the reserve floor below stops
+- Balance alert at 1 MON; never let it reach 0 mid-demo. It cannot because the reserve floor below stops
   sponsorship first.
 
 ### 3a. Spend safety (relayer and gate)
@@ -105,47 +105,47 @@ The relayer pays for every forwarded action, every testnet drip and every check-
 
 | Brake | Default | Refusal |
 | --- | --- | --- |
-| Reserve floor per wallet — no send whose worst-case cost (gas limit × price; drips are sent with a fixed 21k limit) would leave the wallet below it, counting the cost already held back for work in flight; an unreadable balance also pauses | relayer 1 MON (`RELAYER_RESERVE_WEI`), gate 0.2 MON (`GATE_RESERVE_WEI`) | `503 SPONSOR_PAUSED` |
-| Class budgets per rolling hour / day — `relay` (forwarded fan actions), `drip`, `gate` | relay 60 / 300, drip 10 / 40, gate 300 / 2000 (`*_HOURLY_LIMIT`, `*_DAILY_LIMIT`) | `429 BUDGET_EXHAUSTED` |
-| Per-address quota per rolling day — the fan's `from` for relay, the recipient for drip | relay 24, drip 2 (`RELAY_DAILY_PER_ADDRESS`, `DRIP_DAILY_PER_ADDRESS`) | `429 QUOTA_EXCEEDED` |
-| Bounded queue per wallet — sends stay sequential (that is what keeps nonces in order); past `TX_QUEUE_MAX` pending a request is refused at once, and one that has waited `TX_QUEUE_MAX_WAIT_MS` is refused on its own timer, even if the send ahead of it is hanging on the RPC | 8 pending, 20 s | `503 BUSY` |
-| Per-IP limits — 30 relay, 10 drip, 20 passport writes per minute; the address is the proxy-written `X-Forwarded-For` entry (the `TRUSTED_PROXY_HOPS`-th public hop from the right, default 1, internal hops skipped), never one the client sent | | `429 RATE_LIMITED` |
+| Reserve floor per wallet: no send whose worst-case cost (gas limit × price; drips are sent with a fixed 21k limit) would leave the wallet below it, counting the cost already held back for work in flight; an unreadable balance also pauses | relayer 1 MON (`RELAYER_RESERVE_WEI`), gate 0.2 MON (`GATE_RESERVE_WEI`) | `503 SPONSOR_PAUSED` |
+| Class budgets per rolling hour / day: `relay` (forwarded fan actions), `drip`, `gate` | relay 60 / 300, drip 10 / 40, gate 300 / 2000 (`*_HOURLY_LIMIT`, `*_DAILY_LIMIT`) | `429 BUDGET_EXHAUSTED` |
+| Per-address quota per rolling day: the fan's `from` for relay, the recipient for drip | relay 24, drip 2 (`RELAY_DAILY_PER_ADDRESS`, `DRIP_DAILY_PER_ADDRESS`) | `429 QUOTA_EXCEEDED` |
+| Bounded queue per wallet: sends stay sequential (that is what keeps nonces in order); past `TX_QUEUE_MAX` pending a request is refused at once, and one that has waited `TX_QUEUE_MAX_WAIT_MS` is refused on its own timer, even if the send ahead of it is hanging on the RPC | 8 pending, 20 s | `503 BUSY` |
+| Per-IP limits: 30 relay, 10 drip, 20 passport writes per minute; the address is the proxy-written `X-Forwarded-For` entry (the `TRUSTED_PROXY_HOPS`-th public hop from the right, default 1, internal hops skipped), never one the client sent | | `429 RATE_LIMITED` |
 
 Worst case at the defaults: 60 relays × 0.033 + 10 drips × 0.1 ≈ 3 MON an hour, ≈ 14 MON a day, and the
 floor ends it before the wallet is empty. Every refusal carries `Retry-After` and a `retryAfterSec` in the body;
 the web app shows the reason and auto-retries only `RATE_LIMITED` / `BUSY`.
 
 Everything is in memory: budgets restart empty and the queue only orders one process. The deployment must run a
-**single instance** (autoscale max machines 1, or a reserved VM) — two processes sharing the relayer key would
+**single instance** (autoscale max machines 1, or a reserved VM). Two processes sharing the relayer key would
 race nonces and double every budget. `GET /api/health` reports:
 
-- `instance` — a random per-process id; call it a few times, one id means one process;
-- `sponsorship.wallets.{relayer,gate}` — `balanceWei`/`balanceMon`, `reserveWei`, `inflight` (charged sends
+- `instance`: a random per-process id; call it a few times, one id means one process;
+- `sponsorship.wallets.{relayer,gate}`: `balanceWei`/`balanceMon`, `reserveWei`, `inflight` (charged sends
   not yet settled) and `reservedWei` (the worst-case cost held back for them, each at its own class's
   estimate), `ok` (balance minus the reservation is still above the floor);
-- `sponsorship.budgets.{relay,drip,gate}` — `hour`/`day` `{ used, limit }` and `perAddressDay`;
-- `sponsorship.spentWei` — estimated spend of the last hour / day from settled receipts (gas limit × price paid);
-- `sponsorship.queue.{relayer,gate}` — `{ pending, max }`; `sponsorship.paused` when either wallet is at its floor.
+- `sponsorship.budgets.{relay,drip,gate}`: `hour`/`day` `{ used, limit }` and `perAddressDay`;
+- `sponsorship.spentWei`: estimated spend of the last hour / day from settled receipts (gas limit × price paid);
+- `sponsorship.queue.{relayer,gate}`: `{ pending, max }`; `sponsorship.paused` when either wallet is at its floor.
 
 Public addresses and on-chain balances only; no key material or provider URL appears anywhere in it.
 `GET /api/ip` echoes what the limiter sees for the caller (`ip`, `source`, `forwardedEntries`,
-`forwardedPattern` — the chain's shape as `public`/`internal`/`invalid` per entry, addresses withheld —
+`forwardedPattern`: the chain's shape as `public`/`internal`/`invalid` per entry, addresses withheld,
 and `trustedProxyHops`). Loopback and private hops (the path router in front of the process) are skipped
 automatically, and a connection whose socket peer is a public address is keyed by that peer with its
 headers ignored (it did not come through the proxy chain).
 
 `TRUSTED_PROXY_HOPS` must equal the number of public entries in that chain, read from a client that sent
 no forwarding header (then the leftmost public entry is the client, every public entry after it is a
-proxy, and the limiter counts public entries from the right — 1 is the rightmost). `pnpm preflight
+proxy, and the limiter counts public entries from the right (1 is the rightmost). `pnpm preflight
 --origin …` checks exactly that and prints the value to set, and it sends a forged `X-Forwarded-For`
 expecting it ignored. The two origins differ: the dev origin's chain is `client, private hop, loopback`
 (1 public → hops 1); the published origin sits behind Google's load balancer and the platform's proxies,
-which append three public addresses after the client — `client, P, P, P` (4 public → **hops 4**, verified
-15 Sep 2026 from two outside networks). Too low is fail-closed but keys visitors by a proxy's address —
+which append three public addresses after the client: `client, P, P, P` (4 public → **hops 4**, verified
+15 Sep 2026 from two outside networks). Too low is fail-closed but keys visitors by a proxy's address,
 a rotating one on the published origin, so one visitor's requests land in unrelated buckets and the
 per-minute limits mean nothing; too high would take a client-sent entry. The published chain *appends* to
 a client-sent header rather than replacing it (the dev origin replaces), so the forged-entry check matters
-there — repeat both checks on every new origin and after any platform change to the proxy layout.
+there. Repeat both checks on every new origin and after any platform change to the proxy layout.
 
 ## 4. Gate signer requirements
 
@@ -181,16 +181,16 @@ Recommended balances before you start:
 | Wallet | Fund | Covers |
 | --- | --- | --- |
 | deployer | **3 MON** | deploy (0.71) + seed events (0.17) + one full retry, and passes every per-tx balance check |
-| relayer | **5 MON** | ≈ 150 relayed txs at 320k limit — a full demo run plus development |
+| relayer | **5 MON** | ≈ 150 relayed txs at 320k limit, a full demo run plus development |
 | gate | **2 MON** | ≈ 100 check-ins at 180k limit |
 | demo buyer | 1 MON | booth 0.05 MON + gas for a handful of paid buys |
 
 Total ≈ 11 MON. Faucets (all rate-limited, so start claiming into the **deployer** now and redistribute later):
 
-- Official `https://faucet.monad.xyz` — enter address; connecting X / Discord raises the amount.
-- Alchemy `https://www.alchemy.com/faucets/monad-testnet` — 1 MON / 24 h, no account.
-- QuickNode `https://faucet.quicknode.com/monad/testnet` — one claim / 12 h, needs a dust ETH balance on Ethereum mainnet.
-- Chainstack `https://faucet.chainstack.com/monad-testnet-faucet` — 0.5 MON / 24 h, sign-in.
+- Official `https://faucet.monad.xyz`: enter address; connecting X / Discord raises the amount.
+- Alchemy `https://www.alchemy.com/faucets/monad-testnet`: 1 MON / 24 h, no account.
+- QuickNode `https://faucet.quicknode.com/monad/testnet`: one claim / 12 h, needs a dust ETH balance on Ethereum mainnet.
+- Chainstack `https://faucet.chainstack.com/monad-testnet-faucet`: 0.5 MON / 24 h, sign-in.
 
 Redistribute from the deployer once it holds enough:
 
@@ -224,18 +224,18 @@ Alternatives if the public endpoint rate-limits you: `https://rpc.ankr.com/monad
 `https://rpc-testnet.monadinfra.com` (20 rps, no batching), or your Alchemy/QuickNode app URL
 (`ALCHEMY_MONAD_RPC` / `QUICKNODE_MONAD_RPC` in `.env`). Pass any of them as `--rpc-url <url>`.
 
-Environment read by the scripts (export in the shell or put in `packages/contracts/.env` and `source` it — forge
+Environment read by the scripts (export in the shell or put in `packages/contracts/.env` and `source` it, since forge
 does not load `.env` on its own):
 
 | Variable | Used by | Value |
 | --- | --- | --- |
 | `FORWARDER` | `Deploy.s.sol` | leave **unset** for the first deployment; set to reuse an existing forwarder when redeploying only implementation + factory |
-| `GATE_ADDRESS` | `CreateDemoEvent.s.sol` | the gate EOA — grants `GATE_ROLE` at creation |
+| `GATE_ADDRESS` | `CreateDemoEvent.s.sol` | the gate EOA, which grants `GATE_ROLE` at creation |
 | `START_IN` | `CreateDemoEvent.s.sol` | seconds until the seed events start. Use **`3888000`** (45 days) so sales stay open while `apps/web` is built; the default 2 h closes sales an hour later |
-| `BASE_URI` | `CreateDemoEvent.s.sol`, `SetBaseURI.s.sol` | `https://<your-web-host>/api/events/` — placeholder is fine at seeding; `SetBaseURI.s.sol` re-points every event you administer once the host exists (done 14 Sep 2026 for the staging origin; re-pointed 15 Sep 2026 to `https://turnstile.work/api/events/` — club `0xe8a6e7…019a`, theatre `0xc00f34…a24c`, 87 258 gas each) |
+| `BASE_URI` | `CreateDemoEvent.s.sol`, `SetBaseURI.s.sol` | `https://<your-web-host>/api/events/`: placeholder is fine at seeding; `SetBaseURI.s.sol` re-points every event you administer once the host exists (done 14 Sep 2026 for the staging origin; re-pointed 15 Sep 2026 to `https://turnstile.work/api/events/`: club `0xe8a6e7…019a`, theatre `0xc00f34…a24c`, 87 258 gas each) |
 | `MONADSCAN_API_KEY` | only the Monadscan fallback in §7 | free key from monadscan.com |
 
-Nothing else: no `PRIVATE_KEY` variable anywhere — the deployer is a keystore, `--account deployer`.
+Nothing else: no `PRIVATE_KEY` variable anywhere. The deployer is a keystore, `--account deployer`.
 
 Pre-flight:
 
@@ -246,19 +246,19 @@ forge soldeer install && forge test               # 61 green
 cast chain-id --rpc-url monad_testnet             # 10143
 cast base-fee --rpc-url monad_testnet             # ~100000000000
 cast balance $(cast wallet address --account deployer) --rpc-url monad_testnet --ether   # ≥ 1.5, ideally 3
-ls deployments/                                   # only .gitkeep — no stale 10143.json
+ls deployments/                                   # only .gitkeep, no stale 10143.json
 ```
 
 ## 7. Verification settings
 
 Primary: **MonadVision (Sourcify)**. No API key. Works with our `bytecode_hash = "none"` / `cbor_metadata = false`
 (the bytecode carries no metadata hash, so Sourcify records a *runtime match*, shown as verified; an
-"exact match" would need the CBOR trailer back, which changes bytecode and gas — not worth it).
+"exact match" would need the CBOR trailer back, which changes bytecode and gas, so it is not worth it).
 
 | Setting | Value |
 | --- | --- |
 | `--verifier` | `sourcify` |
-| `--verifier-url` | `https://sourcify-api-monad.blockvision.org/` — **keep the trailing slash**; forge appends `v2/verify/…` |
+| `--verifier-url` | `https://sourcify-api-monad.blockvision.org/`: **keep the trailing slash**; forge appends `v2/verify/…` |
 | `--chain` | `10143` |
 | API key | none |
 | Explorer | `https://testnet.monadvision.com/address/<address>` |
@@ -267,7 +267,7 @@ Forge 1.8 speaks Sourcify API v2, and the MonadVision instance serves both v1 an
 `POST /v2/verify/10143/<addr>` validates input, `GET /check-by-addresses` answers). Verification runs inside the
 deploy command (`--verify`) for all three contracts; constructor args are taken from the broadcast automatically.
 
-Fallback per contract (same result, run after the fact — e.g. if the explorer's RPC lagged during the deploy):
+Fallback per contract (same result, run after the fact, for example if the explorer's RPC lagged during the deploy):
 
 ```bash
 S="--chain 10143 --verifier sourcify --verifier-url https://sourcify-api-monad.blockvision.org/"
@@ -290,7 +290,7 @@ forge verify-contract $FACTORY src/TurnstileFactory.sol:TurnstileFactory \
 
 Event clones are EIP-1167 proxies to the verified implementation; explorers show them as proxies. Nothing to verify per event.
 
-## 8. Deploy — exact command
+## 8. Deploy: exact command
 
 ```bash
 cd packages/contracts
@@ -331,10 +331,10 @@ cast call $F "implementation()(address)"   --rpc-url monad_testnet    # = $I
 cast call $F "trustedForwarder()(address)" --rpc-url monad_testnet    # = $W
 cast call $F "eventCount()(uint256)"       --rpc-url monad_testnet    # 0
 for A in $F $I $W; do curl -s "https://sourcify-api-monad.blockvision.org/v2/contract/10143/$A"; echo; done   # "runtimeMatch":"match" ×3
-# (the v1 check-by-addresses endpoint on this instance answers status "false" even for verified contracts — ignore it)
+# (the v1 check-by-addresses endpoint on this instance answers status "false" even for verified contracts, so ignore it)
 ```
 
-## 9. Seed events — exact command
+## 9. Seed events: exact command
 
 ```bash
 cd packages/contracts
@@ -345,7 +345,7 @@ forge script script/CreateDemoEvent.s.sol --rpc-url monad_testnet --account depl
 ```
 
 Expected: `club 0x…`, `theatre 0x…`, `Estimated total gas used for script: ~1677000`, `Estimated amount required: ~0.23 MON`
-(actual ≈ 0.17 MON). The addresses are deterministic — `predictEventAddress(1)` / `(2)` on the factory — and the
+(actual ≈ 0.17 MON). The addresses are deterministic (`predictEventAddress(1)` / `(2)` on the factory) and the
 `EventCreated` events are what the indexer will pick up first.
 
 Sanity checks:
@@ -366,14 +366,14 @@ Then fund the relayer and gate (§5) and, once `.env` exists for the apps, recor
 
 | File | Written by | Contents |
 | --- | --- | --- |
-| `packages/contracts/deployments/10143.json` | `Deploy.s.sol` (during simulation, before broadcast) | `chainId, forwarder, implementation, factory, deployedAtBlock, deployedAt, solc` — the single source of truth for indexer, relayer and web |
+| `packages/contracts/deployments/10143.json` | `Deploy.s.sol` (during simulation, before broadcast) | `chainId, forwarder, implementation, factory, deployedAtBlock, deployedAt, solc`: the single source of truth for indexer, relayer and web |
 | `packages/contracts/broadcast/Deploy.s.sol/10143/run-latest.json` + `run-<timestamp>.json` | forge | tx hashes, gas, receipts, contract addresses, deployer address. No secrets |
 | `packages/contracts/broadcast/CreateDemoEvent.s.sol/10143/run-latest.json` + `run-<timestamp>.json` | forge | same for the two `createEvent` txs; event addresses in `additionalContracts` |
-| `packages/contracts/cache/Deploy.s.sol/10143/run-latest.json` | forge | "sensitive" run data — **ignored**, never commit |
-| `~/.foundry/keystores/deployer` | cast | encrypted key — never leaves your machine |
+| `packages/contracts/cache/Deploy.s.sol/10143/run-latest.json` | forge | "sensitive" run data: **ignored**, never commit |
+| `~/.foundry/keystores/deployer` | cast | encrypted key, never leaves your machine |
 
 Because `deployments/10143.json` is written before the broadcast, a failed or interrupted broadcast leaves a file
-that names contracts that may not exist: delete it (or re-run and let it be overwritten) — see §12.
+that names contracts that may not exist: delete it (or re-run and let it be overwritten). See §12.
 
 ## 11. What to commit afterwards
 
@@ -389,7 +389,7 @@ research/notes.md                     ← dated entry: addresses, gas actually c
 ```
 
 Suggested commit message: `Deploy Turnstile v0.1.0 to Monad testnet (10143)`. Nothing under `broadcast/**/dry-run/`,
-`cache/`, `out/`, `dependencies/` or any `.env` — all ignored already. Send me the three addresses (or the JSON)
+`cache/`, `out/`, `dependencies/` or any `.env`, which are all ignored already. Send me the three addresses (or the JSON)
 and I will wire them into the indexer config and `apps/web` from the sandbox side.
 
 ## 12. Failure and debug checklist
@@ -402,17 +402,17 @@ and I will wire them into the indexer config and `apps/web` from the sandbox sid
 | `nonce too low` / `already known` | the deployer sent something else meanwhile, or a previous attempt landed | `cast nonce $D --rpc-url monad_testnet`; `--resume` if the earlier txs are on chain, otherwise delete `broadcast/Deploy.s.sol/10143/` and start over (addresses will differ from the pre-computed ones) |
 | Rate-limited (`429`, `too many requests`) | public RPC (25 rps for `eth_call`/`estimateGas`) | `--slow` is already on; switch `--rpc-url` to Ankr or your Alchemy app URL |
 | Deploy succeeded, verification failed or timed out | explorer indexer lag, or the missing trailing slash on `--verifier-url` | run the §7 fallback commands; check with `curl …/check-by-addresses…`. Nothing on chain needs to change |
-| `Contract source code already fully verified` | fine — a previous attempt succeeded | nothing |
-| Verification says bytecode mismatch | local build differs from what was deployed (edited a source after deploying, different solc/optimizer, or `forge clean` with a changed `foundry.toml`) | check out the deployed commit, `forge build`, re-verify; if truly different, redeploy — never edit `deployments/*.json` by hand to paper over it |
+| `Contract source code already fully verified` | fine, a previous attempt succeeded | nothing |
+| Verification says bytecode mismatch | local build differs from what was deployed (edited a source after deploying, different solc/optimizer, or `forge clean` with a changed `foundry.toml`) | check out the deployed commit, `forge build`, re-verify; if truly different, redeploy. Never edit `deployments/*.json` by hand to paper over it |
 | `buy` reverts `SalesClosed` a few hours after seeding | `START_IN` was left at its 2 h default, so the club's sales window (which ends at `startsAt`) has passed | seed again with `START_IN=3888000`; the old events stay on chain and are harmless, or extend with `setSalesEnd` (≤ `startsAt`) |
-| `CreateDemoEvent` — `vm.readFile` permission / file not found | run from `packages/contracts`, `deployments/10143.json` must exist | `cd packages/contracts`; the `fs_permissions` in `foundry.toml` cover `./deployments` |
+| `CreateDemoEvent`: `vm.readFile` permission / file not found | run from `packages/contracts`, `deployments/10143.json` must exist | `cd packages/contracts`; the `fs_permissions` in `foundry.toml` cover `./deployments` |
 | Gate `checkIn` reverts `AccessControlUnauthorizedAccount` | `GATE_ADDRESS` was unset/wrong at creation | grant with the `grantRole` command in §4 |
 | `checkIn` reverts `SlotOutOfWindow` | phone/gate clock more than one slot from block time | check NTP on the scanning device; the app signs `floor(Date.now()/30000)` |
 | Relayer sees `FailedCall()` | inner call reverted (wrong price, sales closed, not holder, expired signature) | simulate with `cast call $EVENT "<fn>" … --from $HOLDER`; forwarder swallows the reason by design |
-| Tx "pending" much longer than a second | Monad has no public mempool; a rejected tx just disappears | `cast receipt <hash>`; if nothing after ~10 s, it was dropped — re-send with a correct nonce/fee |
+| Tx "pending" much longer than a second | Monad has no public mempool; a rejected tx just disappears | `cast receipt <hash>`; if nothing after ~10 s, it was dropped. Re-send with a correct nonce/fee |
 | Anything unclear in a trace | | `forge script … -vvvv` (simulation only), `cast run <txhash> --rpc-url monad_testnet` for a mined tx, or open the hash in Tenderly (`dashboard.tenderly.co/explorer`) |
 
 Rehearsal without spending anything: `anvil --fork-url https://testnet-rpc.monad.xyz --port 8546` in one shell, then
 the §8/§9 commands with `--rpc-url http://127.0.0.1:8546 --private-key 0xac09…ff80` (anvil's funded account 0)
-and without `--verify`. Delete `deployments/10143.json` and `broadcast/*/10143/` afterwards — the real
+and without `--verify`. Delete `deployments/10143.json` and `broadcast/*/10143/` afterwards. The real
 deployment must not inherit rehearsal files.

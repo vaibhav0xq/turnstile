@@ -30,11 +30,11 @@ and a sale clears the seller's door key, so nothing that was screenshotted or fo
 
 ## How to try it
 
-You need a passkey provider that supports the WebAuthn PRF extension. Tested so far: Android Chrome with
+You need a passkey provider that supports the WebAuthn PRF extension. Verified: Android Chrome with
 Google Password Manager and a Windows laptop using that phone over the hybrid QR flow. Safari with iCloud
-Keychain and Windows Hello on Windows 11 25H2 are expected to work but are not in the device matrix yet
-(`docs/device-matrix.md`). A Chrome profile that is not signed in and Bitwarden do not offer PRF and the app
-says so instead of failing quietly. The path takes about a minute and two passkey prompts, three on
+Keychain and Windows Hello on Windows 11 25H2 support PRF by their own documentation and are listed as
+unverified in `docs/device-matrix.md`. A Chrome profile that is not signed in and Bitwarden do not offer PRF
+and the app says so instead of failing quietly. The path takes about a minute and two passkey prompts, three on
 authenticators that cannot evaluate PRF while creating the passkey.
 
 1. Open <https://turnstile.work> and enter the city. Pick a night from the list or tap a beacon.
@@ -51,6 +51,12 @@ authenticators that cannot evaluate PRF while creating the passkey.
 Paid tiers are paid from the passkey account's own balance. On testnet the relayer tops up a new account
 with 0.1 MON, limited per address and per day. Passkeys are scoped to `turnstile.work`, so a synced
 passkey brings the same account back on any device.
+
+Sessions are short on purpose. The account session lasts 15 minutes and the door key session an hour.
+When one runs out the ticket says so and offers the next step: a stale code is re-signed without a prompt,
+an expired door key is derived again with one prompt and an expired account session asks you to sign
+again. **Forget this device** on the passport page clears what the browser stored. The passkey stays with
+your passkey provider and signing in again restores the same account, seats and vault.
 
 ## Screens
 
@@ -77,9 +83,10 @@ passkey brings the same account back on any device.
 - **No wallet app and no gas on the sponsored path.** Calls go through an ERC-2771 forwarder. The relayer
   sponsors free seats and holder actions such as binding, listing and taking a free listing. Paid seats are
   sent from the passkey account itself and pay their price plus gas.
-- **A live layer with no backend of its own.** The organiser board, city pulse, passport attendance
-  history and seat provenance are read from the hosted Envio indexer. Each view carries a freshness chip
-  that compares the indexer's head with the relayer's and says "unavailable" instead of inventing rows.
+- **A live layer with no backend of its own.** The public pulse page (`/pulse`), the organiser board,
+  the city pulse card, passport attendance history and seat provenance are read from the hosted Envio
+  indexer. Each view carries a freshness chip that compares the indexer's head with the relayer's and says
+  "unavailable" instead of inventing rows. The pulse page shows the query it runs.
 - **A private passport.** Notes about each night are encrypted client-side with the vault key and stored
   at the relayer as ciphertext it cannot read. The key exists only in memory and is re-derived from the
   passkey on any device.
@@ -96,8 +103,9 @@ selected on the hackathon platform:
   the rest without asking again. The door key is the one deliberate extra prompt.
 - **Mera: One Passkey, Many Keys** (Monad Foundation). Mera's PRF-derived material feeds three separate
   namespaces: the account, the per-event door key and the passport vault key.
-- **Best Use of Envio** (Envio). The hosted HyperIndex indexer in `packages/indexer` powers the live
-  history, city pulse, organiser board, passport attendance history and ticket provenance.
+- **Best Use of Envio** (Envio). The hosted HyperIndex indexer in `packages/indexer` powers the public
+  pulse page, the organiser board, the city pulse card, passport attendance history, ticket provenance and
+  the freshness chips. Nothing in the live layer is read over RPC.
 - **Best Projects using Alchemy** (Alchemy). Alchemy is the primary Monad testnet RPC for the relayer and
   the browser, with the public RPC as read fallback. Transactions stay pinned to the primary.
 

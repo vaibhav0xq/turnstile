@@ -52,6 +52,8 @@ export function Checkout({ config, event, layout, seatMap }: CheckoutProps) {
   const start = useCheckout((s) => s.start);
   const fan = useIdentity((s) => s.fan);
   const knownAddress = useIdentity((s) => s.knownAddress);
+  const signIn = useIdentity((s) => s.signIn);
+  const identityBusy = useIdentity((s) => s.busy);
   const devSeed = useIdentity((s) => s.devSeed);
   const selectSeat = useDirector((s) => s.selectSeat);
 
@@ -226,6 +228,22 @@ export function Checkout({ config, event, layout, seatMap }: CheckoutProps) {
           </div>
         ) : null}
       </div>
+
+      {!live && !knownAddress && step === "idle" ? (
+        // A device that remembers nothing would mint a second passkey here. Give the returning fan the way back.
+        <div className="mt-3 text-[11px] text-muted" data-testid="checkout-existing-passkey">
+          Already have a Turnstile passkey?{" "}
+          <button
+            type="button"
+            className="underline hover:text-paper"
+            onClick={() => void signIn().catch(() => undefined)}
+            disabled={busy || identityBusy !== null}
+          >
+            Sign in first
+          </button>{" "}
+          and this seat goes to your existing account.
+        </div>
+      ) : null}
 
       {buyHash ? (
         <div className="mono mt-4 flex flex-col gap-1 text-[11px] text-muted">

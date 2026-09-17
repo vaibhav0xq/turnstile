@@ -1,6 +1,13 @@
-# Turnstile — remaining work plan
+# Turnstile: remaining work plan (14 Sep 2026, kept as a record)
 
-Written 14 Sep 2026 against staging checkpoint `de6bac9` (verified). Official build window 1 Sep – 13 Oct 2026;
+**Status on 18 Sep 2026: superseded.** The work in sections 2 to 8 shipped and `https://turnstile.work` is
+the live submission origin with the hosted Envio indexer behind the pulse page, the boards and the passport
+history. The current state is in the root `README.md` and `docs/build-log.md`. Two things changed against the
+plan below: the device rows in section 9 are not a blocker for submission (verified rows are in
+`docs/device-matrix.md`, the rest are optional confirmation) and the demo video and portal submission are
+handled by the author outside this repo. The text below is unchanged apart from those two sections.
+
+Written 14 Sep 2026 against staging checkpoint `de6bac9` (verified). Official build window 1 Sep to 13 Oct 2026;
 the platform countdown ends 14 Oct 03:59 UTC = **14 Oct 09:29 IST**; submission fields open around 22 Sep and
 are still unpublished (`research/sources/official-09-dashboard-status.md`). Staging is a working demo, not the
 submission: the plan below takes it to a public website and a product a judge can use unassisted, then to the
@@ -75,13 +82,13 @@ scroll. Same route, same world; DOM sections below the fold, the camera holds th
    after freezes on a Redmi Note 11. It remains developer tooling and is not a required path.
 2. **Tonight in the city.** Existing cards, plus live numbers under each (inside · sold · last check-in ago)
    from Envio (§6), and a one-line **pulse ticker** of the latest activity across events.
-3. **How it works — three frames.** *Pick a seat* (the venue in 3D, tap once) · *Your passkey signs* (one
+3. **How it works: three frames.** *Pick a seat* (the venue in 3D, tap once) · *Your passkey signs* (one
    prompt; the seat is minted to an address derived from it) · *The door reads a 30-second code* (signed by a
    key that exists only for that event; the seat lights when the chain confirms). Each frame is a still from the
    judge run, not an illustration.
 4. **Why identity-bound.** A copied code goes stale within a minute (30-second slots; the door accepts the
-   current and the previous one — `packages/identity/src/entry.ts`, `TurnstileEvent.sol` ±1 slot) and a seat
-   admits once, so a screenshot is worth at most one early entry that the holder sees — say exactly that, never
+   current and the previous one (`packages/identity/src/entry.ts`, `TurnstileEvent.sol` ±1 slot) and a seat
+   admits once, so a screenshot is worth at most one early entry that the holder sees. Say exactly that, never
    "screenshots don't work"; the code itself can only be produced by the passkey that holds the seat. Resale is
    capped by the organiser with a fee back to them. Your notes are private (encrypted vault the relayer cannot
    read); your attendance is public on-chain like any ticket and the Live layer shows it by address.
@@ -94,7 +101,7 @@ scroll. Same route, same world; DOM sections below the fold, the camera holds th
 7. **FAQ (6 questions).** Is this a wallet? · What if I lose my phone? (passkey sync; stateless test) · What
    happens if someone copies my QR? (the honest one-minute window above) · What does the venue see? · Can I
    resell? · Does it cost gas?
-8. **Footer.** GitHub · contracts · explorer · docs · "Built for Monad Metropolis — Social, Attention &
+8. **Footer.** GitHub · contracts · explorer · docs · "Built for Monad Metropolis: Social, Attention &
    Culture".
 9. **Head.** OG + Twitter card (1200×630 render of the lit seat), canonical, `robots`, `apple-touch-icon`.
 10. **Budget.** LCP < 2.5 s on 4G: type and fog first, city streams in; split the scene chunk (the bundle is
@@ -110,12 +117,12 @@ Ordered by what appears on the judge path.
 2. **City.** Density and depth: a skyline silhouette against the fog, a ground haze gradient, more point
    mass near the beacons, beacons as light columns with a halo and a ground pool rather than flat pillars;
    labels anchored with leader lines and hidden when they would cross DOM copy (the mobile collision). Keep
-   idle drift; add ±2° pointer parallax on desktop. — **Done 14 Sep**: far skyline ring in the haze, height
+   idle drift; add ±2° pointer parallax on desktop. **Done 14 Sep**: far skyline ring in the haze, height
    haze on all building masses, plaza light clouds around each beacon, halo + ground pool + leader line,
    labels climb the column to clear the hero copy / bill / top bar and hide off the edges, pointer parallax
    (desktop, off while dragging).
 3. **Descent.** Replace the fade-to-black cut with a 1.4 s dolly from the beacon into the room and the house
-   lights coming up row by row (this is the "wow" beat the build plan promised and the video needs). — **Done
+   lights coming up row by row (this is the "wow" beat the build plan promised and the video needs). **Done
    14 Sep**: 600 ms dive into the beacon → warm flash over the scene swap → 800 ms descent onto the room's
    waypoint, house lights rising with the seats; falls back to the black cut for direct loads, the door, the
    way back to the city, `prefers-reduced-motion` and the flat fallback. Mid-dive navigation cancels or
@@ -130,13 +137,13 @@ Ordered by what appears on the judge path.
 6. **Finale.** House lights down for 400 ms before the followspot snaps on; a faint dust in the beam; the
    confirmed tx hash typed into the mono readout. Keep the seat card hidden (done).
 7. **Club.** Booths get a top-down fill so they read as furniture, not flat pink; the LED wall gets three
-   authored programmes (noise, type, beat) cycling slowly; a low haze layer above the floor. — **Done 14
+   authored programmes (noise, type, beat) cycling slowly; a low haze layer above the floor. **Done 14
    Sep**: three pendants over the booth arc, LED wall on a 90 s wheel (flow / type ticker / beat rings and
    spectrum), two drifting haze sheets (hidden on the `min` tier).
 8. **Mobile quality tier.** Bloom off below the `low` tier, DPR cap 1.5, halve city point count, no
-   post-processing noise; measure ≥ 30 fps on a mid-range Android. — **First pass 16 Sep**: phones (coarse
-   pointer, < 900 px wide) start at `min` — no post stack, MSAA instead of SMAA, DPR ≤ 1.25, no haze,
-   sparkles or volumetric cones mounted — and every cut links its shader programs behind the flash or the
+   post-processing noise; measure ≥ 30 fps on a mid-range Android. **First pass 16 Sep**: phones (coarse
+   pointer, < 900 px wide) start at `min`: no post stack, MSAA instead of SMAA, DPR ≤ 1.25, no haze,
+   sparkles or volumetric cones mounted, and every cut links its shader programs behind the flash or the
    curtain (`scene/CompileGate.tsx`), so the link stalls the Redmi Note 11 showed on drawn frames (2.3 s at
    boot, 2.0 s at the city → room cut) happen under the overlay. `?perf=1` overlays fps, worst frame, draw
     calls and compile time. The public guided-run chip was later removed on all devices. Open: steady-state fps on the Redmi
@@ -166,7 +173,7 @@ Checkout
 - A visible receipt line (block, ms) after mint. It is already computed for the developer guided run. Show it to everyone.
 
 Ticket
-- Non-owner view: "Seat 1 · General Admission — held by 0xFaD3…1BEE · checked in 11:46 PM", no "You're in.".
+- Non-owner view: "Seat 1 · General Admission, held by 0xFaD3…1BEE · checked in 11:46 PM", no "You're in.".
 - Owner view: code rollover ring, "show this at the door" copy, brightness hint, one-tap "Open door" only
   when a gate exists.
 - Resale panel: price validation against the cap in the same units the organiser set; explorer link on list.
@@ -188,7 +195,7 @@ Accessibility
 - Focus rings on all controls, `Esc` closes panels, tab order through checkout, `aria-live` for the
   stopwatch and gate verdict, contrast check on amber-on-black chips.
 
-## 6. Envio — bounty readiness and the visible feature
+## 6. Envio: bounty readiness and the visible feature
 
 **What the bounty judges score:** depth (derived / aggregated entities, non-trivial schema), a working product
 with live and correct data, originality, craft. The indexer already has the aggregates; what is missing is
@@ -201,7 +208,7 @@ surfaces that cannot exist from RPC reads:
    first, tx links), sold / inside / listed / resales, primary and resale volume, fees earned, a check-ins-per-
    minute sparkline (new `EventMinute` bucket entity), all polling every 4 s. In the video a check-in appears
    here within seconds of the scan. This is the feature a real venue would pay for.
-2. **Passport history** (`/me`): "Your nights" from `Fan` + `Activity` — bought, resold, checked-in with
+2. **Passport history** (`/me`): "Your nights" from `Fan` + `Activity`: bought, resold, checked-in with
    times and tx links, labelled as public on-chain history (distinct from the encrypted vault notes above it).
    Makes *Access that follows you* literal and is the Mera "many keys" story told from data.
 3. **City pulse** (landing): the latest activity across events and per-event live numbers; beacon intensity
@@ -210,16 +217,16 @@ surfaces that cannot exist from RPC reads:
    `Activity` filtered by ticket.
 
 **Depth additions to the schema (cheap, score well):** `Stats` singleton (events, seats sold, check-ins,
-volume — landing headline numbers), `EventMinute` (time buckets for throughput), `Handover` entity per resale
+volume, used for landing headline numbers), `EventMinute` (time buckets for throughput), `Handover` entity per resale
 (seller, buyer, price, fee, seat) instead of only a counter. Multichain (10143 + 143 in one config) only if
 contracts go to mainnet, and only after entity ids become chain-qualified (`Event.id` is the address today,
-`Ticket.id` is `address/token`, `Fan.id` the address — deterministic deployments would collide across chains);
+`Ticket.id` is `address/token`, `Fan.id` the address, since deterministic deployments would collide across chains);
 otherwise leave the second network commented with the reason. `rollback_on_reorg` is `false` in
 `config.yaml`: confirm how the hosted indexer treats unfinalised Monad blocks (finality is sub-second, but the
 setting is the safe default) before trusting cumulative `Stats` / `EventMinute` counters in the video.
 
 **Honesty signals:** freshness chip compares indexer head block to `/api/health` block; when
-`VITE_ENVIO_GRAPHQL_URL` is unset the panels render an explicit "history unavailable" state — never fake rows.
+`VITE_ENVIO_GRAPHQL_URL` is unset the panels render an explicit "history unavailable" state. Never fake rows.
 
 **Plumbing:** browser → hosted GraphQL directly (public endpoint; confirm CORS from the browser on day one);
 relayer proxy `/api/live/*` if CORS or rate limits bite. `graphql-request` or plain `fetch` + TanStack Query; queries in `apps/web/src/live/`.
@@ -239,7 +246,7 @@ final domain must be the one judges use from the first day of judging. On a plat
 rule is **one canonical host**: the apex serves the app, the relayer redirects `www.<apex>` to it with a 301
 before any page loads (small middleware; the host allowlist already exists for `PUBLIC_ORIGIN`; on the Replit
 deployment page routes are static-hosted, so the build's first script does the page-level redirect and the
-relayer's 301 covers `/api/*` — see `docs/final-domain-migration.md`), and
+relayer's 301 covers `/api/*`; see `docs/final-domain-migration.md`) and
 `VITE_RP_ID=<apex>` is set explicitly so a future subdomain (a dedicated gate host, say) shares the same
 credentials. Without the redirect, apex and `www` would grow two separate passkey populations even with the
 apex RP ID. The relayer never verifies WebAuthn origins (only EIP-712 / EIP-191 signatures), so the API origin
@@ -249,7 +256,7 @@ does not affect passkeys. `docs/final-domain-migration.md` is updated to this ru
 |---|---|---|
 | **A. Replit single origin + custom domain** (current architecture) | Ready today | Web and API on one origin, no CORS, no `VITE_API_URL`. Link the apex and `www` as separate entries (A + TXT each; TXT stays for renewals). **Set Autoscale max machines = 1** (the tx queue, rate limits and drip cooldown are per-process; two instances share one relayer key and would collide on nonces), or move to Reserved VM to avoid scale-to-zero cold starts during judging. Passports already in Postgres. |
 | **B. Web on Vercel, relayer on Replit** | Feasible, 1 day | Vite SPA deploys as-is; needs `VITE_API_URL`, `CORS_ORIGIN`, `PUBLIC_ORIGIN` = web origin for metadata `image` URLs while `baseURI` points at the API origin. Gains a CDN and preview URLs; loses single-origin simplicity, and every preview URL is a fresh `rpId`. Two domains to keep in sync. |
-| **C. Everything on Vercel** | Not without a refactor (3–4 days + new infra) | Hono runs on Vercel functions, but the relayer relies on process state: a FIFO transaction queue for nonce ordering, in-memory rate limits and the drip cooldown map. Concurrent invocations would need a distributed lock / nonce allocator (Redis) and KV for limits; the 30 s receipt wait fits within function limits but stacks on top of queueing. New failure modes right before submission. |
+| **C. Everything on Vercel** | Not without a refactor (3 to 4 days + new infra) | Hono runs on Vercel functions, but the relayer relies on process state: a FIFO transaction queue for nonce ordering, in-memory rate limits and the drip cooldown map. Concurrent invocations would need a distributed lock / nonce allocator (Redis) and KV for limits; the 30 s receipt wait fits within function limits but stacks on top of queueing. New failure modes right before submission. |
 
 **Recommendation: A.** Buy the domain now (DNS propagation is the slow part), keep staging as the rehearsal
 origin, and set max machines = 1 before judging. Revisit B only if the landing's LCP cannot be met from the
@@ -258,7 +265,7 @@ relayer's static serving.
 **Alchemy (kept, low effort, mostly env plus two small code changes):** create an Alchemy app for Monad
 testnet; set the relayer's `RPC_URL` to it and `PUBLIC_RPC_URL` to a second key restricted to the final domain
 (browser seat reads). Code: the browser builds a single `http()` transport today
-(`apps/web/src/chain/client.ts`) and the relayer likewise — switch both to viem `fallback([alchemy, public])`
+(`apps/web/src/chain/client.ts`) and the relayer likewise. Switch both to viem `fallback([alchemy, public])`
 so a key outage degrades instead of failing; `/api/health` gains an `rpc` provider label (it has none) and the
 "Under the hood" section names it. Verify in the dashboard which Alchemy tools support Monad before promising
 more (webhooks for organiser alerts would be the next step if available). RPC alone is the thinnest possible
@@ -271,16 +278,18 @@ and do not claim features that were not verified.
 3. Production env: `PUBLIC_ORIGIN=https://<apex>`, remove `ENVIRONMENT_LABEL`, set `VITE_RP_ID=<apex>`,
 Alchemy `RPC_URL` / `PUBLIC_RPC_URL`, Envio `VITE_ENVIO_GRAPHQL_URL`; the `www` → apex redirect deployed; max
 machines 1; republish; check boot logs. 4. Verify `/api/health`, `/api/config` (no label), metadata + `image.svg`, spoofed-host header rejected.
-5. `pnpm smoke` and the judge run against the final origin (this consumes one seat — use the theatre or a
+5. `pnpm smoke` and the judge run against the final origin (this consumes one seat, so use the theatre or a
 rehearsal event, see §10). 6. Re-point `baseURI` for events 1 and 2 with `SetBaseURI.s.sol` (trailing slash,
 admin key), confirm `tokenURI(1)` and slot 4. 7. README, deploy doc, storyboard, notes → gated commit.
 8. Afterwards: staging stays labelled; staging passkeys are throwaway; a republish is needed for every later
 change.
 
-## 9. Real-device testing still needed
+## 9. Device coverage (optional confirmation, not a blocker)
 
-All on the **final origin** (passkeys are per origin), each row recorded in `docs/device-matrix.md` with
-prompt counts, timings and the JSON from the device page.
+Verified rows are in `docs/device-matrix.md`: Android Chrome with Google Password Manager on the final origin
+and a Windows laptop through the hybrid QR flow. The rows below are worth confirming when a device is at hand.
+Each is recorded there with prompt counts, timings and the JSON from the device page. A provider without PRF
+gets a clear `PRF_UNAVAILABLE` message in the app, so an unverified row cannot fail quietly for a judge.
 
 | Row | Why | Pass criteria |
 |---|---|---|
@@ -298,10 +307,10 @@ prompt counts, timings and the JSON from the device page.
 
 ## 10. Before final demo capture
 
-- Website complete (§3) and app fixes (§4–5) merged; final domain live; `baseURI` re-pointed; Envio panels
+- Website complete (§3) and app fixes (§4 to 5) merged; final domain live; `baseURI` re-pointed; Envio panels
   live with real rows; Alchemy in `/api/health`.
-- Device matrix (§9) green for iOS + macOS + Android + one Windows path; storyboard adjusted to the measured
-  timings on the final origin.
+- Device rows (§9) confirmed where devices are available; not a gate for the capture. Storyboard adjusted to
+  the measured timings on the final origin.
 - **Demo data.** Front rows of *Neon Night* already carry four "inside" seats (they add life; keep them). Stop
   running judge flows against the seed events. For the capture, publish a third event ("Turnstile Opening
   Night") 30 minutes before recording and seed it. **Done 15 Sep:** `pnpm seed:night -- --relayer <origin>
@@ -325,31 +334,31 @@ prompt counts, timings and the JSON from the device page.
 
 | # | Work | Effort | Target |
 |---|---|---|---|
-| 1 | Domain + hosting: buy `turnstile.work`, link apex + `www`, Alchemy keys, `VITE_RP_ID`, Reserved VM, migration §8 steps 1–4 (not `baseURI` yet). Code side done 14 Sep: `www` → apex redirect middleware (`REDIRECT_HOSTS`), viem `fallback` transports in relayer and browser (`RPC_FALLBACK_URLS`, `PUBLIC_RPC_FALLBACK_URLS`), `/api/health` `rpc` block and `/api/config.rpcProvider` | 1.5 days + DNS wait | 16 Sep |
+| 1 | Domain + hosting: buy `turnstile.work`, link apex + `www`, Alchemy keys, `VITE_RP_ID`, Reserved VM, migration §8 steps 1 to 4 (not `baseURI` yet). Code side done 14 Sep: `www` → apex redirect middleware (`REDIRECT_HOSTS`), viem `fallback` transports in relayer and browser (`RPC_FALLBACK_URLS`, `PUBLIC_RPC_FALLBACK_URLS`), `/api/health` `rpc` block and `/api/config.rpcProvider` | 1.5 days + DNS wait | 16 Sep |
 | 2 | Envio: deploy indexer, schema additions (`Stats`, `EventMinute`, `Handover`), client + four surfaces, freshness chip. Code side done 14 Sep: schema additions, `apps/web/src/live/` client + hooks, organiser live board, city pulse, attendance record, seat provenance, freshness chip against `/api/health`, `scripts/mock-indexer.mjs` for UI work. Left: the hosted deploy and `VITE_ENVIO_GRAPHQL_URL` in production | 3 days | 20 Sep |
 | 3 | App surface fixes (§5). Done 14 Sep: developer-only stopwatch, mobile header, scrims, 404 / loading / unknown-seat states, non-owner and unsold ticket copy, checkout failure copy, gate operator token, guided-run target (newest free event + `?event=`) | 2 days | 22 Sep |
-| 3b | Portal gate: submission fields open — read requirements, enter repo, re-confirm track + bounties, adjust this plan | 0.5 day | 22–23 Sep |
-| 4 | 3D fixes on the judge path (§4.1, 4.4, 4.5, 4.6, 4.8) — done 14 Sep: loader + flat fallback with a DOM seat list, theatre reframe, followspot wash, quality tiers (mobile) | 3 days | 25 Sep |
-| 5 | Landing / website (§3) — done 14 Sep: hero CTA + sub-claim, programme sections 01–05 with stills from the judge run, FAQ, footer, OG / manifest / robots / icons, scene chunk split (lazy `World`, 877 kB app + 1.2 MB scene). Left: `VITE_SITE_URL` on the final origin (absolute OG URLs + canonical), Lighthouse pass on the final host, city pulse numbers need the hosted Envio | 3 days | 29 Sep |
-| 6 | 3D depth (§4.2, 4.3, 4.7): city density, descent dolly, club dressing — done 14 Sep; left in §4: theatre reframe (4.4), seat view in the followspot (4.5), finale (4.6), mobile tier (4.8) | 2–3 days | 2 Oct |
-| 6b | Landing redesign Phase A (`docs/landing-redesign-plan.md`) — done 14 Sep: lit city, `/` scroll flight with three story frames, `/city` picker, judge links redirect, mobile header and venue polish. Left: Phase B sample door-code ring (optional), real-browser check of the high tier (bloom) on the new lighting | 1 day | done |
-| 7 | Preflight (`pnpm preflight -- --origin <final> --final`, added 15 Sep), smoke + judge run on the final origin, **then** re-point `baseURI` (migration order); device matrix (§9), fixes from it | 3 days | 6 Oct |
+| 3b | Portal gate: submission fields open. Read requirements, enter repo, re-confirm track + bounties, adjust this plan | 0.5 day | 22 to 23 Sep |
+| 4 | 3D fixes on the judge path (§4.1, 4.4, 4.5, 4.6, 4.8), done 14 Sep: loader + flat fallback with a DOM seat list, theatre reframe, followspot wash, quality tiers (mobile) | 3 days | 25 Sep |
+| 5 | Landing / website (§3), done 14 Sep: hero CTA + sub-claim, programme sections 01 to 05 with stills from the judge run, FAQ, footer, OG / manifest / robots / icons, scene chunk split (lazy `World`, 877 kB app + 1.2 MB scene). Left: `VITE_SITE_URL` on the final origin (absolute OG URLs + canonical), Lighthouse pass on the final host, city pulse numbers need the hosted Envio | 3 days | 29 Sep |
+| 6 | 3D depth (§4.2, 4.3, 4.7): city density, descent dolly, club dressing, done 14 Sep; left in §4: theatre reframe (4.4), seat view in the followspot (4.5), finale (4.6), mobile tier (4.8) | 2 to 3 days | 2 Oct |
+| 6b | Landing redesign Phase A (`docs/landing-redesign-plan.md`), done 14 Sep: lit city, `/` scroll flight with three story frames, `/city` picker, judge links redirect, mobile header and venue polish. Left: Phase B sample door-code ring (optional), real-browser check of the high tier (bloom) on the new lighting | 1 day | done |
+| 7 | Preflight (`pnpm preflight -- --origin <final> --final`, added 15 Sep), smoke + judge run on the final origin, **then** re-point `baseURI` (migration order); optional device rows (§9) | 3 days | 6 Oct |
 | 8 | Freeze: README, write-up, code review, gate + push; storyboard dry run. Seed-night script done 15 Sep (`pnpm seed:night`) | 1 day | 7 Oct |
-| 9 | Capture and edit the video; submit | 2 days | 9–10 Oct |
-| — | Buffer to the 14 Oct 09:29 IST deadline | 3–4 days | — |
+| 9 | Capture and edit the video; submit | 2 days | 9 to 10 Oct |
+| - | Buffer to the 14 Oct 09:29 IST deadline | 3 to 4 days | - |
 
 Rules that hold throughout: every commit gated and authored by you; nothing sensitive in the repo; Envio, the
-domain and Alchemy are your accounts — I prepare the exact steps and verify afterwards.
+domain and Alchemy are your accounts. I prepare the exact steps and verify afterwards.
 
 ## 12. Decisions taken (14 Sep 2026)
 
 | Question | Decision | Consequence in this plan |
 |---|---|---|
-| Domain | **`turnstile.work`** — revised 14 Sep 2026 from `turnstile.show`, which was too expensive for the MVP (backups `turnstile.club`, `turnstile.one` if it is gone at checkout) | `PUBLIC_ORIGIN=https://turnstile.work`, `VITE_RP_ID=turnstile.work`, `VITE_SITE_URL=https://turnstile.work`, `REDIRECT_HOSTS` covers `www` automatically; the migration runbook names it. No migration step, `baseURI` re-point or final `PUBLIC_ORIGIN` until the domain is bought and linked; testing stays on the Replit staging URL. |
-| Hosting | **Option A** — Replit single origin + custom domain, **Reserved VM** through judging (fallback: Autoscale with max machines = 1) | No `VITE_API_URL`, no CORS. The relayer stays single-process, which its tx queue, rate limits and drip cooldown assume. |
+| Domain | **`turnstile.work`**, revised 14 Sep 2026 from `turnstile.show`, which was too expensive for the MVP (backups `turnstile.club`, `turnstile.one` if it is gone at checkout) | `PUBLIC_ORIGIN=https://turnstile.work`, `VITE_RP_ID=turnstile.work`, `VITE_SITE_URL=https://turnstile.work`, `REDIRECT_HOSTS` covers `www` automatically; the migration runbook names it. No migration step, `baseURI` re-point or final `PUBLIC_ORIGIN` until the domain is bought and linked; testing stays on the Replit staging URL. |
+| Hosting | **Option A**: Replit single origin + custom domain, **Reserved VM** through judging (fallback: Autoscale with max machines = 1) | No `VITE_API_URL`, no CORS. The relayer stays single-process, which its tx queue, rate limits and drip cooldown assume. |
 | Mainnet | **Testnet-only judged submission**, mainnet-ready architecture documented | Envio config keeps chain `10143` only; entity ids are chain-qualified so `143` can be added without a re-index of ids. README/write-up state the testnet deployment plainly. No mainnet keys, funds or deployments before the deadline. |
 | Demo video event | **Fresh "Opening Night" club event**, seeded the day before capture | Capture uses `?event=<address>` to target it; the judge default (no parameter) is the newest event that still has a free seat, so the seeded night is also what a judge lands on. Seed script + storyboard dry run stay in step 8. |
 | Public guided run | **Removed 17 Sep 2026. Developer tooling only.** | The owner requested removal after freezes on a Redmi Note 11. It is not a required product path. `scripts/judge-run.mjs` may still open `/city?tour=auto` for verification and capture. |
 
-Still yours to do when ready (each has an exact runbook): buy and link the domain (§8 steps 1–4), create the
+Still yours to do when ready (each has an exact runbook): buy and link the domain (§8 steps 1 to 4), create the
 Alchemy app and keys, deploy the indexer to Envio hosted and hand back `VITE_ENVIO_GRAPHQL_URL`, publish.

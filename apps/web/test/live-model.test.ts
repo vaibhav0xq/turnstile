@@ -74,6 +74,20 @@ test("minuteSeries fills thirty buckets ending at the current minute, oldest fir
   );
 });
 
+test("minuteSeries sums rows from different events that share a minute", () => {
+  const now = 1_800_000_000_000 + 25_000;
+  const current = 1_800_000_000;
+  const rows = [
+    { minute: String(current), mints: 2, checkIns: 1, resales: 0 },
+    { minute: current, mints: 1, checkIns: 0, resales: 3 },
+    { minute: current - 60, mints: 0, checkIns: 4, resales: 0 },
+  ];
+  const series = minuteSeries(rows, now, 60);
+  assert.equal(series.length, 60);
+  assert.deepEqual(series[59], { minute: current, mints: 3, checkIns: 1, resales: 3 });
+  assert.deepEqual(series[58], { minute: current - 60, mints: 0, checkIns: 4, resales: 0 });
+});
+
 test("describeActivity speaks in the second person for the viewer, on either side of a resale", () => {
   const base = { id: "1", amount: "0", timestamp: "1", txHash: "0xabc", ticket: { tokenId: "7" } };
   assert.equal(describeActivity({ ...base, kind: "MINT", actor: ME }, ME), "You took the seat · seat 7");

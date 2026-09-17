@@ -97,6 +97,9 @@ function friendly(code: string, fallback: string): string {
       return "The price changed. Try again.";
     case "CEREMONY_FAILED":
       return "The passkey prompt was cancelled.";
+    case "SESSION_EXPIRED":
+    case "SESSION_ENDED":
+      return "Session expired. Sign again to continue.";
     case "DIFFERENT_PASSKEY":
       return "That was a different passkey. Use the one you signed in with.";
     case "PRF_UNAVAILABLE":

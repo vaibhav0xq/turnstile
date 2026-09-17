@@ -1,8 +1,8 @@
 # Landing and hero redesign
 
-Status: Phase A built 14 Sep 2026 (lighting pass, scroll flight with three story frames, hero and mobile
-header, `/` → `/city` split, venue mobile polish); Phase B (the live sample door-code ring, §6) is not
-built. The sections below are the proposal as approved; where the build deviated it is noted inline.
+Status: This is a planning record from September 2026 kept for traceability. Phase A shipped and Phase B
+(the sample door code ring) was not built. The current product is described in the root README. The sections
+below are the proposal as approved; where the build deviated it is noted inline.
 Feedback it answers: the city reads as black blocks, the hero is text over a busy scene, the phone gets a
 full-screen wall of copy, and the city/event picker is the whole first impression instead of a landing that
 leads into it.
@@ -11,7 +11,7 @@ Build notes (14 Sep 2026):
 
 - Lighting: the building material now has a real albedo (`#6f7a9a`) so the moon, a warm south-east fill and
   the hemisphere light do the modelling; the near-black albedo of the plan left every face the same black.
-  Points clamp to 2–9 px, aviation lights blink red, the sky band is a dusk gradient with light pollution.
+  Points clamp to 2 to 9 px, aviation lights blink red, the sky band is a dusk gradient with light pollution.
 - Flight: five keys in `src/scene/flight.ts` (hero, I, II, III, city pose), centripetal Catmull-Rom, damped
   towards the scroll target, portrait keys 1.25× further with a wider fov. The haze thins at the hero
   (density 0.0014 → 0.0021 by frame I) so the far skyline reads from up high. Beacon labels stay hidden
@@ -37,11 +37,11 @@ Still true on `main` and what this plan is for: the building masses are too dark
 scene, the phone's first screen is all text, the header is a row of equal chips, and the city picker is the
 first thing a visitor meets.
 
-## 1. Concept — "Night flight"
+## 1. Concept: "Night flight"
 
 The landing is one continuous descent into the Metropolis. Scroll is altitude: the page opens high above
 the haze with the two beacons as thin columns to the horizon, and every scroll section is a stop on the way
-down — over downtown, low around a plaza, across to the second beacon — until the camera settles on the
+down, over downtown, low around a plaza and across to the second beacon, until the camera settles on the
 exact shot the city picker uses. "Enter the city" then swaps the words, never the world: the same canvas,
 the same chapter, no cut. The city picker becomes the product surface that the landing lands on.
 
@@ -54,13 +54,13 @@ Fixed canvas behind a scrolling overlay, exactly as today. Top to bottom:
 
 | # | Section (height) | Words | World (camera key) |
 |---|---|---|---|
-| 0 | Header (fixed) | Wordmark · environment chip · Passport. "Enter the city →" fades in on the right once the hero scrolls out. No "New passkey" on the landing (it stays on product routes). | — |
+| 0 | Header (fixed) | Wordmark · environment chip · Passport. "Enter the city →" fades in on the right once the hero scrolls out. No "New passkey" on the landing (it stays on product routes). | None |
 | 1 | Hero (100dvh) | Left column, vertically centred: kicker, two-line headline, one subline and primary "Enter the city". The original ghost guided-run control was removed on 17 Sep 2026. Bottom-left: "Scroll to descend ↓". Bottom-right mono status from config: "Monad testnet · 2 nights lit · free seats sponsored". No bill, no beacon labels. | High and far: `p(−40,150,430) t(0,40,0) fov 36`. City reveal (points assembling) plays here as today. |
 | 2 | Frame I (90dvh) | Right-aligned block: "The venue is the seat map." + one line, the `pick.jpg` still as a film-frame card with numeral I. | Descending toward the club beacon: `p(−120,58,190) t(−38,14,−22) fov 38`. |
 | 3 | Frame II (90dvh) | Left block: "One prompt. Your passkey signs." + one line, `sign.jpg`. | Low orbit past the club plaza, halo on the right edge: `p(−80,30,30) t(−38,16,−22) fov 40`. |
 | 4 | Frame III (90dvh) | Right block: "The door reads a code that goes stale in a minute." + one line, `door.jpg`. Optional (phase B): a live sample door code ring, labelled "sample". | Crossing downtown to the theatre beacon: `p(20,44,90) t(44,18,12) fov 40`. |
-| 5 | Tonight (100dvh) | Kicker "Tonight in the city", H2 with the live count ("Two nights are lit."), the bill (today's event cards, live, hover lights the beacon), city pulse, primary "Enter the city", "Host your own night →". | Settles on the city pose `p(0,78,236) t(0,18,0) fov 42` — identical to `/city`. |
-| 6 | Programme | Today's `SiteSections` minus "How it works" (its three frames moved up into 2–4): Why identity-bound · For organisers · Under the hood · FAQ · footer. Ink gradient dims the world as now. | Holds the city pose. |
+| 5 | Tonight (100dvh) | Kicker "Tonight in the city", H2 with the live count ("Two nights are lit."), the bill (today's event cards, live, hover lights the beacon), city pulse, primary "Enter the city", "Host your own night →". | Settles on the city pose `p(0,78,236) t(0,18,0) fov 42`, identical to `/city`. |
+| 6 | Programme | Today's `SiteSections` minus "How it works" (its three frames moved up into 2 to 4): Why identity-bound · For organisers · Under the hood · FAQ · footer. Ink gradient dims the world as now. | Holds the city pose. |
 
 Camera between keys is a Catmull-Rom path sampled by damped scroll progress (progress is read per frame
 from the scroll container, no scroll listener; damping ~6/s so a flick never snaps). Pointer parallax stays;
@@ -79,7 +79,7 @@ camera is (the director already allows a dive from the city chapter once the rev
 - First screen (100dvh): kicker · headline at `clamp(40px, 11vw, 56px)` (two lines) · one 15 px line ·
   primary CTA. The original guided-run text link was removed on 17 Sep 2026. The block is anchored at ~58 % height so the top of the screen is
   beacons and haze, with the bottom scrim under the copy. No cards on the first screen.
-- Frames I–III: 70dvh each, copy bottom-anchored on the scrim, the still below it as a full-width 16:10 card
+- Frames I to III: 70dvh each, copy bottom-anchored on the scrim, the still below it as a full-width 16:10 card
   (lazy). Camera keys use the same targets at 1.25× the distance with fov 48 so the beacon stays in frame.
 - Tonight: kicker, H2, full-width bill cards, CTA. A sticky bottom pill "Enter the city" appears after the
   hero scrolls out and hides once this section or the footer is in view.
@@ -95,15 +95,15 @@ camera is (the director already allows a dive from the city chapter once the rev
 
 ## 5. 3D scene changes
 
-### 5.1 Readability — why it is black and what changes
+### 5.1 Readability: why it is black and what changes
 
 Today the city has only a hemisphere light (`#34405f` / `#07080c` × 1.6) on a `#1a1f33` mass with a
 `#0e1120` emissive, under a `#05060a` zenith, a `#141a2c` horizon and `#141a2c` fog. Vertical faces get
 half of a dim sky and land at roughly the same luminance as the fog behind them, so masses and sky merge;
 without bloom (low tier, and any still) the windows are the only thing left.
 
-The fix is value separation in three layers — glowing haze band (lightest of the darks), building masses
-silhouetted against it (darkest), lit detail on top (windows, street, beacons) — plus one key light so
+The fix is value separation in three layers: glowing haze band (lightest of the darks), building masses
+silhouetted against it (darkest) and lit detail on top (windows, street, beacons), plus one key light so
 nearby buildings show form. All of it is tuning of existing materials; no new programs on tier changes.
 
 1. Sky dome: horizon `#141a2c → #1c2540`, band widened to ~0.35 elevation, downtown glow `#3a2414 → #4a2c16`
@@ -112,7 +112,7 @@ nearby buildings show form. All of it is tuning of existing materials; no new pr
 2. Moon key: one `directionalLight` `#7f95d6` × 1.4 from upper-left-behind (no shadow maps), giving a
    ~2:1 lit/shade face ratio on the downtown blocks.
 3. Mass material (`makeMassMaterial`, same `onBeforeCompile`): base `#1e2439`, emissive `#0b0e1a`,
-   roughness .8; add (a) street uplight — warm `#ff8a3d` emissive fading over ~20 units of height, weighted
+   roughness .8; add (a) street uplight, a warm `#ff8a3d` emissive fading over ~20 units of height, weighted
    off roofs; (b) a fresnel rim (`pow(1−n·v, 3)`) in the moon colour so every silhouette edge catches the
    haze; (c) roofs mixed toward `#262e4a` so the skyline reads from the high hero shot.
 4. Points (same instanced system, appended at the end of `buildCity` on the `drnd` stream so downtown's
@@ -131,7 +131,7 @@ case) and in a real browser on the dev URL at high tier before publishing.
 - `scene/flight.ts`: keyframes for landscape and portrait (`p`, `t`, `fov`, `at ∈ [0,1]`), Catmull-Rom
   sampling, a small store for progress. Tests: the path starts and ends where the specification says, the
   last key equals the city pose, sampling is continuous.
-- `CameraRig`: a flight mode alongside the existing dive/descent moves — controls disabled, `setLookAt(…,
+- `CameraRig`: a flight mode alongside the existing dive/descent moves with controls disabled, `setLookAt(…,
   false)` each frame from the damped progress, fov lerped, parallax kept, drift off. Leaving the landing for
   `/city` eases from the current pose to the city waypoint over ~1.2 s using the existing move struct (a
   no-op when the visitor has scrolled to the end).
@@ -145,23 +145,23 @@ keep-out registry keeps doing its job on `/city`.
 
 ## 6. Copy
 
-Headline — pick one:
+Headline, pick one:
 
 - **A. "One passkey. Every door in the city."** (recommended: names the mechanism and the Metropolis, and
   echoes the "One passkey, many keys" bounty)
 - B. "The ticket that knows it's you."
 - C. "Access that follows you." (current)
 
-Subline: "It buys the seat, opens the door and keeps your history private. No wallet, no app — the code on
+Subline: "It buys the seat, opens the door and keeps your history private. No wallet, no app. The code on
 your phone is signed by a key made for tonight alone."
 
 Frames (one line each, bodies trimmed from today's `FRAMES`):
 
-- I — **The venue is the seat map.** Tap a seat in the room; the card tells you the row, the price and
+- I: **The venue is the seat map.** Tap a seat in the room; the card tells you the row, the price and
   whether it is yours, taken or listed.
-- II — **One prompt. Your passkey signs.** The seat is minted to an address derived from your passkey. Free
+- II: **One prompt. Your passkey signs.** The seat is minted to an address derived from your passkey. Free
   seats are sponsored by the relayer; a paid seat costs its face value.
-- III — **The door reads a code that goes stale in a minute.** Codes rotate every 30 seconds and the door
+- III: **The door reads a code that goes stale in a minute.** Codes rotate every 30 seconds and the door
   accepts the current slot and one either side. A seat admits once, so a screenshot never gets a second
   person inside.
 
@@ -232,7 +232,7 @@ a portrait/landscape key table. Net: one route added, no new dependencies.
 
 ## 10. Order of work (phase A)
 
-1. Lighting pass (§5.1) — shoot the city low tier at 1440×900 and 402×874, compare against today's frames.
+1. Lighting pass (§5.1): shoot the city low tier at 1440×900 and 402×874, compare against today's frames.
 2. `/city` route split + header variants + tour/judge redirects; tests green.
 3. Flight keys + rig mode + `Story.tsx` desktop; then portrait keys and the mobile layout.
 4. Venue header polish (§4).

@@ -1,10 +1,11 @@
 import type { AppConfig, EventInfo } from "../../chain/config";
 import { liveEnabled } from "../../live/client";
 import { useNow, useOrganiserBoard } from "../../live/hooks";
-import { big, type MinuteBucket, minuteSeries } from "../../live/model";
+import { big, minuteSeries } from "../../live/model";
 import { Kicker, Spinner, Stat } from "../primitives";
 import { FeedRow, mon } from "./Feed";
 import { LiveChip, LiveFail, LiveOff } from "./LiveChip";
+import { Throughput } from "./Throughput";
 
 /**
  * The organiser's live board for one night: what the door and the box office are doing right now, from the
@@ -46,7 +47,7 @@ export function LiveBoard({ config, event }: { config: AppConfig; event: EventIn
         <Stat label="Resale market" value={mon(big(row.resaleVolume))} />
         <Stat label="Your resale fees" value={mon(big(row.resaleFees))} tone="amber" />
       </div>
-      <Throughput series={series} />
+      <Throughput series={series} title="Last 30 minutes" />
       <div>
         <div className="mono text-[10px] uppercase tracking-[0.16em] text-muted">Door feed</div>
         {board.data.Activity.length === 0 ? (
@@ -58,42 +59,6 @@ export function LiveBoard({ config, event }: { config: AppConfig; event: EventIn
             ))}
           </ul>
         )}
-      </div>
-    </div>
-  );
-}
-
-/** Thirty one-minute bars: seats taken (amber) under walk-ins (green). Pure CSS heights, no chart library. */
-function Throughput({ series }: { series: MinuteBucket[] }) {
-  const peak = Math.max(1, ...series.map((b) => b.mints + b.checkIns + b.resales));
-  const total = series.reduce(
-    (acc, b) => ({ mints: acc.mints + b.mints, checkIns: acc.checkIns + b.checkIns }),
-    { mints: 0, checkIns: 0 },
-  );
-  return (
-    <div>
-      <div className="flex items-center justify-between">
-        <div className="mono text-[10px] uppercase tracking-[0.16em] text-muted">Last 30 minutes</div>
-        <div className="mono text-[10px] text-muted">
-          <span className="text-amber">{total.mints} taken</span> ·{" "}
-          <span className="text-green">{total.checkIns} in</span>
-        </div>
-      </div>
-      <div
-        className="mt-1.5 flex h-10 items-end gap-px"
-        role="img"
-        aria-label="Seats taken and walk-ins per minute"
-      >
-        {series.map((b) => {
-          const h = (n: number) => `${Math.round((n / peak) * 100)}%`;
-          return (
-            <div key={b.minute} className="flex flex-1 flex-col justify-end" style={{ height: "100%" }}>
-              <div className="w-full bg-green/80" style={{ height: h(b.checkIns) }} />
-              <div className="w-full bg-cyan/70" style={{ height: h(b.resales) }} />
-              <div className="w-full bg-amber/80" style={{ height: h(b.mints) }} />
-            </div>
-          );
-        })}
       </div>
     </div>
   );

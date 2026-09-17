@@ -108,21 +108,26 @@ export interface MinuteBucket {
   resales: number;
 }
 
-/** The last `count` minute buckets ending at the current minute, gaps filled with zeros, oldest first. */
+/**
+ * The last `count` minute buckets ending at the current minute, gaps filled with zeros, oldest first. Rows
+ * that share a minute are summed: one event's board sees one row per minute, the chain-wide pulse sees one
+ * per event.
+ */
 export function minuteSeries(rows: readonly MinuteRow[], nowMs: number, count = 30): MinuteBucket[] {
   const end = Math.floor(nowMs / 60_000) * 60;
-  const byMinute = new Map<number, MinuteRow>();
-  for (const row of rows) byMinute.set(num(row.minute), row);
+  const byMinute = new Map<number, MinuteBucket>();
+  for (const row of rows) {
+    const minute = num(row.minute);
+    const bucket = byMinute.get(minute) ?? { minute, mints: 0, checkIns: 0, resales: 0 };
+    bucket.mints += num(row.mints);
+    bucket.checkIns += num(row.checkIns);
+    bucket.resales += num(row.resales);
+    byMinute.set(minute, bucket);
+  }
   const out: MinuteBucket[] = [];
   for (let i = count - 1; i >= 0; i--) {
     const minute = end - i * 60;
-    const row = byMinute.get(minute);
-    out.push({
-      minute,
-      mints: row ? num(row.mints) : 0,
-      checkIns: row ? num(row.checkIns) : 0,
-      resales: row ? num(row.resales) : 0,
-    });
+    out.push(byMinute.get(minute) ?? { minute, mints: 0, checkIns: 0, resales: 0 });
   }
   return out;
 }
