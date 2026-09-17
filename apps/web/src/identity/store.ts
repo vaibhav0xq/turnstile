@@ -56,7 +56,8 @@ export interface VaultSession {
 
 export type Busy = "create" | "signin" | "door" | "vault" | null;
 
-const RP_ID: string = (import.meta.env["VITE_RP_ID"] as string | undefined) ?? window.location.hostname;
+// `import.meta.env` exists under Vite only; the store also loads in node tests, where both reads fall through.
+const RP_ID: string = (import.meta.env?.["VITE_RP_ID"] as string | undefined) ?? window.location.hostname;
 const LS_CRED = "turnstile.credentialId";
 const LS_ADDR = "turnstile.address";
 const LS_DEV = "turnstile.dev";
@@ -66,7 +67,7 @@ function eventKey(event: EventRef): string {
 }
 
 export function readDevSeed(): string | null {
-  if (!import.meta.env.DEV) return null;
+  if (!import.meta.env?.DEV) return null;
   const q = new URLSearchParams(window.location.search).get("dev");
   if (q) {
     localStorage.setItem(LS_DEV, q);
@@ -282,7 +283,9 @@ export const useIdentity = create<IdentityState>()((set, get) => ({
   async renewDoor(event) {
     const key = eventKey(event);
     const { devSeed, rpId } = get();
-    const fan = get().liveFan();
+    // The remembered session names the passkey to expect, live or expired. After an hour the account session
+    // is over too; sweeping it here (`liveFan()`) made the ticket page stop treating the seat as the fan's own.
+    const fan = get().fan;
     set({ busy: "door", error: null });
     try {
       let door: DoorKeySession;
