@@ -30,15 +30,18 @@ and a sale clears the seller's door key, so nothing that was screenshotted or fo
 
 ## How to try it
 
-You need a browser with a platform passkey: Face ID or Touch ID on iPhone, iPad and Mac, biometrics on
-Android, Windows Hello on Windows. Current Chrome, Safari and Edge work. The whole path takes about a
-minute and two passkey prompts.
+You need a passkey provider that supports the WebAuthn PRF extension. Tested so far: Android Chrome with
+Google Password Manager and a Windows laptop using that phone over the hybrid QR flow. Safari with iCloud
+Keychain and Windows Hello on Windows 11 25H2 are expected to work but are not in the device matrix yet
+(`docs/device-matrix.md`). A Chrome profile that is not signed in and Bitwarden do not offer PRF and the app
+says so instead of failing quietly. The path takes about a minute and two passkey prompts, three on
+authenticators that cannot evaluate PRF while creating the passkey.
 
 1. Open <https://turnstile.work> and enter the city. Pick a night from the list or tap a beacon.
 2. Pick a seat. General Admission seats are free and the relayer pays the gas.
-3. Approve the passkey prompt. The first prompt creates your account and opens a 15 minute session. The
-   seat is minted to your account and the ticket opens with a link to the transaction on MonadVision.
-4. Open the door from the ticket. A second prompt binds a door key that only works for this event. The
+3. Approve the passkey prompt. It creates your account and opens a 15 minute session. The seat is
+   minted to your account and the ticket opens with a link to the transaction on MonadVision.
+4. Open the door from the ticket. One more prompt binds a door key that only works for this event. The
    ticket now shows an entry code that rotates every 30 seconds.
 5. Tap **Walk up to the door**. The demo door reads the code, the relayer verifies it and submits
    `checkIn`. The seat lights up in the room and the city pulse records the entry.
@@ -47,8 +50,7 @@ minute and two passkey prompts.
 
 Paid tiers are paid from the passkey account's own balance. On testnet the relayer tops up a new account
 with 0.1 MON, limited per address and per day. Passkeys are scoped to `turnstile.work`, so a synced
-passkey brings the same account back on any device. Without a platform passkey, desktop Chrome can use a
-phone as the authenticator over the hybrid QR flow.
+passkey brings the same account back on any device.
 
 ## Screens
 
@@ -72,9 +74,9 @@ phone as the authenticator over the hybrid QR flow.
 - **Tickets that follow the person.** Entry codes are EIP-712 signatures from the door key over the event,
   seat and 30 second time slot. `checkIn` verifies the bound key and consumes the code once. A resale
   clears the door key on-chain, so the old holder's codes stop working the moment the seat changes hands.
-- **No wallet app, no gas for the fan.** Calls go through an ERC-2771 forwarder. The relayer sponsors free
-  seats and holder actions such as binding, listing and taking a free listing. Paid seats are sent from the
-  passkey account itself.
+- **No wallet app and no gas on the sponsored path.** Calls go through an ERC-2771 forwarder. The relayer
+  sponsors free seats and holder actions such as binding, listing and taking a free listing. Paid seats are
+  sent from the passkey account itself and pay their price plus gas.
 - **A live layer with no backend of its own.** The organiser board, city pulse, passport attendance
   history and seat provenance are read from the hosted Envio indexer. Each view carries a freshness chip
   that compares the indexer's head with the relayer's and says "unavailable" instead of inventing rows.
@@ -84,12 +86,14 @@ phone as the authenticator over the hybrid QR flow.
 
 ## Monad Metropolis
 
-Built solo from 1 September to 13 October 2026. Track and bounties as selected on the hackathon platform:
+Built solo during the Metropolis build window (1 September to 13 October 2026). Track and bounties as
+selected on the hackathon platform:
 
 - **Track 03: Social, Attention & Culture.** A ticket and door product for communities, where the seat, the
   entry and the passport belong to one person.
 - **Best Mera-Powered UX on Monad** (Monad Foundation). Mera passkeys are the entire account layer. There is
-  no seed phrase, no extension and no custody backend. Every product action is a biometric prompt.
+  no seed phrase, no extension and no custody backend. One prompt opens a 15 minute session that signs
+  the rest without asking again. The door key is the one deliberate extra prompt.
 - **Mera: One Passkey, Many Keys** (Monad Foundation). Mera's PRF-derived material feeds three separate
   namespaces: the account, the per-event door key and the passport vault key.
 - **Best Use of Envio** (Envio). The hosted HyperIndex indexer in `packages/indexer` powers the live

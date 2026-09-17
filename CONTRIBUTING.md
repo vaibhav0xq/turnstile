@@ -17,8 +17,8 @@ The root README covers running the product on a local chain.
 
 Run `pnpm verify` from the root. It installs with a frozen lockfile, lints with biome, typechecks, runs the
 node tests and the identity vector check, builds every package and runs the contracts' own check
-(`forge fmt --check`, `forge lint`, build, tests and the gas snapshot). CI runs the same steps on every
-push and pull request, so a change that fails locally will fail there too.
+(`forge fmt --check`, `forge lint`, build, tests and the gas snapshot). CI runs the same steps on pushes
+to `main` and on every pull request, so a change that fails locally will fail there too.
 
 ## Conventions
 
