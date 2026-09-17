@@ -130,8 +130,12 @@ export interface BuildOptions {
 }
 
 /** Throws on an invalid draft; call `validateDraft` first to show issues inline. */
-export function buildCreateEventArgs(draft: EventDraft, options: BuildOptions): CreateEventArgs {
-  const issues = validateDraft(draft);
+export function buildCreateEventArgs(
+  draft: EventDraft,
+  options: BuildOptions,
+  now = Date.now(),
+): CreateEventArgs {
+  const issues = validateDraft(draft, now);
   if (issues.length > 0) throw new Error(issues[0]?.message ?? "Invalid event");
   const tiers: TierArg[] = draft.tiers.map((tier, index) => ({
     name: tier.name.trim(),

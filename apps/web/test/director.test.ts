@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import { beforeEach, mock, test } from "node:test";
-import { DESCENT_MS, DIVE_MS, pinnedQuality, useDirector, WARM_MAX_MS } from "../src/scene/director.ts";
+import {
+  classifyQuality,
+  DESCENT_MS,
+  DIVE_MS,
+  pinnedQuality,
+  useDirector,
+  WARM_MAX_MS,
+} from "../src/scene/director.ts";
 
 const CLUB = "0xa83d5293e0904e17E5058fEF7EFC41dC4beD159D";
 
@@ -244,4 +251,33 @@ test("?tier pins a known tier and ignores anything else", () => {
   assert.equal(pinnedQuality("?dev=1&tier=min"), "min");
   assert.equal(pinnedQuality("?tier=ultra"), null);
   assert.equal(pinnedQuality(""), null);
+});
+
+test("the starting tier follows the device: phones and software GPUs min, tablets and integrated GPUs low", () => {
+  const desktop = {
+    coarse: false,
+    width: 1440,
+    cores: 8,
+    memory: 16,
+    gpu: "ANGLE (NVIDIA GeForce RTX 3060)",
+  };
+  assert.equal(classifyQuality(desktop), "high");
+  assert.equal(classifyQuality({ ...desktop, gpu: "Apple M2" }), "high");
+  assert.equal(
+    classifyQuality({ ...desktop, gpu: "ANGLE (Intel, Intel(R) UHD Graphics 620 Direct3D11)" }),
+    "low",
+  );
+  assert.equal(classifyQuality({ ...desktop, gpu: "AMD Radeon(TM) Graphics" }), "low");
+  assert.equal(classifyQuality({ ...desktop, cores: 4 }), "low");
+  assert.equal(classifyQuality({ ...desktop, memory: 4 }), "low");
+  assert.equal(classifyQuality({ ...desktop, gpu: "Google SwiftShader" }), "min");
+  assert.equal(classifyQuality({ ...desktop, gpu: "" }), "high");
+  assert.equal(
+    classifyQuality({ coarse: true, width: 390, cores: 8, memory: 4, gpu: "Adreno (TM) 610" }),
+    "min",
+  );
+  assert.equal(
+    classifyQuality({ coarse: true, width: 1024, cores: 8, memory: null, gpu: "Apple GPU" }),
+    "low",
+  );
 });

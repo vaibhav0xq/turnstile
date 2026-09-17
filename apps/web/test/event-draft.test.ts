@@ -54,11 +54,12 @@ test("MON amounts parse to wei and reject garbage", () => {
 });
 
 test("tiers get a thousand seat ids each and percentages become basis points", () => {
-  const args = buildCreateEventArgs(draft(), {
-    venueIds,
-    gates: [GATE],
-    baseURI: "https://relayer.example/api/events/3/tickets/",
-  });
+  // the draft is dated from the frozen clock: validate against it, or the test expires with the calendar
+  const args = buildCreateEventArgs(
+    draft(),
+    { venueIds, gates: [GATE], baseURI: "https://relayer.example/api/events/3/tickets/" },
+    NOW,
+  );
   assert.deepEqual(
     args.tiers.map((t) => [t.firstSeat, t.seatCount, t.price]),
     [

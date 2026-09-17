@@ -91,18 +91,61 @@ export function pinnedQuality(search: string): Quality | null {
   return TIERS.find((t) => t === tier) ?? null;
 }
 
+/** What decides the starting tier; gathered once from the browser, pure for the tests. */
+export interface DeviceHints {
+  coarse: boolean;
+  width: number;
+  cores: number;
+  /** `navigator.deviceMemory` in GiB where the browser exposes it. */
+  memory: number | null;
+  /** The renderer string of a WebGL context, "" when unknown. */
+  gpu: string;
+}
+
+const SOFTWARE_GPU = /swiftshader|llvmpipe|softpipe|software|basic render|mesa offscreen/i;
+const INTEGRATED_GPU =
+  /intel|iris|uhd|hd graphics|mali|adreno|powervr|vega|radeon\(tm\) graphics|radeon graphics/i;
+
 /**
  * Starting tier; the PerformanceMonitor only ever steps it down. Phones begin at `min`: no composer at all
  * (MSAA instead of SMAA, DPR ≤ 1.25), so a mobile GPU never compiles the post chain or a second variant
  * of every material for it — on a Redmi Note 11 that compile was the multi-second freeze, not the frame
- * rate. Small-core desktops begin at `low`.
+ * rate. A software renderer is `min` too. Tablets, integrated GPUs and small-core or low-memory machines
+ * begin at `low`: the monitor would take them there anyway, after seconds of jank and a second compile.
  */
+export function classifyQuality(h: DeviceHints): Quality {
+  if (h.coarse && h.width < 900) return "min";
+  if (SOFTWARE_GPU.test(h.gpu)) return "min";
+  if (h.coarse) return "low";
+  if (INTEGRATED_GPU.test(h.gpu)) return "low";
+  if (h.cores <= 4 || (h.memory !== null && h.memory <= 4)) return "low";
+  return "high";
+}
+
 export function initialQuality(): Quality {
   if (typeof window === "undefined") return "high";
-  const coarse = window.matchMedia("(pointer: coarse)").matches;
-  const cores = navigator.hardwareConcurrency ?? 8;
-  if (coarse && window.innerWidth < 900) return "min";
-  return cores <= 4 ? "low" : "high";
+  return classifyQuality({
+    coarse: window.matchMedia("(pointer: coarse)").matches,
+    width: window.innerWidth,
+    cores: navigator.hardwareConcurrency ?? 8,
+    memory: (navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? null,
+    gpu: gpuName(),
+  });
+}
+
+/** The GPU behind the page, read from a throwaway context that is released at once; "" without WebGL. */
+function gpuName(): string {
+  try {
+    const canvas = document.createElement("canvas");
+    const gl = canvas.getContext("webgl2") ?? canvas.getContext("webgl");
+    if (!gl) return "";
+    const info = gl.getExtension("WEBGL_debug_renderer_info");
+    const name = String(gl.getParameter(info ? info.UNMASKED_RENDERER_WEBGL : gl.RENDERER) ?? "");
+    gl.getExtension("WEBGL_lose_context")?.loseContext();
+    return name;
+  } catch {
+    return "";
+  }
 }
 
 const PINNED = typeof window === "undefined" ? null : pinnedQuality(window.location.search);
