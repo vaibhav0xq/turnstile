@@ -197,7 +197,7 @@ check(
 );
 
 // ---------------------------------------------------------------- the site
-const TITLE = "Turnstile — access that follows you";
+const TITLE = "Turnstile | access that follows you";
 const home = await get("/");
 const title = home.text.match(/<title>([^<]*)<\/title>/)?.[1] ?? "";
 check(
