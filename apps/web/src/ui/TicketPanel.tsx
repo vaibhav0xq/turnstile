@@ -135,6 +135,7 @@ export function TicketPanel({
   binding,
 }: TicketPanelProps) {
   const fan = useIdentity((s) => s.fan);
+  const knownAddress = useIdentity((s) => s.knownAddress);
   const ensureFan = useIdentity((s) => s.ensureFan);
   const ensureDoor = useIdentity((s) => s.ensureDoor);
   const renewDoor = useIdentity((s) => s.renewDoor);
@@ -159,7 +160,10 @@ export function TicketPanel({
   const doorMatches = door && state && door.address.toLowerCase() === state.doorKey.toLowerCase();
   const checkedIn = state ? state.checkedInAt > 0 : false;
   const { code, qr, slotEndsAt, status, refresh } = useEntryCode(event, tokenId, doorMatches ? door : null);
-  const mineLive = fan && state && fan.address.toLowerCase() === state.holder.toLowerCase();
+  // Ownership follows the address this device remembers: the account session (15 min) is usually over while
+  // the door key (60 min) or its renewal still shows the code. Every signature still goes through ensureFan.
+  const owner = fan?.address ?? knownAddress;
+  const mine = owner && state && owner.toLowerCase() === state.holder.toLowerCase();
 
   const openDoorKey = async () => {
     const d = await ensureDoor(ref);
@@ -216,7 +220,7 @@ export function TicketPanel({
               Take this seat
             </Link>
           </div>
-        ) : !mineLive ? (
+        ) : !mine ? (
           <div className="rounded-2xl border border-line p-4 text-sm">
             <div>
               Seat {tokenId} is held by <span className="mono">{shortAddress(state.holder)}</span>
@@ -303,7 +307,7 @@ export function TicketPanel({
         ) : (
           <Button onClick={() => viewFromSeat(tokenId)}>View from your seat</Button>
         )}
-        {mineLive && state && resaleOpen(event, state) ? (
+        {mine && state && resaleOpen(event, state) ? (
           <ResaleControls config={config} event={event} tokenId={tokenId} state={state} />
         ) : null}
         {state ? (
@@ -313,9 +317,7 @@ export function TicketPanel({
           </span>
         ) : null}
       </div>
-      {state ? (
-        <Provenance config={config} event={event} tokenId={tokenId} viewer={fan?.address ?? null} />
-      ) : null}
+      {state ? <Provenance config={config} event={event} tokenId={tokenId} viewer={owner} /> : null}
     </Panel>
   );
 }

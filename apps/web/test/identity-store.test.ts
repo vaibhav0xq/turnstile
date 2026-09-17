@@ -17,7 +17,7 @@ const { toEventRef, useIdentity } = await import("../src/identity/store.ts");
 const T = 1_800_000_000_000;
 const event = toEventRef(10143, "0x7cd7bcb4a8dfdbfd4769868e9f1dca04818c87e8");
 
-test("renewing an expired door key keeps the account session and needs only the door ceremony", async () => {
+test("renewing an expired door key needs only the door ceremony and keeps the ticket the fan's own", async () => {
   const realNow = Date.now;
   let now = T;
   Date.now = () => now;
@@ -25,6 +25,10 @@ test("renewing an expired door key keeps the account session and needs only the 
     // Dev identity: a deterministic PRF through the real KDFs, so sessions behave as with a passkey.
     useIdentity.getState().setDevSeed("expiry-test");
     const fan = await useIdentity.getState().create();
+    let ended = 0;
+    (fan as { end(): void }).end = () => {
+      ended += 1;
+    };
     const first = await useIdentity.getState().ensureDoor(event);
     assert.equal(useIdentity.getState().liveDoor(event), first);
 
@@ -41,12 +45,17 @@ test("renewing an expired door key keeps the account session and needs only the 
     });
     const renewed = await useIdentity.getState().renewDoor(event);
     unsubscribe();
-
     assert.deepEqual([...ceremonies], ["door"]); // no sign-in forced in between
-    // The ticket panel keeps showing the seat as the fan's own: the expired account session is not swept.
-    assert.equal(useIdentity.getState().fan, fan);
-    // The code view is live again, on the same door key that is bound on chain.
-    assert.equal(useIdentity.getState().liveDoor(event), renewed);
+
+    // The expired account key is gone (zeroized, not just dropped)...
+    const state = useIdentity.getState();
+    assert.equal(state.fan, null);
+    assert.equal(ended, 1);
+    // ...while the ticket panel still knows whose seat it is: ownership follows the remembered address.
+    assert.equal(state.knownAddress, fan.address);
+    assert.equal(state.knownCredentialId, fan.credentialId);
+    // And the code view is live again, on the same door key that is bound on chain.
+    assert.equal(state.liveDoor(event), renewed);
     assert.equal(renewed.address, first.address);
     assert.ok(renewed.expiresAt > now);
   } finally {

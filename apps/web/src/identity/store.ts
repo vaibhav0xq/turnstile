@@ -283,9 +283,10 @@ export const useIdentity = create<IdentityState>()((set, get) => ({
   async renewDoor(event) {
     const key = eventKey(event);
     const { devSeed, rpId } = get();
-    // The remembered session names the passkey to expect, live or expired. After an hour the account session
-    // is over too; sweeping it here (`liveFan()`) made the ticket page stop treating the seat as the fan's own.
-    const fan = get().fan;
+    // Expect the passkey this device remembers. An expired account session is swept here (its key is
+    // zeroized), which after an hour is the normal case; the credential id outlives it and still pins the
+    // same passkey. Ticket ownership follows the remembered address, so the code view survives the sweep.
+    const expectCredentialId = get().liveFan()?.credentialId ?? get().knownCredentialId;
     set({ busy: "door", error: null });
     try {
       let door: DoorKeySession;
@@ -295,7 +296,7 @@ export const useIdentity = create<IdentityState>()((set, get) => ({
         const session = await deriveDoorKey({
           rpId,
           event,
-          ...(fan ? { expectCredentialId: fan.credentialId } : {}),
+          ...(expectCredentialId ? { expectCredentialId } : {}),
         });
         door = {
           address: session.address,
