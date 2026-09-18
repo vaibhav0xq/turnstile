@@ -2,10 +2,12 @@
   <img src="docs/assets/landing.jpg" alt="Turnstile landing page: a lit marquee over a row of turnstiles with the line One passkey. Every door in the city." width="100%">
 </p>
 
-# Turnstile
+<h1 align="center">Turnstile</h1>
 
-Identity-bound tickets and access on Monad. One passkey buys the seat, opens the door and holds a private
-passport. There is no wallet app, no seed phrase and no screenshot that can be resold.
+<p align="center">
+  Identity-bound tickets and access on Monad. One passkey buys the seat, opens the door and holds a private
+  passport. There is no wallet app, no seed phrase and no screenshot that can be resold.
+</p>
 
 <p align="center">
   <a href="https://github.com/vaibhav0xq/turnstile/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/vaibhav0xq/turnstile/actions/workflows/ci.yml/badge.svg"></a>
