@@ -11,35 +11,59 @@ passport. There is no wallet app, no seed phrase and no screenshot that can be r
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 - **Live app:** <https://turnstile.work>
-- **Repository:** <https://github.com/vaibhav0xq/turnstile>
 - **Hackathon:** Monad Metropolis, Track 03: Social, Attention & Culture
 - **Chain:** Monad testnet, chain ID `10143`
-- **Demo video:** pending, not captured yet. The plan is in [`docs/demo-video-storyboard.md`](docs/demo-video-storyboard.md).
+- **Demo video:** not recorded yet. The plan is in [`docs/demo-video-storyboard.md`](docs/demo-video-storyboard.md).
 
-> The live demo runs on Monad testnet only. Seats are free or priced in testnet MON. Nothing in this
-> repository has been audited or prepared for mainnet.
+## Contents
 
-## What it is
+- [Status](#status)
+- [Overview](#overview)
+- [Try it](#try-it)
+- [Screens](#screens)
+- [How it works](#how-it-works)
+- [Design](#design)
+- [Monad Metropolis](#monad-metropolis)
+- [Repository map](#repository-map)
+- [Security and operations](#security-and-operations)
+- [Deployments](#deployments)
+- [Run it locally](#run-it-locally)
+- [Documentation](#documentation)
+- [Built by](#built-by)
+- [License](#license)
+
+## Status
+
+Live on Monad testnet at <https://turnstile.work>. The contracts were deployed and verified on 14 September
+2026, the hosted Envio indexer is in sync and every commit on `main` passes the same checks CI runs. Seats
+are free or priced in testnet MON. Nothing in this repository has been audited or prepared for mainnet.
+
+## Overview
 
 Turnstile is a ticketing and door-access product where the ticket is bound to the person who bought it.
 A passkey creates the account, buys the seat, derives a separate door key for the event and encrypts a
 private passport, all from the same biometric and without a wallet app. Tickets are ERC-721 seats in a
 per-event contract on Monad. The entry code on the ticket is signed by the door key, rotates every 30
 seconds and is consumed on-chain once at the door. Resale is allowed at or under a cap the organiser sets
-and a sale clears the seller's door key, so nothing that was screenshotted or forwarded gets anyone in.
+and a sale clears the seller's door key, so a screenshot or a forwarded code admits nobody.
 
-## How to try it
+## Try it
 
-You need a passkey provider that supports the WebAuthn PRF extension. Verified: Android Chrome with
-Google Password Manager and a Windows laptop using that phone over the hybrid QR flow. Safari with iCloud
-Keychain and Windows Hello on Windows 11 25H2 support PRF by their own documentation and are listed as
-unverified in `docs/device-matrix.md`. A Chrome profile that is not signed in and Bitwarden do not offer PRF
-and the app says so instead of failing quietly. The path takes about a minute and two passkey prompts, three on
-authenticators that cannot evaluate PRF while creating the passkey.
+You need a passkey provider that supports the WebAuthn PRF extension.
+
+- Verified: Android Chrome with Google Password Manager and a Windows laptop using that phone over the
+  hybrid QR flow.
+- Unverified, listed in [`docs/device-matrix.md`](docs/device-matrix.md): Safari with iCloud Keychain and
+  Windows Hello on Windows 11 25H2. Both support PRF by their own documentation.
+- Not supported: a Chrome profile that is not signed in and Bitwarden. Neither offers PRF and the app says
+  so instead of failing quietly.
+
+The path takes about a minute and two passkey prompts, three on authenticators that cannot evaluate PRF
+while creating the passkey.
 
 1. Open <https://turnstile.work> and enter the city. Pick a night from the list or tap a beacon.
 2. Pick a seat. General Admission seats are free and the relayer pays the gas.
-3. Approve the passkey prompt. It creates your account and opens a 15 minute session. The seat is
+3. Approve the passkey prompt. It creates your account and opens a 15-minute session. The seat is
    minted to your account and the ticket opens with a link to the transaction on MonadVision.
 4. Open the door from the ticket. One more prompt binds a door key that only works for this event. The
    ticket now shows an entry code that rotates every 30 seconds.
@@ -48,9 +72,9 @@ authenticators that cannot evaluate PRF while creating the passkey.
 6. Optional: pass the seat on from the ticket, write a private note in the passport or publish your own
    night from **Host your own night**.
 
-Paid tiers are paid from the passkey account's own balance. On testnet the relayer tops up a new account
-with 0.1 MON, limited per address and per day. Passkeys are scoped to `turnstile.work`, so a synced
-passkey brings the same account back on any device.
+Paid tiers are settled from the passkey account's own balance. On testnet the relayer tops up a new
+account with 0.1 MON, limited per address and per day. Passkeys are scoped to `turnstile.work`, so a
+synced passkey brings the same account back on any device.
 
 Sessions are short on purpose. The account session lasts 15 minutes and the door key session an hour.
 When one runs out the ticket says so and offers the next step: a stale code is re-signed without a prompt,
@@ -70,7 +94,22 @@ your passkey provider and signing in again restores the same account, seats and 
 | ![Ticket: rotating entry code, door link and seat history](docs/assets/ticket.jpg) | ![Room after check-in: the admitted seat lit green under a spotlight](docs/assets/lit.jpg) |
 | The entry code rotates every 30 seconds. Seat history comes from the indexer. | The seat is lit and the entry is on-chain. |
 
-## What it demonstrates
+## How it works
+
+```
+passkey ──PRF──┬── account namespace ──▶ secp256k1 account (15-minute session)   buys, lists, receives splits
+               ├── presence namespace ─▶ per-event door key (never funded)        signs rotating EIP-712 entry codes
+               └── vault namespace ────▶ AES-256-GCM passport key                 encrypts the private passport
+```
+
+1. **Buy.** One prompt opens a 15-minute session. The relayer sponsors free seats and holder actions.
+   Paid seats are sent from the passkey account and pay their price plus gas.
+2. **Enter.** A fresh biometric at the door derives the event's door key. The code rotates every 30
+   seconds and `checkIn` consumes it once, on-chain.
+3. **Passport.** A name and a line about each night, encrypted in the browser and parked with the relayer
+   as ciphertext. Writes are signed by the account key. Sign in on another device and it is all there.
+
+## Design
 
 - **One passkey, three keys.** The passkey's PRF output is split into an account namespace (a secp256k1
   account that buys, lists and receives splits), a presence namespace (a per-event door key that is never
@@ -78,7 +117,7 @@ your passkey provider and signing in again restores the same account, seats and 
   passport). The derivation and wire formats are frozen in `packages/identity/SPEC.md` and pinned by
   vectors that every other package checks.
 - **Tickets that follow the person.** Entry codes are EIP-712 signatures from the door key over the event,
-  seat and 30 second time slot. `checkIn` verifies the bound key and consumes the code once. A resale
+  seat and 30-second time slot. `checkIn` verifies the bound key and consumes the code once. A resale
   clears the door key on-chain, so the old holder's codes stop working the moment the seat changes hands.
 - **No wallet app and no gas on the sponsored path.** Calls go through an ERC-2771 forwarder. The relayer
   sponsors free seats and holder actions such as binding, listing and taking a free listing. Paid seats are
@@ -99,7 +138,7 @@ selected on the hackathon platform:
 - **Track 03: Social, Attention & Culture.** A ticket and door product for communities, where the seat, the
   entry and the passport belong to one person.
 - **Best Mera-Powered UX on Monad** (Monad Foundation). Mera passkeys are the entire account layer. There is
-  no seed phrase, no extension and no custody backend. One prompt opens a 15 minute session that signs
+  no seed phrase, no extension and no custody backend. One prompt opens a 15-minute session that signs
   the rest without asking again. The door key is the one deliberate extra prompt.
 - **Mera: One Passkey, Many Keys** (Monad Foundation). Mera's PRF-derived material feeds three separate
   namespaces: the account, the per-event door key and the passport vault key.
@@ -109,22 +148,7 @@ selected on the hackathon platform:
 - **Best Projects using Alchemy** (Alchemy). Alchemy is the primary Monad testnet RPC for the relayer and
   the browser, with the public RPC as read fallback. Transactions stay pinned to the primary.
 
-## How it works
-
-```
-passkey ──PRF──┬── account namespace ──▶ secp256k1 account (15 minute session)   buys, lists, receives splits
-               ├── presence namespace ─▶ per-event door key (never funded)        signs rotating EIP-712 entry codes
-               └── vault namespace ────▶ AES-256-GCM passport key                 encrypts the private passport
-```
-
-1. **Buy.** One prompt opens a 15 minute session. The relayer sponsors free seats and holder actions.
-   Paid seats are sent from the passkey account and pay their price plus gas.
-2. **Enter.** A fresh biometric at the door derives the event's door key. The code rotates every 30
-   seconds and `checkIn` consumes it once, on-chain.
-3. **Passport.** A name and a line about each night, encrypted in the browser and parked with the relayer
-   as ciphertext. Writes are signed by the account key. Wipe the phone, sign in and it is all back.
-
-## Repository
+## Repository map
 
 ```
 apps/web               city, venue, seat, ticket, door, resale and organiser views (React 19, React Three Fiber, Vite)
@@ -140,7 +164,7 @@ research/              hackathon report, build plan, notes and the saved officia
 
 ## Security and operations
 
-- The relayer brakes on its own spend: a reserve floor per wallet pauses sponsorship before the relayer or
+- The relayer limits its own spend: a reserve floor per wallet pauses sponsorship before the relayer or
   gate wallet is drained, rolling hourly and daily budgets apply per action class (relay, drip, check-in)
   and each address has a daily quota.
 - Sends go through a bounded per-wallet queue that keeps transactions sequential, so nonces cannot race.
@@ -197,7 +221,8 @@ the product.
 - [`docs/device-matrix.md`](docs/device-matrix.md): real-device passkey results.
 - [`docs/mera-spike-report.md`](docs/mera-spike-report.md): Mera API findings and the derivation vectors.
 - [`packages/identity/SPEC.md`](packages/identity/SPEC.md): key derivation, wire formats and the prompt budget.
-- [`SECURITY.md`](SECURITY.md) and [`CONTRIBUTING.md`](CONTRIBUTING.md).
+- [`SECURITY.md`](SECURITY.md): supported branch, scope and how to report a problem.
+- [`CONTRIBUTING.md`](CONTRIBUTING.md): setup, the commit gate and conventions.
 
 ## Built by
 
