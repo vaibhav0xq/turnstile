@@ -32,7 +32,16 @@
     <link rel="manifest" href="/manifest.json" />
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- The boot veil, in the page itself: shown with the first paint, on any connection, until the app
+           mounts and renders the same veil in its place (apps/web/src/ui/Shell.tsx). -->
+      <div class="veil" role="status">
+        <div>
+          <div class="mono text-xs text-muted">Lighting the city…</div>
+          <div class="veil-bar mt-2"></div>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

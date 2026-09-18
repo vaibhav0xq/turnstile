@@ -77,8 +77,46 @@ function siteMeta(site: string): Plugin {
   };
 }
 
+/**
+ * `<link rel="modulepreload">` for the scene chunk. The app imports the scene lazily so the shell paints while
+ * the three stack downloads, which also means the browser only hears of that chunk once the shell has run:
+ * in production the two downloads ran strictly one after the other. The hint starts the scene with the page.
+ * Low fetch priority, so on a saturated link the shell still lands first and the scene fills in behind it.
+ */
+function scenePreload(): Plugin {
+  let base = "/";
+  return {
+    name: "turnstile:scene-preload",
+    apply: "build",
+    configResolved(config) {
+      base = config.base;
+    },
+    transformIndexHtml: {
+      order: "post",
+      handler: (_html, ctx) => {
+        const scene = Object.values(ctx.bundle ?? {}).find(
+          (out) => out.type === "chunk" && out.facadeModuleId?.endsWith("/src/scene/World.tsx"),
+        );
+        if (!scene) throw new Error("scene-preload: no chunk for src/scene/World.tsx in the bundle");
+        return [
+          {
+            tag: "link",
+            attrs: {
+              rel: "modulepreload",
+              crossorigin: true,
+              fetchpriority: "low",
+              href: `${base}${scene.fileName}`,
+            },
+            injectTo: "head",
+          },
+        ];
+      },
+    },
+  };
+}
+
 export default defineConfig(({ mode }) => ({
-  plugins: [react(), tailwindcss(), siteMeta(siteOrigin(mode))],
+  plugins: [react(), tailwindcss(), siteMeta(siteOrigin(mode)), scenePreload()],
   server: {
     ...allowedHosts,
     proxy: { "/api": { target: process.env["RELAYER_URL"] ?? "http://127.0.0.1:8787", changeOrigin: true } },
