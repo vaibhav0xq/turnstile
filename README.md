@@ -52,7 +52,7 @@
 - **Live app:** <https://turnstile.work>
 - **Hackathon:** Monad Metropolis, Track 03: Social, Attention & Culture
 - **Chain:** Monad testnet, chain ID `10143`
-- **Demo video:** not recorded yet. The plan is in [`docs/demo-video-storyboard.md`](docs/demo-video-storyboard.md).
+- **Demo video:** [turnstile-demo.mp4](https://github.com/vaibhav0xq/turnstile/releases/download/demo-2026-09-18/turnstile-demo.mp4) (1 min 44 s, 1080p). Captured from the live deployment on 18 September 2026. The storyboard is in [`docs/demo-video-storyboard.md`](docs/demo-video-storyboard.md).
 
 ## Contents
 

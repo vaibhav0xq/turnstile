@@ -1,6 +1,7 @@
 # Demo video: storyboard and capture plan
 
-Status: The video has not been captured yet. Capture is handled by the author outside this repo.
+Status: Captured on 18 September 2026 from the live deployment and published as a release asset:
+[turnstile-demo.mp4](https://github.com/vaibhav0xq/turnstile/releases/download/demo-2026-09-18/turnstile-demo.mp4) (1 min 44 s). The guided run in the final cut reads 47.1 s, 6 taps, 2 passkey prompts and 3 transactions. Capture is handled by the author outside this repo.
 
 Target: **under two minutes**. One continuous developer-guided run against the Monad testnet deployment is
 the A-roll. A short cold open, a few cutaways and a closing card complete it. Everything shown is real:
