@@ -7,8 +7,43 @@
 Identity-bound tickets and access on Monad. One passkey buys the seat, opens the door and holds a private
 passport. There is no wallet app, no seed phrase and no screenshot that can be resold.
 
-[![ci](https://github.com/vaibhav0xq/turnstile/actions/workflows/ci.yml/badge.svg)](https://github.com/vaibhav0xq/turnstile/actions/workflows/ci.yml)
-[![license: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+<p align="center">
+  <a href="https://github.com/vaibhav0xq/turnstile/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/vaibhav0xq/turnstile/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="LICENSE"><img alt="License MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
+</p>
+<p align="center">
+  <img alt="TypeScript 7" src="https://img.shields.io/badge/TypeScript-7-3178C6?logo=typescript&logoColor=white">
+  <img alt="Solidity 0.8.28" src="https://img.shields.io/badge/Solidity-0.8.28-363636?logo=solidity&logoColor=white">
+  <img alt="Node.js 24" src="https://img.shields.io/badge/Node.js-24-5FA04E?logo=nodedotjs&logoColor=white">
+  <img alt="pnpm 10" src="https://img.shields.io/badge/pnpm-10-F69220?logo=pnpm&logoColor=white">
+</p>
+<p align="center">
+  <img alt="React 19" src="https://img.shields.io/badge/React-19-20232A?logo=react&logoColor=61DAFB">
+  <img alt="Vite 8" src="https://img.shields.io/badge/Vite-8-646CFF?logo=vite&logoColor=white">
+  <img alt="Tailwind CSS 4" src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white">
+  <img alt="three.js r186" src="https://img.shields.io/badge/three.js-r186-000000?logo=threedotjs&logoColor=white">
+  <img alt="React Three Fiber 9" src="https://img.shields.io/badge/React_Three_Fiber-9-000000">
+  <img alt="Zustand 5" src="https://img.shields.io/badge/Zustand-5-443E38">
+  <img alt="TanStack Query 5" src="https://img.shields.io/badge/TanStack_Query-5-FF4154?logo=reactquery&logoColor=white">
+  <img alt="React Router 8" src="https://img.shields.io/badge/React_Router-8-CA4245?logo=reactrouter&logoColor=white">
+</p>
+<p align="center">
+  <img alt="Monad testnet 10143" src="https://img.shields.io/badge/Monad-testnet_10143-836EF9">
+  <img alt="Foundry 1.8" src="https://img.shields.io/badge/Foundry-1.8-1F1F1F">
+  <img alt="OpenZeppelin 5.6" src="https://img.shields.io/badge/OpenZeppelin-5.6-4E5EE4?logo=openzeppelin&logoColor=white">
+  <img alt="viem 2" src="https://img.shields.io/badge/viem-2-1B1B1F">
+  <img alt="Mera SDK 0.2" src="https://img.shields.io/badge/Mera_SDK-0.2-111111">
+  <img alt="WebAuthn PRF" src="https://img.shields.io/badge/WebAuthn-PRF-3423A6?logo=webauthn&logoColor=white">
+  <img alt="Envio HyperIndex 3" src="https://img.shields.io/badge/Envio-HyperIndex_3-FF7A00">
+  <img alt="Alchemy RPC" src="https://img.shields.io/badge/Alchemy-RPC-0C0C0E?logo=alchemy&logoColor=white">
+</p>
+<p align="center">
+  <img alt="Hono 4" src="https://img.shields.io/badge/Hono-4-E36002?logo=hono&logoColor=white">
+  <img alt="Postgres passport store" src="https://img.shields.io/badge/Postgres-passport_store-4169E1?logo=postgresql&logoColor=white">
+  <img alt="Biome 2" src="https://img.shields.io/badge/Biome-2-60A5FA?logo=biome&logoColor=white">
+  <img alt="GitHub Actions CI" src="https://img.shields.io/badge/GitHub_Actions-CI-2088FF?logo=githubactions&logoColor=white">
+  <img alt="Replit hosting" src="https://img.shields.io/badge/Replit-hosting-F26207?logo=replit&logoColor=white">
+</p>
 
 - **Live app:** <https://turnstile.work>
 - **Hackathon:** Monad Metropolis, Track 03: Social, Attention & Culture
