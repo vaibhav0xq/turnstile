@@ -29,7 +29,7 @@ passport. There is no wallet app, no seed phrase and no screenshot that can be r
 - [Deployments](#deployments)
 - [Run it locally](#run-it-locally)
 - [Documentation](#documentation)
-- [Built by](#built-by)
+- [Author](#author)
 - [License](#license)
 
 ## Status
@@ -224,10 +224,10 @@ the product.
 - [`SECURITY.md`](SECURITY.md): supported branch, scope and how to report a problem.
 - [`CONTRIBUTING.md`](CONTRIBUTING.md): setup, the commit gate and conventions.
 
-## Built by
+## Author
 
-[Vaibhav](https://x.com/vaibhav_0xq), solo.
+Built solo by [Vaibhav](https://x.com/vaibhav_0xq) for Monad Metropolis. Questions and feedback are welcome on X.
 
 ## License
 
-MIT. See [`LICENSE`](LICENSE).
+MIT License. See [LICENSE](LICENSE) for the full text.
