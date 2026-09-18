@@ -265,7 +265,7 @@ the product.
 
 ## Author
 
-Built solo by [Vaibhav](https://x.com/vaibhav_0xq) for Monad Metropolis. Questions and feedback are welcome on X.
+Built solo by [Vaibhav Gangani](https://vaibhav0xq.com) for Monad Metropolis. Questions and feedback are welcome on [X](https://x.com/vaibhav_0xq).
 
 ## License
 
