@@ -78,10 +78,15 @@ function siteMeta(site: string): Plugin {
 }
 
 /**
- * `<link rel="modulepreload">` for the scene chunk. The app imports the scene lazily so the shell paints while
- * the three stack downloads, which also means the browser only hears of that chunk once the shell has run:
- * in production the two downloads ran strictly one after the other. The hint starts the scene with the page.
- * Low fetch priority, so on a saturated link the shell still lands first and the scene fills in behind it.
+ * A `modulepreload` for the scene chunk. The app imports the scene lazily so the shell paints while the three
+ * stack downloads, which also means the browser only hears of that chunk once the shell has run: in production
+ * the two downloads ran strictly one after the other. The hint starts the scene with the page instead.
+ *
+ * Added by a small script placed after the stylesheet rather than as a plain link tag: a classic script waits
+ * for the stylesheets before it, so the scene's bytes only start once the page can paint. The host shares the
+ * connection evenly between streams, and measured with a plain tag the 44 KB stylesheet arrived after both
+ * megabyte chunks, holding the boot veil back by a second. Low fetch priority for the servers that honour it.
+ * (Tailwind scans this file too: keep utility names such as the word for in-page scripts out of the comment.)
  */
 function scenePreload(): Plugin {
   let base = "/";
@@ -98,15 +103,14 @@ function scenePreload(): Plugin {
           (out) => out.type === "chunk" && out.facadeModuleId?.endsWith("/src/scene/World.tsx"),
         );
         if (!scene) throw new Error("scene-preload: no chunk for src/scene/World.tsx in the bundle");
+        const href = JSON.stringify(`${base}${scene.fileName}`);
         return [
           {
-            tag: "link",
-            attrs: {
-              rel: "modulepreload",
-              crossorigin: true,
-              fetchpriority: "low",
-              href: `${base}${scene.fileName}`,
-            },
+            tag: "script",
+            attrs: { "data-scene-preload": scene.fileName },
+            children:
+              `(function(){var l=document.createElement("link");l.rel="modulepreload";l.href=${href};` +
+              `l.crossOrigin="";l.fetchPriority="low";document.head.appendChild(l)})()`,
             injectTo: "head",
           },
         ];
