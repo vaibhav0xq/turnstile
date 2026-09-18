@@ -201,7 +201,7 @@ the product.
 
 ## Built by
 
-Vaibhav, solo. X: <https://x.com/vaibhav_0xq>. GitHub: [@vaibhav0xq](https://github.com/vaibhav0xq).
+[Vaibhav](https://x.com/vaibhav_0xq), solo.
 
 ## License
 
