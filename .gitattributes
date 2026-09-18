@@ -1,0 +1,6 @@
+# Linguist
+packages/contracts/abi/index.ts linguist-generated
+spike/** linguist-documentation
+scripts/** linguist-vendored
+apps/*/scripts/** linguist-vendored
+packages/*/scripts/** linguist-vendored
