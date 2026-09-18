@@ -1,10 +1,10 @@
-# @turnstile/identity — specification v1.4
+# @turnstile/identity specification v1.4
 
-Status: **frozen** (v1 12 Sep 2026; v1.1 additive, same day — §4.2 wording, §4.5 `BindDoorKey`; v1.2 additive, 13 Sep — §4.6 passport sync; v1.3 additive, 14 Sep — §4.3 compact entry code; v1.4 additive, 14 Sep — §4.3 base45 entry code). Everything below
+Status: **frozen** (v1 12 Sep 2026; v1.1 additive, same day: §4.2 wording, §4.5 `BindDoorKey`; v1.2 additive, 13 Sep: §4.6 passport sync; v1.3 additive, 14 Sep: §4.3 compact entry code; v1.4 additive, 14 Sep: §4.3 base45 entry code). Everything below
 is pinned by `vectors/kdf.json`, `vectors/entry.json` and `vectors/bind.json`; `pnpm vectors:check` fails in CI
 when the code drifts, and `packages/contracts` re-verifies the same vectors on-chain (`forge test`). A change to any constant, KDF step, blob layout or
 typed-data field is a **spec revision**: bump the `v1` in the affected label, regenerate the vectors, and
-record the migration in this file. Never edit a `v1` value in place — it changes which keys people derive
+record the migration in this file. Never edit a `v1` value in place. It changes which keys people derive
 from passkeys they already own.
 
 Design origin: `docs/mera-spike-report.md` (Mera 0.2.0 API + 17 vectors), `docs/device-matrix.md`
@@ -20,9 +20,9 @@ construction (HMAC-style PRF, then domain-separated KDFs).
 
 | Namespace | PRF salt (32 bytes) | Derived | Lifetime | Funded? |
 |---|---|---|---|---|
-| **account** | `sha256("mera.prf.salt.v1")` — Mera's default; no `prfSalt` is passed | secp256k1 account key (BIP-39/44) | 15-min session | yes |
+| **account** | `sha256("mera.prf.salt.v1")` (Mera's default; no `prfSalt` is passed) | secp256k1 account key (BIP-39/44) | 15-min session | yes |
 | **presence** | `sha256("turnstile/presence/v1")` | per-event **door key** (secp256k1) | ≤ 60-min session | **never** |
-| **vault** | `sha256("turnstile/vault/v1")` | AES-256-GCM **passport key** | until `close()` | — |
+| **vault** | `sha256("turnstile/vault/v1")` | AES-256-GCM **passport key** | until `close()` | no |
 
 Pinned salt values (hex): account `896d46ac…0db9`, presence `ab8908a0…586a`, vault `c87e94ff…b3f9`
 (full values asserted in `test/kdf.test.ts`).
@@ -99,13 +99,13 @@ the signature; `packages/contracts` reproduces it in Foundry (see the `foundry` 
 ### 4.2 Slots
 
 `slot = floor(unixMs / 30000)` (`uint64`). A ticket screen re-signs every slot. The gate app accepts
-`slot ∈ {current, current − 1}` — a 30–60 s validity window, replay-protected on-chain by the one-shot
+`slot ∈ {current, current − 1}`, a 30 to 60 s validity window, replay-protected on-chain by the one-shot
 `checkIn` per token.
 
 *v1.1 note.* The contract (`TurnstileEvent.checkIn`) evaluates `slot` against `block.timestamp / 30` with a
 tolerance of **±1** (`SLOT_TOLERANCE`): the previous slot covers inclusion latency and a code scanned at the end
 of its window; the next slot covers a phone clock slightly ahead of block time. The gate app keeps the stricter
-`{current, current − 1}` rule on its own clock — the chain is the last line, not the first. Neither key
+`{current, current − 1}` rule on its own clock. The chain is the last line, not the first. Neither key
 derivation nor the wire format changes.
 
 ### 4.3 Entry code (what the QR carries)
@@ -119,27 +119,27 @@ TS1|<chainId>|<eventAddress lowercase>|<eventId>|<tokenId>|<slot>|<signature 0x-
 Seven ASCII fields, decimal integers, ≈ 200 characters (QR byte mode, version 10 at ECC M). Nothing in it is
 secret. Parsing errors → `CODE_FORMAT_INVALID`; out-of-range fields are also `CODE_FORMAT_INVALID`.
 
-Compact form (v1.3, additive — same seven fields, same order, same values):
+Compact form (v1.3, additive: same seven fields, same order, same values):
 
 ```
 TS2:<chainId>:<eventAddress hex UPPERCASE, no 0x>:<eventId>:<tokenId>:<slot>:<signature hex UPPERCASE, no 0x>
 ```
 
-Every character is in the QR *alphanumeric* set (digits, `A–Z`, `:`), so the symbol packs 5.5 bits per
-character instead of 8: ≈ 195 characters, version 8 at ECC M — two versions smaller than the long form, i.e.
+Every character is in the QR *alphanumeric* set (digits, `A` to `Z`, `:`), so the symbol packs 5.5 bits per
+character instead of 8: ≈ 195 characters, version 8 at ECC M, two versions smaller than the long form, i.e.
 larger modules on the same phone screen. Separators and case are part of the form: `TS1` is `|`-separated
 lowercase `0x`-hex, `TS2` is `:`-separated bare uppercase hex; a decoder rejects a mix.
 
-base45 form (v1.4, additive — same fields, same values; the two byte strings share one blob):
+base45 form (v1.4, additive: same fields, same values; the two byte strings share one blob):
 
 ```
 TS3:<chainId>:<eventId>:<tokenId>:<slot>:<base45(eventAddress ‖ signature)>
 ```
 
-`base45` is RFC 9285 (alphabet `0–9 A–Z space $ % * + - . / :`, two bytes → three characters, a final single
+`base45` is RFC 9285 (alphabet: digits `0` to `9`, `A` to `Z`, space and `$ % * + - . / :`; two bytes → three characters, a final single
 byte → two), the encoding designed for QR alphanumeric mode: 1.5 characters per byte instead of 2. The blob is
 the 20 address bytes followed by the 65 signature bytes, 85 bytes → exactly 128 characters, and it is always
-the last field because base45 can emit `:` (and a space) — a decoder splits on the first five `:` only and
+the last field because base45 can emit `:` (and a space). A decoder splits on the first five `:` only and
 takes the remainder whole. ≈ 152 characters, version 6 at ECC M (version 5 at ECC L), two versions below
 `TS2`. Decoding is strict: 128 characters, the RFC alphabet, no triplet above 65535 (`GGW`), and the same field
 ranges as the other forms; everything else is `CODE_FORMAT_INVALID`. Decoders MUST accept all three forms;
@@ -150,7 +150,7 @@ tickets SHOULD render the base45 one. `vectors/entry.json` pins the three spelli
 
 ```
 plaintext = UTF-8 JSON (or raw bytes)
-iv        = 12 random bytes (crypto.getRandomValues) — never reused; never caller-chosen outside tests
+iv        = 12 random bytes (crypto.getRandomValues), never reused, never caller-chosen outside tests
 ct‖tag    = AES-256-GCM(key, iv, plaintext, aad = "turnstile/passport/v1")
 blob      = "v1." + base64url(iv) + "." + base64url(ct‖tag)      // base64url without padding
 ```
@@ -162,15 +162,15 @@ Blobs are safe to store anywhere (Envio-indexed events, S3, localStorage): the k
 ### 4.5 EIP-712 `BindDoorKey` (v1.1)
 
 Binding a door key normally happens right after purchase through the relayer (`bindDoorKey(tokenId, doorKey)`
-over ERC-2771, the holder's account key signing the forward request). When that did not happen — the holder
-reaches the door without a bound key, or rotated passkeys on the way — the holder's **account key** authorises
+over ERC-2771, the holder's account key signing the forward request). When that did not happen (the holder
+reaches the door without a bound key, or rotated passkeys on the way), the holder's **account key** authorises
 the binding off-chain and the gate carries it in one transaction (`checkInWithBind`). Same domain as `Entry`;
 different signer (account key, never the door key).
 
 ```
 domain  = { name: "Turnstile", version: "1", chainId, verifyingContract: <TurnstileEvent clone> }
 type    = BindDoorKey(uint256 tokenId,address doorKey,uint256 nonce,uint256 deadline)
-nonce   = TurnstileEvent.bindNonceOf(tokenId)  — bumped by every successful bind, any path
+nonce   = TurnstileEvent.bindNonceOf(tokenId)  (bumped by every successful bind, any path)
 deadline= unix seconds; rejected after
 ```
 
@@ -182,7 +182,7 @@ the gate app (`TS1B…`, not yet frozen).
 
 ### 4.6 Passport sync (v1.2)
 
-A blob is useless if it only lives on the device that wrote it, so a fan may park it with a store — the
+A blob is useless if it only lives on the device that wrote it, so a fan may park it with a store. The
 relayer exposes `PUT/GET /api/passport/:address`. The store holds ciphertext and a watermark, nothing else.
 
 ```
@@ -192,24 +192,24 @@ write    = { blob, issuedAt, signature }   // blob "" clears the passport
 ```
 
 The store accepts a write iff the recovered signer is `address`, `|issuedAt − now| ≤ 5 min`, `issuedAt` is
-greater than the stored watermark (replaying an older capture cannot roll a passport back — a cleared
+greater than the stored watermark (replaying an older capture cannot roll a passport back; a cleared
 passport keeps its watermark as a tombstone), and the blob is at most 16 KiB and shaped as §4.4. Reads are
 public: a blob reveals nothing without the passkey, and the address already links tickets on-chain.
 
 ## 5. Prompt budget and sessions
 
 Every exported ceremony is **one** platform prompt (two at `createIdentity` on authenticators without
-create-time PRF — Mera falls back to an assertion; the fake authenticator covers both paths).
+create-time PRF, where Mera falls back to an assertion; the fake authenticator covers both paths).
 
 | Ceremony | Prompt | Yields | Lifetime |
 |---|---|---|---|
 | `createIdentity` / `signIn` | 1 | `AccountSession` (viem `LocalAccount`) | 15 min (`ACCOUNT_SESSION_TTL_MS`) |
 | `deriveDoorKey(event)` | 1 | `DoorSession` | 60 min (`DOOR_SESSION_TTL_MS`), configurable ≤ |
 | `openVault` | 1 | `Vault` | until `close()` |
-| `exportRecoveryPhrase` | 1 | mnemonic string | — |
+| `exportRecoveryPhrase` | 1 | mnemonic string | none |
 
-Journey budget (from the build plan): buy = 1 prompt (sign-in) — relayed calls inside the session cost none;
-enter = 1 prompt (door) — codes rotate without prompts for the whole session; open passport = 1 prompt.
+Journey budget (from the build plan): buy = 1 prompt (sign-in), relayed calls inside the session cost none;
+enter = 1 prompt (door), codes rotate without prompts for the whole session; open passport = 1 prompt.
 
 Session states: `end()` zeroises the key (`SESSION_ENDED` afterwards); using a session past `expiresAt` ends
 it and throws `SESSION_EXPIRED`. `withAccountSession` applies both rules and maps Mera's `SESSION_ENDED`.
@@ -236,7 +236,7 @@ it and throws `SESSION_EXPIRED`. `withAccountSession` applies both rules and map
 
 Revision log: **v1** (12 Sep 2026) initial freeze. **v1.1** (12 Sep 2026) additive: §4.2 on-chain tolerance
 note, §4.5 `BindDoorKey`, `vectors/bind.json`; no derived key, label or existing vector changed. **v1.2** (13 Sep 2026)
-additive: §4.6 passport sync — an EIP-191 message and store rules around the unchanged §4.4 blob; no key
+additive: §4.6 passport sync, an EIP-191 message and store rules around the unchanged §4.4 blob; no key
 material, label or vector touched. **v1.3** (14 Sep 2026) additive: §4.3 compact `TS2:` spelling of the entry
 code; `vectors/entry.json` gains `entryCodeCompact`, every existing field is unchanged. **v1.4** (14 Sep 2026)
 additive: §4.3 base45 `TS3:` spelling (RFC 9285 blob for address ‖ signature); `vectors/entry.json` gains

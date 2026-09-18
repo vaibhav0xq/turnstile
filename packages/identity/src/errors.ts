@@ -108,7 +108,7 @@ export function fromCeremonyError(error: unknown, ms: number): IdentityError {
 export const USER_MESSAGES: Readonly<Record<IdentityErrorCode, { title: string; hint: string }>> = {
   WEBAUTHN_UNAVAILABLE: {
     title: "This browser can't use passkeys",
-    hint: "Open Turnstile in Chrome, Safari or Edge — or on your phone.",
+    hint: "Open Turnstile in Chrome, Safari or Edge. Your phone works too.",
   },
   NOT_SECURE_CONTEXT: {
     title: "Passkeys need HTTPS",
@@ -120,11 +120,11 @@ export const USER_MESSAGES: Readonly<Record<IdentityErrorCode, { title: string; 
   },
   CEREMONY_FAILED: {
     title: "Passkey prompt didn't complete",
-    hint: "If you closed the sheet, try again. If nothing appeared, your passkey may live on another device — pick “Use a phone” in the sheet.",
+    hint: "If you closed the sheet, try again. If nothing appeared, your passkey may live on another device. Pick “Use a phone” in the sheet.",
   },
   DIFFERENT_PASSKEY: {
     title: "That's a different passkey",
-    hint: "Pick the passkey you signed in with — its name (turnstile-…) is shown on your account page.",
+    hint: "Pick the passkey you signed in with. Its name (turnstile-…) is shown on your account page.",
   },
   SESSION_ENDED: {
     title: "Session ended",

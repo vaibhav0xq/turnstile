@@ -162,7 +162,7 @@ export function renderTicketSvg(input: TicketImageInput): string {
     `<circle cx="${px(mine.x)}" cy="${px(mine.y)}" r="${Math.max(9, mine.r * 1.4).toFixed(1)}" fill="${accent}"/>`;
 
   return (
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${escapeXml(`${input.eventName} — ${input.tierName} #${input.seatId}`)}">` +
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${escapeXml(`${input.eventName} · ${input.tierName} #${input.seatId}`)}">` +
     `<defs>` +
     `<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#12141a"/><stop offset="1" stop-color="${PALETTE.ink}"/></linearGradient>` +
     `<radialGradient id="glow" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="${accent}" stop-opacity="0.5"/><stop offset="0.45" stop-color="${accent}" stop-opacity="0.12"/><stop offset="1" stop-color="${accent}" stop-opacity="0"/></radialGradient>` +

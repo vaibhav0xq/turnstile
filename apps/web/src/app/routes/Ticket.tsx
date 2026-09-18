@@ -45,7 +45,7 @@ export function Ticket({ config, seatMap }: { config: AppConfig | undefined; sea
   if (!config) return <RouteLoading label="Finding your seat…" />;
   if (!event || !layout) return <UnknownRoute {...unknownEvent} />;
   if (!Number.isInteger(tokenId) || !tierForSeat(event, tokenId)) {
-    const ranges = event.tiers.map((t) => `${t.name} ${t.firstSeat}–${t.firstSeat + t.seatCount - 1}`);
+    const ranges = event.tiers.map((t) => `${t.name} ${t.firstSeat} to ${t.firstSeat + t.seatCount - 1}`);
     return (
       <UnknownRoute
         title="No such seat"

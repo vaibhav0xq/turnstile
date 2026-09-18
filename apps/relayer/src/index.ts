@@ -199,7 +199,7 @@ async function metadata(context: Context) {
   const { event, tier, tokenId, checkedIn } = seat;
   const origin = requestOrigin(context.req.raw.headers, context.req.url, settings.publicOrigin);
   return json({
-    name: `${event.name} — ${tier.name} #${tokenId}`,
+    name: `${event.name} · ${tier.name} #${tokenId}`,
     description: `${tier.name} seat #${tokenId} for ${event.name}, bound to the holder's passkey.`,
     image: `${origin}/api/events/${event.eventId}/tickets/${tokenId}/image.svg`,
     external_url: `${origin}/t/${event.address}/${tokenId}`,
