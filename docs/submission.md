@@ -1,6 +1,7 @@
 # Monad Metropolis submission
 
-Copy for the submission form. Submissions open 22 September 2026 and close 14 October 2026, 09:29 IST.
+Copy for the submission form. The platform opens the form on 2 October 2026 and closes it on 14 October 2026
+(13 October end of day, US time; the countdown showed 09:29 IST). Judging runs 14 to 27 October, winners on 3 November.
 Each block is written to be pasted as it is; shorten from the end if a field has a limit.
 
 ## Project
