@@ -53,11 +53,11 @@ if (
 ) {
   throw new Error("Hosted Turnstile requires HOSTING_MODE before the relayer can start");
 }
-if (hostingMode && hostingMode !== "staging" && hostingMode !== "production") {
-  throw new Error("HOSTING_MODE must be staging or production");
+if (hostingMode && hostingMode !== "production") {
+  throw new Error("HOSTING_MODE must be production for hosted Turnstile");
 }
 if (hostingMode) {
-  const origin = `https://${hostingMode === "staging" ? "staging." : ""}turnstile.work`;
+  const origin = "https://turnstile.work";
   if (chainId !== 10143) throw new Error("Hosted Turnstile is restricted to Monad testnet (10143)");
   if (process.env["PUBLIC_ORIGIN"] !== origin) {
     throw new Error("PUBLIC_ORIGIN must match the hosted canonical domain");
@@ -150,7 +150,7 @@ export const settings = {
   publicRpcFallbackUrls: publicRpc.fallbacks,
   publicRpcProvider: publicRpc.provider,
   explorer: process.env["EXPLORER_URL"] || null,
-  /** Shown in the web app's header (e.g. `staging`) so a rehearsal origin is never mistaken for the real one. */
+  /** Optional local-development label; leave unset for production. */
   environmentLabel: process.env["ENVIRONMENT_LABEL"]?.trim() || null,
   /** Public origin for absolute URLs in ticket metadata; unset = taken from each request (proxy headers first). */
   publicOrigin,

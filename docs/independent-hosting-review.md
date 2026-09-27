@@ -2,7 +2,7 @@
 
 Audit date: 27 September 2026. This document is a plan, not an implementation or a declaration of readiness. The working copy is a separate clone of `https://github.com/vaibhav0xq/turnstile`; no application code, deployment, DNS, contract state or credentials were changed during this audit. Do not commit or carry out the migration without owner approval.
 
-**Later status:** The owner subsequently approved repository-only hosting and staging preparation. See `independent-hosting-setup.md` for the resulting configuration and validation commands. The audit's "not implemented" statements describe the original audit, not the later configuration work. Deployment, DNS and transactions remain unapproved.
+**Later status:** This is a historical audit, not the active deployment plan. The owner later chose **one production environment only**, with Vercel, an empty Railway project/service to be renamed, the existing Supabase `turnstile` project, Envio and two specifically selected Alchemy production apps. See `independent-hosting-setup.md` for the current production-only plan and remaining blockers. The staging proposals and Railway-Postgres cost/architecture assumptions below have been superseded. GitHub connection, variable saving, schema creation, deployment, DNS, wallet activity, role grants and passkeys remain unapproved.
 
 ## 1. Evidence and current status
 

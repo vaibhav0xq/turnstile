@@ -1,16 +1,17 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { validateConfiguration, validateDist, validateRuntimeEnvironment } from "./hosting-check.mjs";
 
-const staging = {
-  HOSTING_MODE: "staging",
+const production = {
+  HOSTING_MODE: "production",
   CHAIN_ID: "10143",
-  PUBLIC_ORIGIN: "https://staging.turnstile.work",
-  CORS_ORIGIN: "https://staging.turnstile.work",
-  VITE_SITE_URL: "https://staging.turnstile.work",
+  PUBLIC_ORIGIN: "https://turnstile.work",
+  CORS_ORIGIN: "https://turnstile.work",
+  VITE_SITE_URL: "https://turnstile.work",
   VITE_API_URL: "",
   VITE_RP_ID: "",
-  DATABASE_URL: "postgres://staging-only",
+  DATABASE_URL: "postgres://test-only",
   RPC_URL: "https://server-rpc.example",
   PUBLIC_RPC_URL: "https://browser-rpc.example",
   RELAYER_PRIVATE_KEY: "test-only",
@@ -21,23 +22,54 @@ const staging = {
   DRIP_ENABLED: "0",
 };
 
-test("hosting routes isolate the staging API and keep one relayer", () => {
+test("only the production API and SPA routes are allowed", () => {
   validateConfiguration();
-});
-
-test("staging cannot point at production origins or omit durable Postgres", () => {
-  validateRuntimeEnvironment("staging", staging);
+  const web = JSON.parse(readFileSync(new URL("../vercel.json", import.meta.url), "utf8"));
+  const backend = JSON.parse(readFileSync(new URL("../railway.json", import.meta.url), "utf8"));
+  const stagingApi = {
+    source: "/api/:path*",
+    has: [{ type: "host", value: { eq: "staging.turnstile.work" } }],
+    destination: "https://api.staging.turnstile.work/api/:path*",
+  };
+  assert.throws(() => validateConfiguration({ ...web, rewrites: [...web.rewrites, stagingApi] }, backend));
   assert.throws(() =>
-    validateRuntimeEnvironment("staging", { ...staging, PUBLIC_ORIGIN: "https://turnstile.work" }),
+    validateConfiguration(
+      { ...web, rewrites: [{ ...web.rewrites[0], has: undefined }, web.rewrites[1]] },
+      backend,
+    ),
   );
-  assert.throws(() => validateRuntimeEnvironment("staging", { ...staging, DATABASE_URL: "" }));
-  assert.throws(() => validateRuntimeEnvironment("staging", { ...staging, VITE_RP_ID: "turnstile.work" }));
-  assert.throws(() => validateRuntimeEnvironment("staging", { ...staging, TRUSTED_PROXY_HOPS: "" }));
 });
 
-test("staging build rejects production canonical references", () => {
+test("production requires canonical origins, separate RPCs, and a durable database", () => {
+  validateRuntimeEnvironment("production", production);
+  assert.throws(() => validateRuntimeEnvironment("staging", { ...production, HOSTING_MODE: "staging" }));
+  assert.throws(() =>
+    validateRuntimeEnvironment("production", {
+      ...production,
+      PUBLIC_ORIGIN: "https://staging.turnstile.work",
+    }),
+  );
+  assert.throws(() => validateRuntimeEnvironment("production", { ...production, DATABASE_URL: "" }));
+  assert.throws(() =>
+    validateRuntimeEnvironment("production", { ...production, VITE_RP_ID: "staging.turnstile.work" }),
+  );
+  assert.throws(() =>
+    validateRuntimeEnvironment("production", { ...production, VITE_API_URL: "https://api.turnstile.work" }),
+  );
+  assert.throws(() => validateRuntimeEnvironment("production", { ...production, TRUSTED_PROXY_HOPS: "" }));
+  assert.throws(() =>
+    validateRuntimeEnvironment("production", { ...production, PUBLIC_RPC_URL: production.RPC_URL }),
+  );
+  assert.throws(() =>
+    validateRuntimeEnvironment("production", { ...production, ENVIRONMENT_LABEL: "staging" }),
+  );
+});
+
+test("production build requires the canonical host and excludes staging", () => {
   const html =
-    '<link data-canonical-host="staging.turnstile.work" href="https://staging.turnstile.work/"><meta content="https://staging.turnstile.work/">';
-  validateDist("staging", html);
-  assert.throws(() => validateDist("staging", `${html}https://turnstile.work/`));
+    '<link data-canonical-host="turnstile.work" href="https://turnstile.work/"><meta content="https://turnstile.work/">';
+  validateDist("production", html);
+  assert.throws(() => validateDist("staging", html));
+  assert.throws(() => validateDist("production", `${html}https://staging.turnstile.work/`));
+  assert.throws(() => validateDist("production", html.replaceAll("turnstile.work", "other.example")));
 });

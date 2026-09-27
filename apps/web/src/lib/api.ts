@@ -1,5 +1,5 @@
-// Same-origin `/api` in dev (Vite proxies to the relayer) and in the default production layout;
-// VITE_API_URL points at a separately hosted relayer.
+// Same-origin `/api` in dev (Vite proxies to the relayer) and production.
+// A separate relayer origin is a local-development override; production builds reject it.
 export const API_URL: string =
   (import.meta.env["VITE_API_URL"] as string | undefined)?.replace(/\/$/, "") ?? "";
 

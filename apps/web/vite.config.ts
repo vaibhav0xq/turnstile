@@ -2,8 +2,8 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv, type Plugin } from "vite";
 
-// The relayer runs on :8787 in development; the app talks to it through same-origin /api so the
-// production build can sit behind the same host (or set VITE_API_URL to a separate origin).
+// The relayer runs on :8787 in development; the app talks to it through same-origin /api.
+// Production must use Vercel's /api rewrite, not a separate browser-facing API origin.
 //
 // Behind a proxied preview (Replit, tunnels) the dev server is reached under another host name:
 // set VITE_ALLOWED_HOSTS=all, or to a comma-separated list of host names, to let those through.
@@ -20,7 +20,11 @@ const allowedHosts =
  * build (a relative canonical would be worse than none).
  */
 function siteOrigin(mode: string): string {
-  const raw = loadEnv(mode, process.cwd(), "VITE_")["VITE_SITE_URL"]?.trim() ?? "";
+  const publicEnv = loadEnv(mode, process.cwd(), "VITE_");
+  if (mode === "production" && publicEnv["VITE_API_URL"]?.trim()) {
+    throw new Error("Production builds must use the same-origin /api rewrite; leave VITE_API_URL unset");
+  }
+  const raw = publicEnv["VITE_SITE_URL"]?.trim() ?? "";
   if (!raw) {
     if (process.env["VERCEL"]) throw new Error("Vercel builds require VITE_SITE_URL for the approved domain");
     return "";
@@ -33,6 +37,12 @@ function siteOrigin(mode: string): string {
   }
   if (!/^https?:$/.test(url.protocol) || url.pathname !== "/" || url.search || url.hash) {
     throw new Error(`VITE_SITE_URL must be a bare http(s) origin with no path, got "${raw}"`);
+  }
+  if (mode === "production" && url.origin !== "https://turnstile.work") {
+    throw new Error("Production VITE_SITE_URL must be https://turnstile.work");
+  }
+  if (mode === "production" && publicEnv["VITE_RP_ID"] && publicEnv["VITE_RP_ID"] !== "turnstile.work") {
+    throw new Error("Production VITE_RP_ID must be unset or turnstile.work");
   }
   return url.origin;
 }

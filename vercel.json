@@ -15,18 +15,8 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "has": [{ "type": "host", "value": { "eq": "staging.turnstile.work" } }],
-      "destination": "https://api.staging.turnstile.work/api/:path*"
-    },
-    {
-      "source": "/api/:path*",
       "has": [{ "type": "host", "value": { "eq": "turnstile.work" } }],
       "destination": "https://api.turnstile.work/api/:path*"
-    },
-    {
-      "source": "/:path*",
-      "has": [{ "type": "host", "value": { "eq": "staging.turnstile.work" } }],
-      "destination": "/index.html"
     },
     {
       "source": "/:path*",

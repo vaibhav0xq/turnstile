@@ -61,6 +61,7 @@ const RP_ID: string = (import.meta.env?.["VITE_RP_ID"] as string | undefined) ||
 function assertPasskeyOrigin() {
   const site = import.meta.env?.["VITE_SITE_URL"] as string | undefined;
   if (
+    (import.meta.env?.PROD && window.location.origin !== "https://turnstile.work") ||
     window.location.hostname.endsWith(".vercel.app") ||
     (site && window.location.origin !== new URL(site).origin)
   ) {
