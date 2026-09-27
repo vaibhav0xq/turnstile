@@ -20,7 +20,10 @@ function routeFor(routes, source, host) {
 export function validateConfiguration(web = load("vercel.json"), backend = load("railway.json")) {
   assert.equal(web.outputDirectory, "apps/web/dist");
   assert.equal(web.installCommand, "pnpm install --frozen-lockfile");
-  assert.equal(web.buildCommand, "pnpm --filter @turnstile/web build");
+  assert.equal(
+    web.buildCommand,
+    "pnpm --filter @turnstile/identity build && pnpm --filter @turnstile/web build",
+  );
   assert.equal(web.rewrites.length, 2, "Only the production API and SPA rewrites are permitted");
   assert.equal(
     routeFor(web.rewrites, "/api/:path*", hostname)?.destination,
