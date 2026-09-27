@@ -27,6 +27,7 @@ import { PostgresPassportBackend } from "./passport-postgres.ts";
 import { RateLimiter } from "./ratelimit.ts";
 import { relay, relayGas } from "./relay.ts";
 import { rpcHost } from "./rpc.ts";
+import { acquireSingleWriter } from "./single-writer.ts";
 import { instanceId, sponsorshipStatus } from "./sponsorship.ts";
 import { renderTicketSvg, requestOrigin } from "./ticket-image.ts";
 
@@ -68,6 +69,10 @@ function resolveIp(context: Context) {
 }
 
 await verifyChain();
+const releaseWriter =
+  settings.hostingMode && settings.databaseUrl
+    ? await acquireSingleWriter(settings.databaseUrl, chainId)
+    : null;
 const app = new Hono();
 const relayLimit = new RateLimiter(30, 60_000);
 const dripIpLimit = new RateLimiter(10, 60_000);
@@ -320,7 +325,7 @@ app.onError((error) => {
   return json({ error: { code: "INTERNAL_ERROR", message: "Internal server error" } }, 500);
 });
 
-serve({ fetch: app.fetch, port: settings.port }, (info) => {
+const server = serve({ fetch: app.fetch, port: settings.port }, (info) => {
   const store = settings.databaseUrl ? "postgres" : settings.passportFile ? "file" : "memory";
   console.log(
     `relayer listening on :${info.port} chain ${chainId} passports ${store} rpc ${rpc.provider} (${rpcHost(rpc.primary)}${rpc.fallbacks.length ? ` +${rpc.fallbacks.length} fallback` : ""})`,
@@ -336,3 +341,21 @@ serve({ fetch: app.fetch, port: settings.port }, (info) => {
     );
   }
 });
+
+if (releaseWriter) {
+  let stopping = false;
+  const stop = () => {
+    if (stopping) return;
+    stopping = true;
+    server.close(async (error) => {
+      try {
+        await releaseWriter();
+      } finally {
+        if (error) process.stderr.write("Relayer drain failed\n");
+        process.exit(error ? 1 : 0);
+      }
+    });
+  };
+  process.on("SIGTERM", stop);
+  process.on("SIGINT", stop);
+}

@@ -10,6 +10,7 @@ import {
   type Validation,
   validateRelayBody,
 } from "./forward-request.ts";
+import { assertWriterLease } from "./single-writer.ts";
 import { isDenial } from "./spend-guard.ts";
 import { currentGasPrice, denialResponse, queueDenial, relayerQueue, spendGuard } from "./sponsorship.ts";
 
@@ -91,6 +92,7 @@ export async function relay(body: unknown) {
     const charge = await spendGuard.charge("relay", request.from);
     if (isDenial(charge)) return denialResponse(charge);
     try {
+      await assertWriterLease();
       const hash = await relayerWallet.writeContract({
         address: deployment.forwarder,
         abi: erc2771ForwarderAbi,

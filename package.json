@@ -20,11 +20,13 @@
     "format": "biome format --write .",
     "vectors": "pnpm --filter @turnstile/identity vectors",
     "vectors:check": "pnpm --filter @turnstile/identity vectors:check",
-    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm vectors:check",
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm vectors:check && pnpm test:hosting && pnpm hosting:check",
     "verify": "pnpm install --frozen-lockfile && pnpm check && pnpm build && pnpm --filter @turnstile/contracts check",
     "smoke": "pnpm --filter @turnstile/relayer smoke",
     "seed:night": "pnpm --filter @turnstile/relayer seed:night",
-    "preflight": "pnpm --filter @turnstile/relayer preflight"
+    "preflight": "pnpm --filter @turnstile/relayer preflight",
+    "hosting:check": "node scripts/hosting-check.mjs --config",
+    "test:hosting": "node --test scripts/hosting-check.test.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.13",

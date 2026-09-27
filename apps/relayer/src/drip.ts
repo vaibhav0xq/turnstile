@@ -1,5 +1,6 @@
 import { type Address, getAddress, isAddress } from "viem";
 import { publicClient, relayerAccount, relayerWallet, settings } from "./config.ts";
+import { assertWriterLease } from "./single-writer.ts";
 import { isDenial } from "./spend-guard.ts";
 import { currentGasPrice, denialResponse, queueDenial, relayerQueue, spendGuard } from "./sponsorship.ts";
 
@@ -38,6 +39,7 @@ export async function drip(value: unknown) {
     const charge = await spendGuard.charge("drip", to);
     if (isDenial(charge)) return denialResponse(charge);
     try {
+      await assertWriterLease();
       const hash = await relayerWallet.sendTransaction({
         account: relayerAccount,
         to,

@@ -57,7 +57,16 @@ export interface VaultSession {
 export type Busy = "create" | "signin" | "door" | "vault" | null;
 
 // `import.meta.env` exists under Vite only; the store also loads in node tests, where both reads fall through.
-const RP_ID: string = (import.meta.env?.["VITE_RP_ID"] as string | undefined) ?? window.location.hostname;
+const RP_ID: string = (import.meta.env?.["VITE_RP_ID"] as string | undefined) || window.location.hostname;
+function assertPasskeyOrigin() {
+  const site = import.meta.env?.["VITE_SITE_URL"] as string | undefined;
+  if (
+    window.location.hostname.endsWith(".vercel.app") ||
+    (site && window.location.origin !== new URL(site).origin)
+  ) {
+    throw new Error("Passkeys are only available on the approved Turnstile domain.");
+  }
+}
 const LS_CRED = "turnstile.credentialId";
 const LS_ADDR = "turnstile.address";
 const LS_DEV = "turnstile.dev";
@@ -217,6 +226,7 @@ export const useIdentity = create<IdentityState>()((set, get) => ({
         return fan;
       }
       const started = performance.now();
+      assertPasskeyOrigin();
       const result = await createIdentity({
         rpId,
         rpName: "Turnstile",
@@ -250,6 +260,7 @@ export const useIdentity = create<IdentityState>()((set, get) => ({
         return fan;
       }
       const started = performance.now();
+      assertPasskeyOrigin();
       const result = await signIn({ rpId });
       const fan = wrap(result.account);
       remember(fan);
@@ -293,6 +304,7 @@ export const useIdentity = create<IdentityState>()((set, get) => ({
       if (devSeed) {
         door = devDoor(devSeed, event, Date.now());
       } else {
+        assertPasskeyOrigin();
         const session = await deriveDoorKey({
           rpId,
           event,
@@ -329,6 +341,7 @@ export const useIdentity = create<IdentityState>()((set, get) => ({
       if (devSeed) {
         vault = await devVault(devSeed);
       } else {
+        assertPasskeyOrigin();
         const session = await openVault({
           rpId,
           ...(fan ? { expectCredentialId: fan.credentialId } : {}),

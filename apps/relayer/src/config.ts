@@ -44,6 +44,35 @@ export const rpcUrl = required("RPC_URL");
 export const rpc = planRpc(rpcUrl, parseUrlList(process.env["RPC_FALLBACK_URLS"]));
 export const chainId = Number(process.env["CHAIN_ID"] ?? 0);
 if (!Number.isSafeInteger(chainId) || chainId <= 0) throw new Error("CHAIN_ID must be a positive integer");
+const hostingMode = process.env["HOSTING_MODE"] || null;
+if (
+  !hostingMode &&
+  (process.env["RAILWAY_SERVICE_ID"] ||
+    process.env["RAILWAY_ENVIRONMENT_ID"] ||
+    /^https:\/\/(staging\.)?turnstile\.work$/.test(process.env["PUBLIC_ORIGIN"] ?? ""))
+) {
+  throw new Error("Hosted Turnstile requires HOSTING_MODE before the relayer can start");
+}
+if (hostingMode && hostingMode !== "staging" && hostingMode !== "production") {
+  throw new Error("HOSTING_MODE must be staging or production");
+}
+if (hostingMode) {
+  const origin = `https://${hostingMode === "staging" ? "staging." : ""}turnstile.work`;
+  if (chainId !== 10143) throw new Error("Hosted Turnstile is restricted to Monad testnet (10143)");
+  if (process.env["PUBLIC_ORIGIN"] !== origin) {
+    throw new Error("PUBLIC_ORIGIN must match the hosted canonical domain");
+  }
+  if (process.env["CORS_ORIGIN"] !== origin) {
+    throw new Error("CORS_ORIGIN must match the hosted canonical domain");
+  }
+  if (!process.env["DATABASE_URL"]) throw new Error("Hosted Turnstile requires managed Postgres");
+  if (!process.env["PUBLIC_RPC_URL"]) throw new Error("Hosted Turnstile requires a separate public RPC");
+  if (process.env["STATIC_DIR"]) throw new Error("Hosted relayer must not serve the web build");
+  if (process.env["DRIP_ENABLED"] === "1") throw new Error("Hosted drip must remain disabled");
+  if (process.env["TRUSTED_PROXY_HOPS"] === undefined) {
+    throw new Error("Set TRUSTED_PROXY_HOPS after measuring the hosting proxy chain");
+  }
+}
 const deploymentPath =
   process.env["DEPLOYMENTS_FILE"] || resolve(appDir, `../../packages/contracts/deployments/${chainId}.json`);
 let rawDeployment: unknown;
@@ -116,6 +145,7 @@ const publicRpc = planRpc(
   parseUrlList(process.env["PUBLIC_RPC_FALLBACK_URLS"]),
 );
 export const settings = {
+  hostingMode,
   publicRpcUrl: publicRpc.primary,
   publicRpcFallbackUrls: publicRpc.fallbacks,
   publicRpcProvider: publicRpc.provider,

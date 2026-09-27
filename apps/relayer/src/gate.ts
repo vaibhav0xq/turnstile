@@ -4,6 +4,7 @@ import { type Address, getAddress, zeroAddress } from "viem";
 import { chainId, gateAccount, gateWallet, publicClient } from "./config.ts";
 import { decodeContractError } from "./errors.ts";
 import { findEvent } from "./events.ts";
+import { assertWriterLease } from "./single-writer.ts";
 import { isDenial } from "./spend-guard.ts";
 import {
   currentGasPrice,
@@ -158,6 +159,7 @@ export async function checkIn(text: unknown) {
     const charge = await spendGuard.charge("gate");
     if (isDenial(charge)) return gateDenial(denialResponse(charge));
     try {
+      await assertWriterLease();
       const hash = await gateWallet.writeContract({
         address: lookup.eventAddress,
         abi: turnstileEventAbi,

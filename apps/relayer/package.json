@@ -16,7 +16,8 @@
     "smoke": "node scripts/smoke.mjs",
     "seed:night": "node scripts/seed-night.mjs",
     "preflight": "node scripts/preflight.mjs",
-    "db:setup": "node --env-file-if-exists=.env scripts/db-setup.mjs"
+    "db:setup": "node --env-file-if-exists=.env scripts/db-setup.mjs",
+    "db:check": "node --env-file-if-exists=.env scripts/db-check.mjs"
   },
   "dependencies": {
     "@hono/node-server": "^2.1.1",

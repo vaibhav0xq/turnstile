@@ -1,0 +1,37 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "buildCommand": "pnpm --filter @turnstile/web build",
+  "outputDirectory": "apps/web/dist",
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": { "eq": "www.turnstile.work" } }],
+      "destination": "https://turnstile.work/:path*",
+      "permanent": true
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "has": [{ "type": "host", "value": { "eq": "staging.turnstile.work" } }],
+      "destination": "https://api.staging.turnstile.work/api/:path*"
+    },
+    {
+      "source": "/api/:path*",
+      "has": [{ "type": "host", "value": { "eq": "turnstile.work" } }],
+      "destination": "https://api.turnstile.work/api/:path*"
+    },
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": { "eq": "staging.turnstile.work" } }],
+      "destination": "/index.html"
+    },
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": { "eq": "turnstile.work" } }],
+      "destination": "/index.html"
+    }
+  ]
+}

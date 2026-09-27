@@ -21,7 +21,10 @@ const allowedHosts =
  */
 function siteOrigin(mode: string): string {
   const raw = loadEnv(mode, process.cwd(), "VITE_")["VITE_SITE_URL"]?.trim() ?? "";
-  if (!raw) return "";
+  if (!raw) {
+    if (process.env["VERCEL"]) throw new Error("Vercel builds require VITE_SITE_URL for the approved domain");
+    return "";
+  }
   let url: URL;
   try {
     url = new URL(raw);
