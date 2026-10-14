@@ -17,7 +17,7 @@
     "test": "envio codegen && node --test test/*.test.ts"
   },
   "dependencies": {
-    "envio": "^3.5.0"
+    "envio": "^3.14.0"
   },
   "devDependencies": {
     "@types/node": "^24.3.0",
