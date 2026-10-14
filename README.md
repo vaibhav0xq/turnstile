@@ -46,7 +46,6 @@
   <img alt="Mera SDK 0.2" src="https://img.shields.io/badge/Mera_SDK-0.2-111111">
   <img alt="WebAuthn PRF" src="https://img.shields.io/badge/WebAuthn-PRF-3423A6?logo=webauthn&logoColor=white">
   <img alt="Envio HyperIndex 3" src="https://img.shields.io/badge/Envio-HyperIndex_3-FF7A00">
-  <img alt="Replit hosting" src="https://img.shields.io/badge/Replit-hosting-F26207?logo=replit&logoColor=white">
 </p>
 
 - **Live app:** <https://turnstile.work>
@@ -68,13 +67,15 @@
 - [Deployments](#deployments)
 - [Run it locally](#run-it-locally)
 - [Documentation](#documentation)
+- [Media and Project Links](#media-and-project-links)
+- [AI Assistance Disclosure](#ai-assistance-disclosure)
 - [Author](#author)
 - [License](#license)
 
 ## Status
 
 Live on Monad testnet at <https://turnstile.work>. The contracts were deployed and verified on 14 September
-2026, the hosted Envio indexer is in sync and every commit on `main` passes the same checks CI runs. Seats
+2026, the hosted Envio indexer is deployed and actively synchronizing and every commit on `main` passes the same checks CI runs. Seats
 are free or priced in testnet MON. Nothing in this repository has been audited or prepared for mainnet.
 
 ## Overview
@@ -125,7 +126,7 @@ your passkey provider and signing in again restores the same account, seats and 
 
 | The city | The room |
 | --- | --- |
-| ![City view: night list with the city pulse card and the Envio in sync chip](docs/assets/city.jpg) | ![Venue: the seat map of Neon Night at Metropolis with the stage and booths](docs/assets/venue.jpg) |
+| ![City view: night list with the city pulse card and the Envio freshness chip](docs/assets/city.jpg) | ![Venue: the seat map of Neon Night at Metropolis with the stage and booths](docs/assets/venue.jpg) |
 | Every event is a lit building. The pulse card and the freshness chip read from Envio. | Seats are picked in 3D. Tiers are derived from the rows. |
 
 | The ticket | After check-in |
@@ -262,6 +263,21 @@ the product.
 - [`packages/identity/SPEC.md`](packages/identity/SPEC.md): key derivation, wire formats and the prompt budget.
 - [`SECURITY.md`](SECURITY.md): supported branch, scope and how to report a problem.
 - [`CONTRIBUTING.md`](CONTRIBUTING.md): setup, the commit gate and conventions.
+
+## Media and Project Links
+
+- [Turnstile project account on X](https://x.com/Turnstilework)
+- [Product promotion post on X](https://x.com/Turnstilework/status/2110182149274128428)
+- [Pitch video on YouTube](https://youtu.be/DnPXNduCK4A)
+- [Envio bounty video on YouTube](https://youtu.be/ZQsVRmJOuFE)
+- [Alchemy bounty video on YouTube](https://youtu.be/nZ5X8l7xnsU)
+- [Mera One Passkey Many Keys video on YouTube](https://youtu.be/QBSAL81CiLw)
+- [Mera UX video on YouTube](https://youtu.be/OqeQhc2Jk20)
+- [Technical demo on YouTube](https://youtu.be/-3w3MaVMfJI)
+
+## AI Assistance Disclosure
+
+AI coding assistants were used during development for implementation suggestions, debugging, refactoring, test support and documentation. The project architecture, product decisions, integration, deployment and final verification were directed and reviewed by Vaibhav. AI-generated output was edited, integrated and tested by the author.
 
 ## Author
 
