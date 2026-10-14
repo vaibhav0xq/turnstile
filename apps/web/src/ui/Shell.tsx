@@ -76,9 +76,17 @@ export function TopBar({ config, onSignIn }: { config: AppConfig | undefined; on
           title={envLabel ? `${envLabel}: internal rehearsal origin, not the final host` : undefined}
         >
           <svg width="18" height="18" viewBox="0 0 64 64" aria-hidden>
-            <circle cx="32" cy="32" r="17" fill="none" stroke="#ffb457" strokeWidth="4" />
-            <path d="M32 15v34M15 32h34" stroke="#ffb457" strokeWidth="4" strokeLinecap="round" />
-            <circle cx="32" cy="32" r="5" fill="#7ee7ff" />
+            <mask id="turnstile-mark-hub">
+              <rect width="64" height="64" fill="#fff" />
+              <circle cx="32" cy="32" r="3.88" fill="#000" />
+            </mask>
+            <circle cx="32" cy="32" r="21.38" fill="none" stroke="#aeaba1" strokeWidth="2.72" />
+            <g stroke="#f4a527" strokeWidth="3.94" strokeLinecap="round" mask="url(#turnstile-mark-hub)">
+              <path d="M32 32v-16.75" />
+              <path d="M32 32 17.49 40.38" />
+              <path d="M32 32 46.51 40.38" />
+            </g>
+            <circle cx="32" cy="32" r="1.61" fill="#4bbeda" />
           </svg>
           {envLabel ? (
             // the phone's version of the environment chip: a dot on the mark, the label in its tooltip
