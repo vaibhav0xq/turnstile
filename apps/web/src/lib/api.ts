@@ -24,26 +24,34 @@ interface ErrorBody {
 }
 
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, {
-    ...init,
-    headers: {
-      accept: "application/json",
-      ...(init?.body ? { "content-type": "application/json" } : {}),
-      ...init?.headers,
-    },
-  });
-  const text = await res.text();
-  let body: unknown = null;
-  try {
-    body = text ? JSON.parse(text) : null;
-  } catch {
-    body = text;
+  for (let attempt = 0; ; attempt++) {
+    const res = await fetch(`${API_URL}${path}`, {
+      ...init,
+      headers: {
+        accept: "application/json",
+        ...(init?.body ? { "content-type": "application/json" } : {}),
+        ...init?.headers,
+      },
+    });
+    const text = await res.text();
+    let body: unknown = null;
+    try {
+      body = text ? JSON.parse(text) : null;
+    } catch {
+      body = text;
+    }
+    if (!res.ok) {
+      const e = (body ?? {}) as ErrorBody;
+      const code = e.error?.code ?? e.code ?? `HTTP_${res.status}`;
+      // Deploy handoff: the relayer refused before sending anything, so one retry is safe.
+      if (res.status === 503 && code === "WRITER_HANDOFF" && attempt === 0) {
+        const wait = Math.min(Number(res.headers.get("retry-after")) || 5, 15);
+        await new Promise((resolve) => setTimeout(resolve, wait * 1000));
+        continue;
+      }
+      const message = e.error?.message ?? e.message ?? `${res.status} ${res.statusText}`;
+      throw new ApiError(res.status, code, message, body);
+    }
+    return body as T;
   }
-  if (!res.ok) {
-    const e = (body ?? {}) as ErrorBody;
-    const code = e.error?.code ?? e.code ?? `HTTP_${res.status}`;
-    const message = e.error?.message ?? e.message ?? `${res.status} ${res.statusText}`;
-    throw new ApiError(res.status, code, message, body);
-  }
-  return body as T;
 }

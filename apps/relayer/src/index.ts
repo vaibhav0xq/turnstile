@@ -27,7 +27,7 @@ import { PostgresPassportBackend } from "./passport-postgres.ts";
 import { RateLimiter } from "./ratelimit.ts";
 import { relay, relayGas } from "./relay.ts";
 import { rpcHost } from "./rpc.ts";
-import { acquireSingleWriter } from "./single-writer.ts";
+import { acquireSingleWriterWhenFree, WriterLeaseError } from "./single-writer.ts";
 import { instanceId, sponsorshipStatus } from "./sponsorship.ts";
 import { renderTicketSvg, requestOrigin } from "./ticket-image.ts";
 
@@ -69,9 +69,11 @@ function resolveIp(context: Context) {
 }
 
 await verifyChain();
-const releaseWriter =
+// Start as standby and take the lock in the background: a replacement deployment passes its health
+// check while the current writer still holds the lock, then becomes the writer on release.
+const writer =
   settings.hostingMode && settings.databaseUrl
-    ? await acquireSingleWriter(settings.databaseUrl, chainId)
+    ? acquireSingleWriterWhenFree(settings.databaseUrl, chainId)
     : null;
 const app = new Hono();
 const relayLimit = new RateLimiter(30, 60_000);
@@ -111,6 +113,8 @@ app.get("/api/health", async () => {
   const block = await publicClient.getBlockNumber();
   return json({
     ok: true,
+    // writer, standby (healthy but not holding the single-writer lock), or standalone (no hosting mode)
+    role: writer ? (writer.isWriter() ? "writer" : "standby") : "standalone",
     chainId,
     block,
     relayer: relayerAccount.address,
@@ -321,6 +325,15 @@ if (settings.staticDir) {
 }
 
 app.onError((error) => {
+  if (error instanceof WriterLeaseError) {
+    // Standby during a deploy handoff: the old writer is draining, and this instance takes over
+    // within seconds. Retryable on purpose, so clients back off instead of surfacing a failure.
+    return json(
+      { error: { code: "WRITER_HANDOFF", message: "Relayer handoff in progress, retry shortly" } },
+      503,
+      { "retry-after": "5" },
+    );
+  }
   console.error(error instanceof Error ? error.message : "Unhandled request error");
   return json({ error: { code: "INTERNAL_ERROR", message: "Internal server error" } }, 500);
 });
@@ -342,14 +355,14 @@ const server = serve({ fetch: app.fetch, port: settings.port }, (info) => {
   }
 });
 
-if (releaseWriter) {
+if (writer) {
   let stopping = false;
   const stop = () => {
     if (stopping) return;
     stopping = true;
     server.close(async (error) => {
       try {
-        await releaseWriter();
+        await writer.release();
       } finally {
         if (error) process.stderr.write("Relayer drain failed\n");
         process.exit(error ? 1 : 0);
